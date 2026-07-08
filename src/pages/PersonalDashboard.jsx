@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
-  ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter,
+  ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X,
   MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info,
 } from 'lucide-react';
 import { researchList } from '../data/researchList.js';
@@ -889,7 +889,9 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
   const todayStr = today.toISOString().slice(0, 10);
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
 
-  const openTasks = MY_TASKS.filter((tk) => tk.status === 'Open');
+  const [tasks, setTasks] = useState(MY_TASKS);
+  const openTasks = tasks.filter((tk) => tk.status === 'Open');
+  const decideTask = (id, status) => setTasks((prev) => prev.map((tk) => tk.id === id ? { ...tk, status } : tk));
   const myForms = useMemo(() => [...loadSubmissions(), ...MY_FORMS_SEED], []);
   const openForms = myForms.filter((f) => f.status === 'Open');
   const dueSoonAssets = [...MY_ASSETS]
@@ -1101,22 +1103,37 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
             )}
           </div>
           <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {MY_TASKS.slice(0, 4).map((tk) => (
-              <div key={tk.id} className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 transition-colors">
+            {tasks.slice(0, 4).map((tk) => (
+              <div key={tk.id} className="flex items-start justify-between gap-2 px-3 py-2 hover:bg-neutral-50 transition-colors">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate">{tk.title}</p>
+                  <p className="text-xs font-bold text-neutral-800 leading-snug">{tk.title}</p>
                   <p className="text-[10px] text-neutral-400 mt-0.5">{tk.requester} · {tk.date}</p>
                 </div>
-                <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[tk.status]}`}>{tk.status}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {tk.status === 'Open' ? (
+                    <>
+                      <button
+                        onClick={() => decideTask(tk.id, 'Approved')}
+                        title="Approve"
+                        className="flex items-center justify-center h-5 w-5 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => decideTask(tk.id, 'Rejected')}
+                        title="Reject"
+                        className="flex items-center justify-center h-5 w-5 rounded bg-[#990000] hover:bg-red-800 text-white transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[tk.status]}`}>{tk.status}</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-          <button
-            onClick={() => onSelect?.('my-tasks')}
-            className="w-full flex items-center justify-center gap-1 px-4 py-2 border-t border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-800 hover:bg-neutral-100 transition-colors"
-          >
-            {t.VIEW_QUEUE} <ArrowRight className="h-3 w-3 text-[#990000]" />
-          </button>
         </div>
 
         {/* My Requests (My Forms) */}
@@ -1140,12 +1157,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => onSelect?.('my-forms')}
-            className="w-full flex items-center justify-center gap-1 px-4 py-2 border-t border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-800 hover:bg-neutral-100 transition-colors"
-          >
-            {t.TRACK_STATUS} <ArrowRight className="h-3 w-3 text-[#990000]" />
-          </button>
+
         </div>
 
         {/* My Assets */}
