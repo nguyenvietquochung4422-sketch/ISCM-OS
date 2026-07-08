@@ -768,15 +768,19 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
       {/* Detail Modal Overlay */}
       {selectedDept && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-neutral-200 max-w-xl w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200 rounded-none">
+          <div className="bg-white border border-neutral-200 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative animate-in fade-in zoom-in-95 duration-200 rounded-none flex flex-col">
             
-            <button
-              onClick={() => setSelectedDept(null)}
-              className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            {/* Sticky close button */}
+            <div className="sticky top-0 z-10 bg-white border-b border-neutral-100 flex justify-end px-4 py-2 shrink-0">
+              <button
+                onClick={() => setSelectedDept(null)}
+                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
+            <div className="p-6 space-y-0">
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-neutral-200 pb-4 mb-4">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#990000]/10 rounded-none">
@@ -884,7 +888,9 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
               >
                 {lang === 'vi' ? 'Đóng' : 'Close'}
               </button>
-            </div>
+            </div> {/* end footer */}
+
+            </div> {/* end p-6 wrapper */}
 
           </div>
         </div>
