@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
   ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X,
-  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info,
+  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo,
 } from 'lucide-react';
 import { researchList } from '../data/researchList.js';
 import { FORM_GROUPS, FORM_BY_KEY, FORM_CATEGORIES, ASSET_TYPES, MY_TASKS, MY_FORMS_SEED, MY_ASSETS } from '../data/formPortal.js';
@@ -1090,8 +1090,8 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
         </main>
       </div>
 
-      {/* Quick-glance: tasks, requests & assets */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Quick-glance: tasks, requests, assigned tasks & assets */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         {/* My Tasks (Pending Approvals) */}
         <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
           <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
@@ -1157,7 +1157,18 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
               </div>
             ))}
           </div>
+        </div>
 
+        {/* My Assigned Tasks Checklist */}
+        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden flex flex-col h-[264px]">
+          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2 shrink-0">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
+              <ListTodo className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_ASSIGNED_TASKS_WIDGET}
+            </span>
+          </div>
+          <div className="flex-1 min-h-0">
+            <TaskReceiptPanel />
+          </div>
         </div>
 
         {/* My Assets */}

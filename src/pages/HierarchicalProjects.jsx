@@ -315,22 +315,6 @@ export default function HierarchicalProjects() {
             </div>
           ))}
 
-          {/* Task ngoài dự án (Ad-hoc) */}
-          <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50/60 p-2.5">
-            <p className="flex items-center gap-1.5 font-barlow text-[11px] font-bold uppercase tracking-wide text-violet-800">
-              <ListTodo className="h-3.5 w-3.5" /> Task ngoài dự án
-            </p>
-            <ul className="mt-1.5 space-y-1">
-              {ADHOC_TASKS.map((t) => (
-                <li key={t.id} className="rounded-md bg-white/80 px-2 py-1.5 font-ibm text-[10px]">
-                  <span className={t.status === 'done' ? 'text-gray-400 line-through' : 'text-iscm-charcoal'}>{t.title}</span>
-                  <span className="mt-0.5 block text-gray-400">
-                    {staffById[t.assignee]?.name} · hạn {t.due.slice(5).replace('-', '/')} · {t.hours}h → Timesheet
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
         </aside>
 
         {/* Vùng tác nghiệp */}
