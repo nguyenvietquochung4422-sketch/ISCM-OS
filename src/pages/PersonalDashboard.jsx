@@ -890,8 +890,14 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
 
   const [tasks, setTasks] = useState(MY_TASKS);
+  const [selectedItem, setSelectedItem] = useState(null);
   const openTasks = tasks.filter((tk) => tk.status === 'Open');
-  const decideTask = (id, status) => setTasks((prev) => prev.map((tk) => tk.id === id ? { ...tk, status } : tk));
+  const decideTask = (id, status) => {
+    setTasks((prev) => prev.map((tk) => tk.id === id ? { ...tk, status } : tk));
+    if (selectedItem?.item?.id === id) {
+      setSelectedItem((prev) => ({ ...prev, item: { ...prev.item, status } }));
+    }
+  };
   const myForms = useMemo(() => [...loadSubmissions(), ...MY_FORMS_SEED], []);
   const openForms = myForms.filter((f) => f.status === 'Open');
   const dueSoonAssets = [...MY_ASSETS]
@@ -958,43 +964,58 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
       </header>
 
 
-      {/* Split layout: left = upcoming events, right = weekly calendar */}
+      {/* Split layout: left = upcoming events & tasks, right = weekly calendar */}
       <div className="grid gap-4 md:grid-cols-10 items-start">
 
-        {/* LEFT — Upcoming Events Highlight */}
-        <aside className="border border-neutral-200 bg-white md:col-span-2 rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-[#990000] text-white flex items-center gap-2">
-            <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{t.UPCOMING_EVENTS}</span>
-          </div>
-          <div className="overflow-y-auto max-h-[560px] divide-y divide-neutral-200">
-            {upcoming.length === 0 && (
-              <p className="px-4 py-8 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-            )}
-            {upcoming.map((ev) => (
-              <div key={ev.id} className="flex items-start gap-2.5 px-4 py-3 hover:bg-neutral-50 transition-colors">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 leading-snug">{ev.title}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
-                    {fmtDateLabel(ev.start)} · {fmtTime(ev.start)}–{fmtTime(ev.end)}
-                  </p>
-                  <p className="text-[10px] text-neutral-400 truncate">{ev.location}</p>
-                  <span className={`inline-block mt-1 px-1 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
+        {/* LEFT — Upcoming Events & Assigned Tasks */}
+        <aside className="space-y-4 md:col-span-3">
+          {/* Card 1: Upcoming Events */}
+          <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+            <div className="px-4 py-2 border-b border-neutral-200 bg-[#990000] text-white flex items-center gap-2">
+              <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">{t.UPCOMING_EVENTS}</span>
+            </div>
+            <div className="overflow-y-auto max-h-[220px] divide-y divide-neutral-200">
+              {upcoming.length === 0 && (
+                <p className="px-4 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
+              )}
+              {upcoming.map((ev) => (
+                <div key={ev.id} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-neutral-50 transition-colors">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-neutral-800 leading-snug">{ev.title}</p>
+                    <p className="text-[10px] text-neutral-400 mt-0.5">
+                      {fmtDateLabel(ev.start)} · {fmtTime(ev.start)}–{fmtTime(ev.end)}
+                    </p>
+                    <p className="text-[10px] text-neutral-400 truncate">{ev.location}</p>
+                    <span className={`inline-block mt-1 px-1 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="px-4 py-1.5 border-t border-neutral-200 bg-neutral-50">
+              <p className="text-[9px] text-neutral-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 bg-emerald-600 inline-block" />
+                {t.SYNC_SUCCESS}
+              </p>
+            </div>
           </div>
-          <div className="px-4 py-2 border-t border-neutral-200 bg-neutral-50">
-            <p className="text-[10px] text-neutral-400 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 bg-emerald-600 inline-block" />
-              {t.SYNC_SUCCESS}
-            </p>
+
+          {/* Card 2: Assigned Tasks Checklist */}
+          <div className="border border-neutral-200 bg-white rounded-none overflow-hidden flex flex-col h-[280px]">
+            <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2 shrink-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
+                <ListTodo className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_ASSIGNED_TASKS_WIDGET}
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <TaskReceiptPanel />
+            </div>
           </div>
         </aside>
 
         {/* RIGHT — Weekly Calendar Table */}
-        <main className="border border-neutral-200 bg-white md:col-span-8 rounded-none overflow-hidden">
+        <main className="border border-neutral-200 bg-white md:col-span-7 rounded-none overflow-hidden">
           {/* Calendar header */}
           <div className="px-5 py-2.5 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1090,8 +1111,8 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
         </main>
       </div>
 
-      {/* Quick-glance: tasks, requests, assigned tasks & assets */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+      {/* Quick-glance: tasks & requests (2 columns) */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* My Tasks (Pending Approvals) */}
         <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
           <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
@@ -1104,12 +1125,16 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
           </div>
           <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
             {tasks.slice(0, 4).map((tk) => (
-              <div key={tk.id} className="flex items-start justify-between gap-2 px-3 py-2 hover:bg-neutral-50 transition-colors">
+              <div
+                key={tk.id}
+                onClick={() => setSelectedItem({ type: 'task', item: tk })}
+                className="flex items-start justify-between gap-2 px-3 py-2 hover:bg-neutral-50 cursor-pointer transition-colors"
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 leading-snug">{tk.title}</p>
+                  <p className="text-xs font-bold text-neutral-800 leading-snug hover:text-[#990000] transition-colors">{tk.title}</p>
                   <p className="text-[10px] text-neutral-400 mt-0.5">{tk.requester} · {tk.date}</p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {tk.status === 'Open' ? (
                     <>
                       <button
@@ -1148,9 +1173,13 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
           </div>
           <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
             {myForms.slice(0, 4).map((f) => (
-              <div key={f.id} className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 transition-colors">
+              <div
+                key={f.id}
+                onClick={() => setSelectedItem({ type: 'request', item: f })}
+                className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 cursor-pointer transition-colors"
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate">{f.form}</p>
+                  <p className="text-xs font-bold text-neutral-800 truncate hover:text-[#990000] transition-colors">{f.form}</p>
                   <p className="text-[10px] text-neutral-400 mt-0.5">{f.group} · {f.date}</p>
                 </div>
                 <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[f.status]}`}>{f.status}</span>
@@ -1158,40 +1187,126 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
             ))}
           </div>
         </div>
-
-        {/* My Assigned Tasks Checklist */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden flex flex-col h-[264px]">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2 shrink-0">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <ListTodo className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_ASSIGNED_TASKS_WIDGET}
-            </span>
-          </div>
-          <div className="flex-1 min-h-0">
-            <TaskReceiptPanel />
-          </div>
-        </div>
-
-        {/* My Assets */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <MonitorSmartphone className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_ASSETS_WIDGET}
-            </span>
-            <span className="border border-white/30 bg-white/10 px-1.5 py-0.2 text-[9px] font-bold text-white">{MY_ASSETS.length} {t.ASSETS_COUNT}</span>
-          </div>
-          <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {dueSoonAssets.concat(MY_ASSETS.filter((a) => !a.due)).slice(0, 4).map((a) => (
-              <div key={a.id} className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate">{a.name}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{a.type} · checked out {a.checked_out}</p>
-                </div>
-                <span className="shrink-0 text-[9px] text-[#990000] font-bold">{a.due ? `${t.DUE} ${a.due}` : t.PERMANENT}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+
+      {/* Item Detail Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-neutral-200 max-w-md w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200 rounded-none">
+            <button
+              onClick={() => setSelectedItem(null)}
+              className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header */}
+            <div className="border-b border-neutral-200 pb-3 mb-4">
+              <h3 className="font-barlow text-base font-bold uppercase tracking-wide text-neutral-900">
+                {selectedItem.type === 'task'
+                  ? (lang === 'vi' ? 'Chi tiết yêu cầu phê duyệt' : 'Approval Request Details')
+                  : (lang === 'vi' ? 'Chi tiết đơn từ đã gửi' : 'Submitted Request Details')
+                }
+              </h3>
+            </div>
+
+            {/* Content fields */}
+            <div className="space-y-3 font-sans text-xs">
+              {selectedItem.type === 'task' ? (
+                <>
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100">
+                    <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Yêu cầu / Request</span>
+                    <span className="block font-bold text-neutral-800 mt-0.5 text-sm">{selectedItem.item.title}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Người yêu cầu / Requester</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.requester}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Ngày nộp / Date</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.date}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Biểu mẫu / Form</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.form}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Trạng thái / Status</span>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-[9px] font-bold rounded-none ${TASK_STATUS_BADGE[selectedItem.item.status]}`}>
+                        {selectedItem.item.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50/50 p-2.5 border border-amber-200 text-neutral-700 leading-relaxed">
+                    <span className="block font-bold text-amber-800 uppercase text-[9px] tracking-wide mb-0.5">Thông tin bổ sung / Notes</span>
+                    Phê duyệt phân luồng tài chính &amp; thẩm định dữ liệu không gian. Cần rà soát các tài sản dữ liệu đính kèm trước khi đưa ra quyết định.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100">
+                    <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Biểu mẫu / Form</span>
+                    <span className="block font-bold text-neutral-800 mt-0.5 text-sm">{selectedItem.item.form}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Nhóm chức năng / Group</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.group}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Ngày gửi / Date</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.date}</span>
+                    </div>
+                  </div>
+                  <div className="bg-neutral-50 p-2 border border-neutral-100 w-full">
+                    <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Trạng thái / Status</span>
+                    <span className={`inline-block mt-1 px-2 py-0.5 text-[9px] font-bold rounded-none ${TASK_STATUS_BADGE[selectedItem.item.status]}`}>
+                      {selectedItem.item.status}
+                    </span>
+                  </div>
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-neutral-700 leading-relaxed">
+                    <span className="block font-bold text-neutral-500 uppercase text-[9px] tracking-wide mb-0.5">Mô tả tiến trình / Workflow Log</span>
+                    Yêu cầu đã được chuyển tiếp tự động sang bộ phận phê duyệt chức năng. Mọi phản hồi sẽ được gửi qua email UEH SSO.
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="mt-6 pt-4 border-t border-neutral-200 flex justify-end gap-2">
+              {selectedItem.type === 'task' && selectedItem.item.status === 'Open' && (
+                <>
+                  <button
+                    onClick={() => {
+                      decideTask(selectedItem.item.id, 'Approved');
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-barlow font-bold text-xs uppercase tracking-widest py-2 px-3 transition-colors rounded-none"
+                  >
+                    {lang === 'vi' ? 'Duyệt' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      decideTask(selectedItem.item.id, 'Rejected');
+                    }}
+                    className="bg-[#990000] hover:bg-red-800 text-white font-barlow font-bold text-xs uppercase tracking-widest py-2 px-3 transition-colors rounded-none"
+                  >
+                    {lang === 'vi' ? 'Từ chối' : 'Reject'}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setSelectedItem(null)}
+                className="bg-neutral-900 hover:bg-neutral-800 text-white font-barlow font-bold text-xs uppercase tracking-widest py-2 px-4 transition-colors rounded-none"
+              >
+                {lang === 'vi' ? 'Đóng' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
