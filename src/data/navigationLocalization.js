@@ -483,14 +483,6 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'form:training-point-proposal', label: 'Training Point Proposal' }
             ]
           },
-          {
-            id: 'monitoring-status',
-            label: 'MONITORING & STATUS',
-            children: [
-              { key: 'my-tasks', label: 'My Tasks Pending Approvals' },
-              { key: 'my-forms', label: 'My Forms Request Status' }
-            ]
-          }
         ]
       },
       {
