@@ -1013,12 +1013,12 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
                 <tr>
                   {weekDays.map((d) => (
                     <th key={fmtDateKey(d)}
-                      className={`px-3 py-2 text-[11px] font-bold uppercase tracking-wider border-b border-neutral-300 text-center ${
+                      className={`px-3 py-2 text-[13px] font-bold uppercase tracking-wider border-b border-neutral-300 text-center ${
                         isToday(d) ? 'bg-[#990000] text-white' : 'bg-neutral-50 text-neutral-800'
                       }`}
                     >
                       {fmtDay(d)}
-                      {isToday(d) && <span className="block text-[8px] font-normal opacity-80">{lang === 'vi' ? 'Hôm nay' : 'Today'}</span>}
+                      {isToday(d) && <span className="block text-[10px] font-normal opacity-80">{lang === 'vi' ? 'Hôm nay' : 'Today'}</span>}
                     </th>
                   ))}
                 </tr>
@@ -1039,10 +1039,10 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
                           <div className="space-y-1">
                             {dayEvents.map((ev) => (
                               <div key={ev.id}
-                                className={`border px-1.5 py-1 text-[9px] cursor-default ${ev.tagColor} rounded-none`}
+                                className={`border px-2 py-1.5 text-[11px] cursor-default ${ev.tagColor} rounded-none`}
                               >
                                 <p className="font-bold leading-tight line-clamp-2">{ev.title}</p>
-                                <p className="opacity-70 mt-0.5">{fmtTime(ev.start)}–{fmtTime(ev.end)}</p>
+                                <p className="opacity-70 mt-0.5 text-[10px]">{fmtTime(ev.start)}–{fmtTime(ev.end)}</p>
                               </div>
                             ))}
                           </div>
@@ -1058,7 +1058,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
           {/* Today's detail schedule */}
           <div className="border-t border-neutral-200">
             <div className="px-5 py-2 bg-neutral-50 border-b border-neutral-200">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-800">
+              <span className="text-xs font-bold uppercase tracking-wide text-neutral-800">
                 {t.SCHEDULE_DETAILS}
               </span>
             </div>
@@ -1071,16 +1071,16 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
                 <div className="divide-y divide-neutral-200">
                   {todayEvents.map((ev) => (
                     <div key={ev.id} className="flex items-start gap-4 px-5 py-2.5">
-                      <div className="shrink-0 text-center w-12">
-                        <span className="block text-xs font-bold text-neutral-900">{fmtTime(ev.start)}</span>
-                        <span className="block text-[9px] text-neutral-400">{fmtTime(ev.end)}</span>
+                      <div className="shrink-0 text-center w-14">
+                        <span className="block text-sm font-bold text-neutral-900">{fmtTime(ev.start)}</span>
+                        <span className="block text-[11px] text-neutral-400">{fmtTime(ev.end)}</span>
                       </div>
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-neutral-800">{ev.title}</p>
-                        <p className="text-[10px] text-neutral-400 mt-0.5">{ev.location}</p>
+                        <p className="text-sm font-bold text-neutral-800">{ev.title}</p>
+                        <p className="text-xs text-neutral-400 mt-0.5">{ev.location}</p>
                       </div>
-                      <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
+                      <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
                     </div>
                   ))}
                 </div>
