@@ -955,29 +955,6 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
         </button>
       </header>
 
-      {/* Monitoring & Status quick-view row */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* My Tasks Pending Approvals */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center gap-2">
-            <Inbox className="h-3.5 w-3.5 shrink-0 text-[#990000]" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{lang === 'vi' ? 'Nhiệm vụ chờ phê duyệt' : 'My Tasks Pending Approvals'}</span>
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            <MyTasksPanel statusFilter="All" />
-          </div>
-        </div>
-        {/* My Forms Request Status */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center gap-2">
-            <Send className="h-3.5 w-3.5 shrink-0 text-[#990000]" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{lang === 'vi' ? 'Trạng thái biểu mẫu đã gửi' : 'My Forms Request Status'}</span>
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            <MyFormsPanel statusFilter="All" />
-          </div>
-        </div>
-      </div>
 
       {/* Split layout: left = upcoming events, right = weekly calendar */}
       <div className="grid gap-4 md:grid-cols-10 items-start">
