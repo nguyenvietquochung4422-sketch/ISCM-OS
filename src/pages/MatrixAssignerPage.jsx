@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, ArrowRight, TrendingUp, MousePointerSquareDashed, ScrollText, MailCheck, ShieldOff } from 'lucide-react';
 import { supabase, isLive } from '../lib/supabaseClient.js';
+import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 import {
   users as mockUsers,
   projects as mockProjects,
@@ -188,6 +190,8 @@ function GuestAndAudit({ auditEntries }) {
 }
 
 export default function MatrixAssignerPage() {
+  const { lang } = useLanguage();
+  const t = NAVIGATION_LOCALIZATION[lang];
   const [matrixRoster, setMatrixRoster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [audit, setAudit] = useState(AUDIT_LOG);
@@ -354,10 +358,10 @@ export default function MatrixAssignerPage() {
     <div className="w-full space-y-6">
       <header className="border-l-4 border-iscm-crimson pl-4 py-1">
         <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-          Cross-Functional Matrix Assigner
+          {t.HR_MANAGEMENT}
         </h1>
-        <p className="font-ibm text-sm uppercase tracking-wider text-gray-500 mt-1">
-          Quản trị điều phối nhân sự chéo tuyến (Cross-line allocation) giữa các khối chức năng và không gian nghiên cứu.
+        <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
+          {lang === 'vi' ? 'Quản trị điều phối nhân sự chéo tuyến (Cross-line allocation) giữa các khối chức năng và không gian nghiên cứu.' : 'Cross-line staff allocation and management across functional divisions and research sub-workspaces.'}
         </p>
       </header>
 

@@ -333,7 +333,7 @@ export const NAVIGATION_LOCALIZATION = {
   en: {
     // Top Navbar
     WORKSPACE: 'WORKSPACE',
-    MY_WORKSPACE: 'MY WORKSPACE',
+    MY_WORKSPACE: 'My Workspace',
     MY_WORKSPACE_DESC: '',
     HR_MANAGEMENT: 'Human Resource Management',
     PROJECT_MANAGEMENT: 'Project Management',

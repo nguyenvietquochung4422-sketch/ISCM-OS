@@ -62,33 +62,29 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
   };
 
   const topBtnClass = (key, isActive) =>
-    `flex items-center gap-1 px-3.5 font-sans text-[11px] font-bold uppercase tracking-wider transition-colors h-full border-b ${
+    `flex items-center gap-1.5 px-4 font-sans text-xs font-bold uppercase tracking-wider transition-colors h-full border-b-2 ${
       isActive || openMenu === key
-        ? 'text-[#990000] border-[#990000] bg-neutral-50'
-        : 'text-neutral-600 border-transparent hover:text-neutral-950 hover:bg-neutral-50'
+        ? 'text-[#ff4d4d] border-[#990000] bg-neutral-900/50'
+        : 'text-neutral-300 border-transparent hover:text-white hover:bg-neutral-800'
     }`;
 
   const dropdownClass =
-    'absolute top-12 bg-white border border-neutral-200 shadow-none rounded-none z-50 p-1 transition-all duration-150';
+    'absolute top-14 bg-white border border-neutral-200 shadow-lg rounded-none z-50 p-1 transition-all duration-150 text-neutral-900';
 
   // Get active translation dictionary
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
 
   return (
-    <header className="relative z-40 h-12 shrink-0 bg-white text-neutral-900 border-b border-neutral-200 border-t-2 border-t-[#990000] font-sans">
+    <header className="relative z-40 h-14 shrink-0 bg-[#1c1c1c] text-white border-b border-neutral-800 font-sans shadow-md">
       <div className="w-full h-full px-4 flex items-center justify-between">
         
         {/* Brand logo block */}
         <button
           onClick={() => navigateTo('personal-dashboard')}
-          className="flex h-full w-40 shrink-0 items-center justify-center border-r border-neutral-200 transition-colors hover:bg-neutral-50 -ml-4 mr-4"
+          className="flex h-full px-6 shrink-0 items-center justify-center bg-[#990000] hover:bg-[#b30000] text-white font-barlow text-2xl font-black uppercase tracking-widest transition-colors -ml-4 mr-4"
           title="ISCM Control Panel"
         >
-          <img
-            src="https://iscm.ueh.edu.vn/_next/image?url=%2Fimages%2Flogoiscm.png&w=384&q=75"
-            alt="ISCM Logo"
-            className="h-7 w-auto object-contain brightness-0"
-          />
+          ISCM
         </button>
 
         {/* Main Nav Tree (Desktop) */}
@@ -270,7 +266,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           <button
             onClick={toggle}
             title={lang === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-            className="flex items-center gap-1 rounded-none border border-neutral-300 px-2.5 py-1 text-[10px] font-bold text-neutral-600 hover:border-[#990000] hover:text-[#990000] hover:bg-neutral-50 transition-colors shrink-0 uppercase"
+            className="flex items-center gap-1 rounded-none border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-[10px] font-bold text-neutral-300 hover:border-[#990000] hover:text-white hover:bg-neutral-700 transition-colors shrink-0 uppercase"
           >
             <span>{lang === 'vi' ? 'VN' : 'EN'}</span>
           </button>
@@ -278,15 +274,15 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           {/* User profile dropdown trigger */}
           <button
             onClick={() => setOpenMenu(openMenu === 'profile-dropdown' ? null : 'profile-dropdown')}
-            className="hidden xl:flex flex-col justify-center h-full px-2 border-l border-neutral-100 text-right hover:bg-neutral-50 transition-colors focus:outline-none"
+            className="hidden xl:flex flex-col justify-center h-full px-4 border-l border-neutral-800 text-right hover:bg-neutral-800 transition-colors focus:outline-none"
             title="Open Profile Navigation"
           >
-            <span className="font-sans text-[11px] font-bold text-neutral-900 uppercase leading-none">{currentUser.full_name || 'TRỊNH TÚ ANH'}</span>
-            <span className="font-sans text-[9px] text-neutral-500 mt-1 leading-none truncate max-w-[150px]">{currentUser.email}</span>
+            <span className="font-sans text-[11px] font-bold text-white uppercase leading-none">{currentUser.full_name || 'TRỊNH TÚ ANH'}</span>
+            <span className="font-sans text-[9px] text-neutral-400 mt-1 leading-none truncate max-w-[150px]">{currentUser.email}</span>
           </button>
           
           {openMenu === 'profile-dropdown' && (
-            <div className={`${dropdownClass} w-64 right-12 top-12 text-left`}>
+            <div className={`${dropdownClass} w-64 right-12 top-14 text-left`}>
               <div className="px-3 py-2 border-b border-neutral-100 mb-1">
                 <span className="block font-sans text-xs font-bold text-neutral-900 uppercase">
                   {currentUser.full_name || 'TRỊNH TÚ ANH'}
@@ -322,14 +318,14 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           )}
 
           {/* Log Out Button */}
-          <button className="rounded-none border border-neutral-300 p-1.5 hover:border-[#990000] hover:bg-[#990000] hover:text-white transition-colors" title={t.LOGOUT}>
+          <button className="rounded-none border border-neutral-700 bg-neutral-800 text-neutral-300 p-1.5 hover:border-[#990000] hover:bg-[#990000] hover:text-white transition-colors" title={t.LOGOUT}>
             <Power className="h-3.5 w-3.5" />
           </button>
 
           {/* Mobile responsive toggle */}
           <button 
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden p-1 rounded-none border border-neutral-300 hover:bg-neutral-50 transition-colors"
+            className="lg:hidden p-1 rounded-none border border-neutral-700 bg-neutral-800 text-neutral-300 hover:bg-neutral-700 transition-colors"
           >
             {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
@@ -338,7 +334,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="absolute inset-x-0 top-12 max-h-[85vh] overflow-y-auto bg-white border-t border-neutral-200 p-4 shadow-none lg:hidden flex flex-col gap-4">
+        <div className="absolute inset-x-0 top-14 max-h-[85vh] overflow-y-auto bg-white border-t border-neutral-200 p-4 shadow-lg lg:hidden flex flex-col gap-4 text-neutral-900">
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.WORKSPACE}</div>
             <button onClick={() => navigateTo('personal-dashboard', 'workspace-calendar')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.MY_WORKSPACE}</button>

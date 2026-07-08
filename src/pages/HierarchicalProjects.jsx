@@ -8,6 +8,8 @@ import {
   timesheetTotal, staffById, projectIndex, TODAY,
 } from '../data/osData.js';
 import { Avatar } from '../components/ui.jsx';
+import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
 /* ------------------------------------------------------------------ */
 /* Đề án 1 · Phân hệ Quản lý Dự án Phân tầng                           */
@@ -269,11 +271,14 @@ export default function HierarchicalProjects() {
   const isOpen = (k) => expanded[k] ?? true;
   const toggle = (k) => setExpanded((p) => ({ ...p, [k]: !(p[k] ?? true) }));
 
+  const { lang } = useLanguage();
+  const t = NAVIGATION_LOCALIZATION[lang];
+
   return (
     <div className="w-full space-y-4">
       <header className="border-l-4 border-iscm-crimson pl-4 py-1 mb-2">
         <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-          Quản lý Dự án Phân tầng
+          {t.PROJECT_MANAGEMENT}
         </h1>
         <p className="mt-1 font-ibm text-xs uppercase tracking-wider text-gray-500">
           Lab Chuyên Năng → Chương Trình Lớn → Dự Án Thành Phần → Gói Công Việc · Đề án 1 / Phân hệ 3.2
