@@ -41,9 +41,239 @@ const CAT_BADGE_STYLE = {
   AF: 'border border-slate-300 bg-slate-100 text-slate-700',
 };
 
+/* ---------------- Helper Viewport Components for Workspace tabs ---------------- */
+
+function MyCalendarView({ lang, t, weekDays, monday, fmtDay, isToday, fmtDateKey, getEventsForDay, fmtTime, upcoming, today, fmtDateLabel }) {
+  return (
+    <div className="space-y-4">
+      {/* Weekly Calendar Table */}
+      <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+        {/* Calendar header */}
+        <div className="px-5 py-2.5 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarRange className="h-3.5 w-3.5 text-[#990000]" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white">
+              {t.WEEKLY_SCHEDULE} — {monday.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} – {weekDays[4].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </span>
+          </div>
+          <span className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold">Thứ 2 → Thứ 6</span>
+        </div>
+
+        {/* Week grid */}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left border-collapse">
+            <thead>
+              <tr>
+                {weekDays.map((d) => (
+                  <th key={fmtDateKey(d)}
+                    className={`px-3 py-2 text-[13px] font-bold uppercase tracking-wider border-b border-neutral-300 text-center ${
+                      isToday(d) ? 'bg-[#990000] text-white' : 'bg-neutral-50 text-neutral-800'
+                    }`}
+                  >
+                    {fmtDay(d)}
+                    {isToday(d) && <span className="block text-[10px] font-normal opacity-80">{lang === 'vi' ? 'Hôm nay' : 'Today'}</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="align-top">
+                {weekDays.map((d) => {
+                  const dayEvents = getEventsForDay(d);
+                  return (
+                    <td key={fmtDateKey(d)}
+                      className={`px-1.5 py-2 border-r border-neutral-200 last:border-r-0 min-h-[140px] align-top ${
+                        isToday(d) ? 'bg-neutral-50/50' : ''
+                      }`}
+                    >
+                      {dayEvents.length === 0 ? (
+                        <p className="text-center text-[10px] text-neutral-300 mt-4">—</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {dayEvents.map((ev) => (
+                            <div key={ev.id}
+                              className={`border px-2 py-1.5 text-[11px] cursor-default ${ev.tagColor} rounded-none`}
+                            >
+                              <p className="font-bold leading-tight line-clamp-2 text-left">{ev.title}</p>
+                              <p className="opacity-70 mt-0.5 text-[10px] text-left">{fmtTime(ev.start)}–{fmtTime(ev.end)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Grid below: Today Details & Upcoming Events */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        {/* Today's detail schedule */}
+        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+          <div className="px-5 py-2 bg-neutral-50 border-b border-neutral-200 text-left">
+            <span className="text-xs font-bold uppercase tracking-wide text-neutral-800">
+              {t.SCHEDULE_DETAILS}
+            </span>
+          </div>
+          {(() => {
+            const todayEvents = getEventsForDay(today);
+            if (todayEvents.length === 0) return (
+              <p className="px-5 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
+            );
+            return (
+              <div className="divide-y divide-neutral-200">
+                {todayEvents.map((ev) => (
+                  <div key={ev.id} className="flex items-start gap-4 px-5 py-2.5">
+                    <div className="shrink-0 text-center w-14">
+                      <span className="block text-sm font-bold text-neutral-900">{fmtTime(ev.start)}</span>
+                      <span className="block text-[11px] text-neutral-400">{fmtTime(ev.end)}</span>
+                    </div>
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-sm font-bold text-neutral-800 leading-snug">{ev.title}</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">{ev.location}</p>
+                    </div>
+                    <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Upcoming Events highlight */}
+        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+          <div className="px-4 py-2 border-b border-neutral-200 bg-[#990000] text-white flex items-center gap-2">
+            <CalendarClock className="h-3.5 w-3.5 shrink-0 text-white" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white">{t.UPCOMING_EVENTS}</span>
+          </div>
+          <div className="overflow-y-auto max-h-[220px] divide-y divide-neutral-200">
+            {upcoming.length === 0 && (
+              <p className="px-4 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
+            )}
+            {upcoming.map((ev) => (
+              <div key={ev.id} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-neutral-50 transition-colors">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-xs font-bold text-neutral-800 leading-snug">{ev.title}</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                    {fmtDateLabel(ev.start)} · {fmtTime(ev.start)}–{fmtTime(ev.end)}
+                  </p>
+                  <p className="text-[10px] text-neutral-400 truncate">{ev.location}</p>
+                  <span className={`inline-block mt-1 px-1 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-1.5 border-t border-neutral-200 bg-neutral-50 text-left">
+            <p className="text-[9px] text-neutral-400 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 bg-emerald-600 inline-block" />
+              {t.SYNC_SUCCESS}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MyAssignedTasksView() {
+  return (
+    <div className="border border-neutral-200 bg-white rounded-none p-4 overflow-hidden">
+      <div className="max-w-xl mx-auto border border-neutral-200 p-2">
+        <TaskReceiptPanel />
+      </div>
+    </div>
+  );
+}
+
+function MyTasksWidgetView({ tasks, openTasks, decideTask, setSelectedItem, lang, t, TASK_STATUS_BADGE }) {
+  return (
+    <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+      <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+          <Inbox className="h-3.5 w-3.5 text-[#990000]" /> {lang === 'vi' ? 'CẦN PHÊ DUYỆT' : 'PENDING APPROVALS'}
+        </span>
+        {openTasks.length > 0 && (
+          <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openTasks.length} {t.OPEN_TASKS}</span>
+        )}
+      </div>
+      <div className="divide-y divide-neutral-100 overflow-y-auto min-h-[300px]">
+        {tasks.map((tk) => (
+          <div
+            key={tk.id}
+            onClick={() => setSelectedItem({ type: 'task', item: tk })}
+            className="flex items-start justify-between gap-2 px-4 py-3 hover:bg-neutral-50 cursor-pointer transition-colors"
+          >
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-xs font-bold text-neutral-800 leading-snug hover:text-[#990000] transition-colors">{tk.title}</p>
+              <p className="text-[10px] text-neutral-400 mt-0.5">{tk.requester} · {tk.date}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              {tk.status === 'Open' ? (
+                <>
+                  <button
+                    onClick={() => decideTask(tk.id, 'Approved')}
+                    title="Approve"
+                    className="flex items-center justify-center h-6 w-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => decideTask(tk.id, 'Rejected')}
+                    title="Reject"
+                    className="flex items-center justify-center h-6 w-6 rounded bg-[#990000] hover:bg-red-800 text-white transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              ) : (
+                <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[tk.status]}`}>{tk.status}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MyRequestsWidgetView({ myForms, openForms, setSelectedItem, lang, t, TASK_STATUS_BADGE }) {
+  return (
+    <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+      <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+          <Send className="h-3.5 w-3.5 text-[#990000]" /> {lang === 'vi' ? 'ĐƠN TỪ ĐÃ GỬI' : 'SUBMITTED REQUESTS'}
+        </span>
+        {openForms.length > 0 && (
+          <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openForms.length} {t.PENDING_FORMS}</span>
+        )}
+      </div>
+      <div className="divide-y divide-neutral-100 overflow-y-auto min-h-[300px]">
+        {myForms.map((f) => (
+          <div
+            key={f.id}
+            onClick={() => setSelectedItem({ type: 'request', item: f })}
+            className="flex items-start justify-between gap-2.5 px-4 py-3 hover:bg-neutral-50 cursor-pointer transition-colors"
+          >
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-xs font-bold text-neutral-800 truncate hover:text-[#990000] transition-colors">{f.form}</p>
+              <p className="text-[10px] text-neutral-400 mt-0.5">{f.group} · {f.date}</p>
+            </div>
+            <span className={`shrink-0 px-1.5 py-0.5 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[f.status]}`}>{f.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Right-viewport content resolution ---------------- */
 
-function usePaneContent(selected, filters, setSelected, lang) {
+function usePaneContent(selected, filters, setSelected, lang, wsData) {
   let key = selected;
   if (selected === 'my-portal') key = 'profile-bio';
   else if (selected === 'requests-forms') key = 'cat-forms';
@@ -759,6 +989,62 @@ function usePaneContent(selected, filters, setSelected, lang) {
     // Request queues
     'my-tasks': { title: t.TASKS_TITLE, icon: Inbox, body: <MyTasksPanel statusFilter={filters.tasksStatus} /> },
     'my-forms': { title: t.FORMS_TITLE, icon: Send, body: <MyFormsPanel key={filters.formsStatus} statusFilter={filters.formsStatus} /> },
+
+    // Workspace sub-tabs
+    'ws-calendar': {
+      title: lang === 'vi' ? 'LỊCH CỦA TÔI' : 'MY CALENDAR',
+      icon: CalendarRange,
+      body: (
+        <MyCalendarView
+          lang={lang}
+          t={t}
+          weekDays={wsData.weekDays}
+          monday={wsData.monday}
+          fmtDay={wsData.fmtDay}
+          isToday={wsData.isToday}
+          fmtDateKey={wsData.fmtDateKey}
+          getEventsForDay={wsData.getEventsForDay}
+          fmtTime={wsData.fmtTime}
+          upcoming={wsData.upcoming}
+          today={wsData.today}
+          fmtDateLabel={wsData.fmtDateLabel}
+        />
+      ),
+    },
+    'ws-assigned': {
+      title: lang === 'vi' ? 'NHIỆM VỤ ĐƯỢC GIAO' : 'ASSIGNED TASKS',
+      icon: ListTodo,
+      body: <MyAssignedTasksView />,
+    },
+    'ws-tasks': {
+      title: lang === 'vi' ? 'PHÊ DUYỆT YÊU CẦU' : 'PENDING APPROVALS',
+      icon: Inbox,
+      body: (
+        <MyTasksWidgetView
+          tasks={wsData.tasks}
+          openTasks={wsData.openTasks}
+          decideTask={wsData.decideTask}
+          setSelectedItem={wsData.setSelectedItem}
+          lang={lang}
+          t={t}
+          TASK_STATUS_BADGE={wsData.TASK_STATUS_BADGE}
+        />
+      ),
+    },
+    'ws-requests': {
+      title: lang === 'vi' ? 'YÊU CẦU ĐÃ GỬI' : 'MY REQUESTS',
+      icon: Send,
+      body: (
+        <MyRequestsWidgetView
+          myForms={wsData.myForms}
+          openForms={wsData.openForms}
+          setSelectedItem={wsData.setSelectedItem}
+          lang={lang}
+          t={t}
+          TASK_STATUS_BADGE={wsData.TASK_STATUS_BADGE}
+        />
+      ),
+    },
   };
 
   return MAP[key] ?? MAP['profile-bio'];
@@ -884,13 +1170,40 @@ const TASK_STATUS_BADGE = {
   Rejected: 'bg-neutral-50 text-neutral-400 border border-neutral-200 line-through',
 };
 
-function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
+
+
+
+
+
+
+/* Helper to identify category group of any selected key */
+function getActiveCategory(selected) {
+  if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'wiki-hub-root';
+  if (selected.startsWith('contacts-') || selected === 'cat-contacts') return 'contacts-root';
+  if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'requests-forms';
+  if (['my-tasks', 'my-forms', 'requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
+  if (selected.startsWith('ws-')) return 'my-workspace-root';
+  return 'my-portal';
+}
+
+
+/* ---------------- Main PersonalDashboard Component ---------------- */
+
+export default function PersonalDashboard({ onNavigate }) {
+  const { lang } = useLanguage();
+  const [selected, setSelected] = useState('ws-calendar');
+  const [activeCategory, setActiveCategory] = useState('my-workspace-root');
+  const [nodeExpanded, setNodeExpanded] = useState({});
+  const [filters, setFilters] = useState({
+    formCategory: 'All', tasksStatus: 'All', formsStatus: 'All', assetType: 'All',
+  });
+
+  // Calendar and task list states
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
-  const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
-
   const [tasks, setTasks] = useState(MY_TASKS);
   const [selectedItem, setSelectedItem] = useState(null);
+
   const openTasks = tasks.filter((tk) => tk.status === 'Open');
   const decideTask = (id, status) => {
     setTasks((prev) => prev.map((tk) => tk.id === id ? { ...tk, status } : tk));
@@ -898,6 +1211,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
       setSelectedItem((prev) => ({ ...prev, item: { ...prev.item, status } }));
     }
   };
+
   const myForms = useMemo(() => [...loadSubmissions(), ...MY_FORMS_SEED], []);
   const openForms = myForms.filter((f) => f.status === 'Open');
   const dueSoonAssets = [...MY_ASSETS]
@@ -922,6 +1236,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
   };
 
   const fmtDateKey = (d) => d.toISOString().slice(0, 10);
+  const isToday = (d) => fmtDateKey(d) === todayStr;
 
   const getEventsForDay = (d) => {
     const key = fmtDateKey(d);
@@ -943,250 +1258,138 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
     }
   };
 
-  const isToday = (d) => fmtDateKey(d) === todayStr;
+  const wsData = {
+    tasks,
+    openTasks,
+    decideTask,
+    setSelectedItem,
+    myForms,
+    openForms,
+    weekDays,
+    monday,
+    fmtDay,
+    isToday,
+    fmtDateKey,
+    getEventsForDay,
+    fmtTime,
+    upcoming,
+    today,
+    fmtDateLabel,
+    TASK_STATUS_BADGE
+  };
+
+  useEffect(() => {
+    // Top nav profile redirect selections map to IA views
+    const handleSelect = (e) => {
+      if (e.detail) {
+        if (e.detail === 'my-portal') setSelected('profile-bio');
+        else if (e.detail === 'cat-forms') setSelected('cat-forms');
+        else if (e.detail === 'cat-wiki') setSelected('cat-wiki');
+        else if (e.detail === 'cat-contacts') setSelected('contacts-colleagues');
+        else if (e.detail === 'workspace-calendar') setSelected('ws-calendar');
+        else setSelected(e.detail);
+      }
+    };
+    window.addEventListener('select-dashboard', handleSelect);
+    return () => window.removeEventListener('select-dashboard', handleSelect);
+  }, []);
+
+  // Sync active category group on selected key changes
+  useEffect(() => {
+    setActiveCategory(getActiveCategory(selected));
+  }, [selected]);
+
+  const active = usePaneContent(selected, filters, setSelected, lang, wsData);
+  const ActiveIcon = active.icon ?? FileText;
+
+  const toggleNode = (id) =>
+    setNodeExpanded((p) => ({ ...p, [id]: !(p[id] ?? false) }));
+
+  const setFilter = (id, value) => setFilters((p) => ({ ...p, [id]: value }));
+
+  // Get active localization structure
+  const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
+  const isWorkspace = activeCategory === 'my-workspace-root';
+  const categoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
 
   return (
-    <div className="w-full flex flex-col gap-4 font-sans">
-      {/* Page header */}
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-2 flex items-start justify-between rounded-none">
+    <div className="w-full font-sans">
+      
+      {/* Page Header */}
+      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
         <div>
           <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            {t.WORKSPACE_HEADER}
+            {isWorkspace
+              ? (lang === 'vi' ? 'KHÔNG GIAN CỦA TÔI' : 'MY WORKSPACE')
+              : (lang === 'vi' ? 'CỔNG TÁC NGHIỆP CÁ NHÂN' : 'PERSONAL PORTAL & OPERATIONS')
+            }
           </h1>
+          <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
+            2026 Operational Network · ISCM-UEH
+          </p>
         </div>
-        <button
-          onClick={() => onNavigate('executive-calendar')}
-          className="btn-secondary text-[11px] py-1 px-3"
-        >
-          <CalendarClock className="h-3.5 w-3.5 mr-1 text-[#990000]" />
-          {t.FULL_CALENDAR}
-        </button>
+        {isWorkspace ? (
+          <button
+            onClick={() => setSelected('profile-bio')}
+            className="btn-secondary text-[10px] py-1 px-2.5 mr-2 font-bold hover:border-[#990000] hover:text-[#990000]"
+          >
+            ← {lang === 'vi' ? 'Hồ sơ của tôi' : 'My Portal'}
+          </button>
+        ) : (
+          <button
+            onClick={() => setSelected('ws-calendar')}
+            className="btn-secondary text-[10px] py-1 px-2.5 mr-2 font-bold hover:border-[#990000] hover:text-[#990000]"
+          >
+            ← {lang === 'vi' ? 'Không gian làm việc' : 'Workspace'}
+          </button>
+        )}
       </header>
 
-
-      {/* Split layout: left = upcoming events & tasks, right = weekly calendar */}
-      <div className="grid gap-4 md:grid-cols-10 items-start">
-
-        {/* LEFT — Upcoming Events & Assigned Tasks */}
-        <aside className="space-y-4 md:col-span-3">
-          {/* Card 1: Upcoming Events */}
-          <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-            <div className="px-4 py-2 border-b border-neutral-200 bg-[#990000] text-white flex items-center gap-2">
-              <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">{t.UPCOMING_EVENTS}</span>
-            </div>
-            <div className="overflow-y-auto max-h-[220px] divide-y divide-neutral-200">
-              {upcoming.length === 0 && (
-                <p className="px-4 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-              )}
-              {upcoming.map((ev) => (
-                <div key={ev.id} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-neutral-50 transition-colors">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-neutral-800 leading-snug">{ev.title}</p>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">
-                      {fmtDateLabel(ev.start)} · {fmtTime(ev.start)}–{fmtTime(ev.end)}
-                    </p>
-                    <p className="text-[10px] text-neutral-400 truncate">{ev.location}</p>
-                    <span className={`inline-block mt-1 px-1 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
-                  </div>
+      {/* Master-Detail split screen */}
+      <div className="grid items-start gap-4 md:grid-cols-10">
+        
+        {/* LEFT — Localized Tabbed Tree Navigation View */}
+        <aside className="border border-neutral-200 bg-white p-2.5 md:col-span-2 rounded-none">
+          <div className="max-h-[680px] overflow-y-auto pr-1">
+            {categoryNode && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left">
+                  {categoryNode.label}
                 </div>
-              ))}
-            </div>
-            <div className="px-4 py-1.5 border-t border-neutral-200 bg-neutral-50">
-              <p className="text-[9px] text-neutral-400 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 bg-emerald-600 inline-block" />
-                {t.SYNC_SUCCESS}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 2: Assigned Tasks Checklist */}
-          <div className="border border-neutral-200 bg-white rounded-none overflow-hidden flex flex-col h-[280px]">
-            <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2 shrink-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-                <ListTodo className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_ASSIGNED_TASKS_WIDGET}
-              </span>
-            </div>
-            <div className="flex-1 min-h-0">
-              <TaskReceiptPanel />
-            </div>
+                {categoryNode.children && (
+                  <TreeLevel
+                    nodes={categoryNode.children}
+                    depth={1}
+                    selected={selected}
+                    onSelect={setSelected}
+                    expanded={nodeExpanded}
+                    onToggle={toggleNode}
+                    filters={filters}
+                    onFilter={setFilter}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </aside>
 
-        {/* RIGHT — Weekly Calendar Table */}
-        <main className="border border-neutral-200 bg-white md:col-span-7 rounded-none overflow-hidden">
-          {/* Calendar header */}
-          <div className="px-5 py-2.5 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarRange className="h-3.5 w-3.5 text-[#990000]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">
-                {t.WEEKLY_SCHEDULE} — {monday.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} – {weekDays[4].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-              </span>
+        {/* RIGHT — Dynamic Content Viewport */}
+        <main className="border border-neutral-200 bg-white p-5 md:col-span-8 rounded-none min-h-[500px]">
+          <div className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
+            <div>
+              <h2 className="font-barlow text-2xl font-extrabold uppercase tracking-wider text-iscm-charcoal flex items-center gap-2">
+                <ActiveIcon className="h-5 w-5 text-[#990000] shrink-0" /> {active.title}
+              </h2>
+              <p className="font-ibm text-[10px] uppercase tracking-wider text-gray-500 mt-1">
+                {isWorkspace
+                  ? (lang === 'vi' ? 'Góc nhìn vận hành không gian' : 'Workspace Operational View')
+                  : (lang === 'vi' ? 'Cổng tác nghiệp cá nhân' : 'Personal Portal Operational View')
+                }
+              </p>
             </div>
-            <span className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold">Thứ 2 → Thứ 6</span>
           </div>
-
-          {/* Week grid */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left border-collapse">
-              <thead>
-                <tr>
-                  {weekDays.map((d) => (
-                    <th key={fmtDateKey(d)}
-                      className={`px-3 py-2 text-[13px] font-bold uppercase tracking-wider border-b border-neutral-300 text-center ${
-                        isToday(d) ? 'bg-[#990000] text-white' : 'bg-neutral-50 text-neutral-800'
-                      }`}
-                    >
-                      {fmtDay(d)}
-                      {isToday(d) && <span className="block text-[10px] font-normal opacity-80">{lang === 'vi' ? 'Hôm nay' : 'Today'}</span>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="align-top">
-                  {weekDays.map((d) => {
-                    const dayEvents = getEventsForDay(d);
-                    return (
-                      <td key={fmtDateKey(d)}
-                        className={`px-1.5 py-2 border-r border-neutral-200 last:border-r-0 min-h-[140px] align-top ${
-                          isToday(d) ? 'bg-neutral-50/50' : ''
-                        }`}
-                      >
-                        {dayEvents.length === 0 ? (
-                          <p className="text-center text-[10px] text-neutral-300 mt-4">—</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {dayEvents.map((ev) => (
-                              <div key={ev.id}
-                                className={`border px-2 py-1.5 text-[11px] cursor-default ${ev.tagColor} rounded-none`}
-                              >
-                                <p className="font-bold leading-tight line-clamp-2">{ev.title}</p>
-                                <p className="opacity-70 mt-0.5 text-[10px]">{fmtTime(ev.start)}–{fmtTime(ev.end)}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Today's detail schedule */}
-          <div className="border-t border-neutral-200">
-            <div className="px-5 py-2 bg-neutral-50 border-b border-neutral-200">
-              <span className="text-xs font-bold uppercase tracking-wide text-neutral-800">
-                {t.SCHEDULE_DETAILS}
-              </span>
-            </div>
-            {(() => {
-              const todayEvents = getEventsForDay(today);
-              if (todayEvents.length === 0) return (
-                <p className="px-5 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-              );
-              return (
-                <div className="divide-y divide-neutral-200">
-                  {todayEvents.map((ev) => (
-                    <div key={ev.id} className="flex items-start gap-4 px-5 py-2.5">
-                      <div className="shrink-0 text-center w-14">
-                        <span className="block text-sm font-bold text-neutral-900">{fmtTime(ev.start)}</span>
-                        <span className="block text-[11px] text-neutral-400">{fmtTime(ev.end)}</span>
-                      </div>
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-neutral-800">{ev.title}</p>
-                        <p className="text-xs text-neutral-400 mt-0.5">{ev.location}</p>
-                      </div>
-                      <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
+          {active.body}
         </main>
-      </div>
-
-      {/* Quick-glance: tasks & requests (2 columns) */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        {/* My Tasks (Pending Approvals) */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <Inbox className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_TASKS_WIDGET}
-            </span>
-            {openTasks.length > 0 && (
-              <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openTasks.length} {t.OPEN_TASKS}</span>
-            )}
-          </div>
-          <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {tasks.slice(0, 4).map((tk) => (
-              <div
-                key={tk.id}
-                onClick={() => setSelectedItem({ type: 'task', item: tk })}
-                className="flex items-start justify-between gap-2 px-3 py-2 hover:bg-neutral-50 cursor-pointer transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 leading-snug hover:text-[#990000] transition-colors">{tk.title}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{tk.requester} · {tk.date}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {tk.status === 'Open' ? (
-                    <>
-                      <button
-                        onClick={() => decideTask(tk.id, 'Approved')}
-                        title="Approve"
-                        className="flex items-center justify-center h-5 w-5 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => decideTask(tk.id, 'Rejected')}
-                        title="Reject"
-                        className="flex items-center justify-center h-5 w-5 rounded bg-[#990000] hover:bg-red-800 text-white transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </>
-                  ) : (
-                    <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[tk.status]}`}>{tk.status}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* My Requests (My Forms) */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <Send className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_REQUESTS_WIDGET}
-            </span>
-            {openForms.length > 0 && (
-              <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openForms.length} {t.PENDING_FORMS}</span>
-            )}
-          </div>
-          <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {myForms.slice(0, 4).map((f) => (
-              <div
-                key={f.id}
-                onClick={() => setSelectedItem({ type: 'request', item: f })}
-                className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 cursor-pointer transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate hover:text-[#990000] transition-colors">{f.form}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{f.group} · {f.date}</p>
-                </div>
-                <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[f.status]}`}>{f.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Item Detail Modal */}
@@ -1202,7 +1405,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
 
             {/* Header */}
             <div className="border-b border-neutral-200 pb-3 mb-4">
-              <h3 className="font-barlow text-base font-bold uppercase tracking-wide text-neutral-900">
+              <h3 className="font-barlow text-base font-bold uppercase tracking-wide text-neutral-900 text-left">
                 {selectedItem.type === 'task'
                   ? (lang === 'vi' ? 'Chi tiết yêu cầu phê duyệt' : 'Approval Request Details')
                   : (lang === 'vi' ? 'Chi tiết đơn từ đã gửi' : 'Submitted Request Details')
@@ -1214,11 +1417,11 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
             <div className="space-y-3 font-sans text-xs">
               {selectedItem.type === 'task' ? (
                 <>
-                  <div className="bg-neutral-50 p-2.5 border border-neutral-100">
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-left">
                     <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Yêu cầu / Request</span>
                     <span className="block font-bold text-neutral-800 mt-0.5 text-sm">{selectedItem.item.title}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 text-left">
                     <div className="bg-neutral-50 p-2 border border-neutral-100">
                       <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Người yêu cầu / Requester</span>
                       <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.requester}</span>
@@ -1228,7 +1431,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
                       <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.date}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 text-left">
                     <div className="bg-neutral-50 p-2 border border-neutral-100">
                       <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Biểu mẫu / Form</span>
                       <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.form}</span>
@@ -1240,18 +1443,18 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
                       </span>
                     </div>
                   </div>
-                  <div className="bg-amber-50/50 p-2.5 border border-amber-200 text-neutral-700 leading-relaxed">
+                  <div className="bg-amber-50/50 p-2.5 border border-amber-200 text-neutral-700 leading-relaxed text-left">
                     <span className="block font-bold text-amber-800 uppercase text-[9px] tracking-wide mb-0.5">Thông tin bổ sung / Notes</span>
                     Phê duyệt phân luồng tài chính &amp; thẩm định dữ liệu không gian. Cần rà soát các tài sản dữ liệu đính kèm trước khi đưa ra quyết định.
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="bg-neutral-50 p-2.5 border border-neutral-100">
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-left">
                     <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Biểu mẫu / Form</span>
                     <span className="block font-bold text-neutral-800 mt-0.5 text-sm">{selectedItem.item.form}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 text-left">
                     <div className="bg-neutral-50 p-2 border border-neutral-100">
                       <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Nhóm chức năng / Group</span>
                       <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.group}</span>
@@ -1261,13 +1464,13 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
                       <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.date}</span>
                     </div>
                   </div>
-                  <div className="bg-neutral-50 p-2 border border-neutral-100 w-full">
+                  <div className="bg-neutral-50 p-2 border border-neutral-100 w-full text-left">
                     <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Trạng thái / Status</span>
                     <span className={`inline-block mt-1 px-2 py-0.5 text-[9px] font-bold rounded-none ${TASK_STATUS_BADGE[selectedItem.item.status]}`}>
                       {selectedItem.item.status}
                     </span>
                   </div>
-                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-neutral-700 leading-relaxed">
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-neutral-700 leading-relaxed text-left">
                     <span className="block font-bold text-neutral-500 uppercase text-[9px] tracking-wide mb-0.5">Mô tả tiến trình / Workflow Log</span>
                     Yêu cầu đã được chuyển tiếp tự động sang bộ phận phê duyệt chức năng. Mọi phản hồi sẽ được gửi qua email UEH SSO.
                   </div>
@@ -1307,135 +1510,6 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* Helper to identify category group of any selected key */
-function getActiveCategory(selected) {
-  if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'wiki-hub-root';
-  if (selected.startsWith('contacts-') || selected === 'cat-contacts') return 'contacts-root';
-  if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'requests-forms';
-  if (['my-tasks', 'my-forms', 'requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
-  return 'my-portal';
-}
-
-
-/* ---------------- Main PersonalDashboard Component ---------------- */
-
-export default function PersonalDashboard({ onNavigate }) {
-  const { lang } = useLanguage();
-  const [selected, setSelected] = useState('workspace-calendar');
-  const [activeCategory, setActiveCategory] = useState('my-portal');
-  const [nodeExpanded, setNodeExpanded] = useState({});
-  const [filters, setFilters] = useState({
-    formCategory: 'All', tasksStatus: 'All', formsStatus: 'All', assetType: 'All',
-  });
-
-  useEffect(() => {
-    // Top nav profile redirect selections map to IA views
-    const handleSelect = (e) => {
-      if (e.detail) {
-        if (e.detail === 'my-portal') setSelected('profile-bio');
-        else if (e.detail === 'cat-forms') setSelected('cat-forms');
-        else if (e.detail === 'cat-wiki') setSelected('cat-wiki');
-        else if (e.detail === 'cat-contacts') setSelected('contacts-colleagues');
-        else setSelected(e.detail);
-      }
-    };
-    window.addEventListener('select-dashboard', handleSelect);
-    return () => window.removeEventListener('select-dashboard', handleSelect);
-  }, []);
-
-  // Sync active category group on selected key changes
-  useEffect(() => {
-    if (selected !== 'workspace-calendar') {
-      setActiveCategory(getActiveCategory(selected));
-    }
-  }, [selected]);
-
-  const active = usePaneContent(selected, filters, setSelected, lang);
-  const ActiveIcon = active.icon ?? FileText;
-
-  const toggleNode = (id) =>
-    setNodeExpanded((p) => ({ ...p, [id]: !(p[id] ?? false) }));
-
-  const setFilter = (id, value) => setFilters((p) => ({ ...p, [id]: value }));
-
-  // Get active localization structure
-  const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
-
-  if (selected === 'workspace-calendar') {
-    return <WorkspaceCalendarLayout onNavigate={onNavigate ?? (() => {})} onSelect={setSelected} lang={lang} />;
-  }
-
-  const categoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
-
-  return (
-    <div className="w-full font-sans">
-      
-      {/* Page Header */}
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
-        <div>
-          <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            {lang === 'vi' ? 'CỔNG TÁC NGHIỆP CÁ NHÂN' : 'PERSONAL PORTAL & OPERATIONS'}
-          </h1>
-          <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            2026 Operational Network · ISCM-UEH
-          </p>
-        </div>
-        <button
-          onClick={() => setSelected('workspace-calendar')}
-          className="btn-secondary text-[10px] py-1 px-2.5 mr-2 font-bold hover:border-[#990000] hover:text-[#990000]"
-        >
-          ← {lang === 'vi' ? 'Không gian làm việc' : 'Workspace'}
-        </button>
-      </header>
-
-      {/* Master-Detail split screen */}
-      <div className="grid items-start gap-4 md:grid-cols-10">
-        
-        {/* LEFT — Localized Tabbed Tree Navigation View */}
-        <aside className="border border-neutral-200 bg-white p-2.5 md:col-span-2 rounded-none">
-
-          <div className="max-h-[680px] overflow-y-auto pr-1">
-            {categoryNode && (
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left">
-                  {categoryNode.label}
-                </div>
-                {categoryNode.children && (
-                  <TreeLevel
-                    nodes={categoryNode.children}
-                    depth={1}
-                    selected={selected}
-                    onSelect={setSelected}
-                    expanded={nodeExpanded}
-                    onToggle={toggleNode}
-                    filters={filters}
-                    onFilter={setFilter}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* RIGHT — Dynamic Content Viewport */}
-        <main className="border border-neutral-200 bg-white p-5 md:col-span-8 rounded-none min-h-[500px]">
-          <div className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
-            <div>
-              <h2 className="font-barlow text-2xl font-extrabold uppercase tracking-wider text-iscm-charcoal flex items-center gap-2">
-                <ActiveIcon className="h-5 w-5 text-[#990000] shrink-0" /> {active.title}
-              </h2>
-              <p className="font-ibm text-[10px] uppercase tracking-wider text-gray-500 mt-1">
-                {lang === 'vi' ? 'Cổng tác nghiệp cá nhân' : 'Personal Portal Operational View'}
-              </p>
-            </div>
-          </div>
-          {active.body}
-        </main>
-      </div>
     </div>
   );
 }

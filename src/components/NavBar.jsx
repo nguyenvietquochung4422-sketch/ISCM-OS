@@ -107,7 +107,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                 <ul className="space-y-0.5">
                   <li>
                     <button
-                      onClick={() => navigateTo('personal-dashboard', 'workspace-calendar')}
+                      onClick={() => navigateTo('personal-dashboard', 'ws-calendar')}
                       className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
                     >
                       {t.MY_WORKSPACE}
@@ -337,7 +337,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
         <div className="absolute inset-x-0 top-14 max-h-[85vh] overflow-y-auto bg-white border-t border-neutral-200 p-4 shadow-lg lg:hidden flex flex-col gap-4 text-neutral-900">
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.WORKSPACE}</div>
-            <button onClick={() => navigateTo('personal-dashboard', 'workspace-calendar')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.MY_WORKSPACE}</button>
+            <button onClick={() => navigateTo('personal-dashboard', 'ws-calendar')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.MY_WORKSPACE}</button>
             <button onClick={() => navigateTo('matrix-assigner')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.HR_MANAGEMENT}</button>
             <button onClick={() => navigateTo('hierarchical-projects')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.PROJECT_MANAGEMENT}</button>
             <button onClick={() => navigateTo('approval-engine')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.APPROVAL_WORKFLOW}</button>

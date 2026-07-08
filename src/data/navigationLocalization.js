@@ -69,6 +69,16 @@ export const NAVIGATION_LOCALIZATION = {
     // Sidebar Tree Structure
     SIDEBAR_TREE: [
       {
+        id: 'my-workspace-root',
+        label: 'KHÔNG GIAN CỦA TÔI',
+        children: [
+          { key: 'ws-calendar', label: 'Lịch của tôi' },
+          { key: 'ws-assigned', label: 'Nhiệm vụ được giao' },
+          { key: 'ws-tasks', label: 'Yêu cầu phê duyệt' },
+          { key: 'ws-requests', label: 'Yêu cầu đã gửi' }
+        ]
+      },
+      {
         id: 'my-portal',
         label: 'HỒ SƠ CỦA TÔI',
         children: [
@@ -400,6 +410,16 @@ export const NAVIGATION_LOCALIZATION = {
 
     // Sidebar Tree Structure
     SIDEBAR_TREE: [
+      {
+        id: 'my-workspace-root',
+        label: 'MY WORKSPACE',
+        children: [
+          { key: 'ws-calendar', label: 'My Calendar' },
+          { key: 'ws-assigned', label: 'Assigned Tasks' },
+          { key: 'ws-tasks', label: 'Pending Approvals' },
+          { key: 'ws-requests', label: 'My Requests' }
+        ]
+      },
       {
         id: 'my-portal',
         label: 'MY PORTAL',
