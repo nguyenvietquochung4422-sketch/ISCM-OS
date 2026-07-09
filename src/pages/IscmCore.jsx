@@ -160,47 +160,63 @@ export default function IscmCore() {
   const inputNodes = [
     {
       id: 'website',
-      x: 50,
-      y: 50,
-      label: lang === 'vi' ? 'ISCM Website Portal' : 'ISCM Website Portal',
+      x: 20,
+      y: 30,
+      width: 160,
+      height: 100,
+      label: 'WEB PORTAL INGEST',
       title: lang === 'vi' ? 'iscm.edu.vn Cổng cộng đồng' : 'iscm.edu.vn Portal',
-      descVi: 'Nguồn dữ liệu cộng đồng được đóng góp công khai từ công dân, khảo sát xã hội học và các ứng dụng đô thị thông minh Web/Mobile. Tiếp nhận trực tuyến.',
+      descVi: 'Nguồn dữ liệu cộng đồng đóng góp công khai từ công dân, khảo sát xã hội học và các ứng dụng đô thị thông minh Web/Mobile. Tiếp nhận trực tuyến.',
       descEn: 'Public crowdsourced data contributed by citizens, social survey forms, and smart city mobile applications submitted directly via web API.',
-      inputsVi: 'Citizen surveys, IoT telemetry streams, JSON form uploads.',
-      inputsEn: 'Citizen surveys, IoT telemetry streams, JSON form uploads.',
-      roleVi: 'Cộng đồng / Citizens (Web Admin quản trị tiếp nhận)',
-      roleEn: 'Community / Citizens (Web Admin manages uploads)',
+      inputsVi: 'Khảo sát cộng đồng JSON, IoT telemetry streams.',
+      inputsEn: 'Citizen JSON survey payloads, IoT telemetry streams.',
+      roleVi: 'Cộng đồng / Citizens (Web Admin quản trị)',
+      roleEn: 'Community / Citizens (Web Admin manages)',
+      roleShort: lang === 'vi' ? 'Cộng đồng / Web Admin' : 'Citizens / Web Admin',
       approverVi: 'Tự động kiểm tra định dạng dữ liệu (Schema Validation)',
       approverEn: 'Automated Schema Validation engine',
-      etlVi: 'Chuyển JSON thô thành định dạng tệp phẳng (CSV / GeoJSON).',
+      etlVi: 'Chuyển JSON thô thành tệp phẳng (CSV / GeoJSON).',
       etlEn: 'Serialize raw citizen JSON payloads into spatial tabular structures.',
+      techShort: 'AWS API Gateway / Node.js',
       stack: 'React Client, Node.js REST API, AWS API Gateway',
+      bullets: lang === 'vi' 
+        ? ['• Khảo sát xã hội học', '• Telemetry IoT công cộng', '• Định dạng: JSON streams']
+        : ['• Public citizen surveys', '• IoT telemetry stream', '• Format: JSON streams'],
       code: `@app.post("/api/v1/citizen-survey")\nasync def survey_endpoint(payload: SurveyPayload):\n    # Authenticate public API client key\n    verify_client_key(payload.client_id)\n    # Queue data packet for raw ingestion stage\n    await queue_raw_telemetry(payload.to_json())\n    return {"status": "queued_at_ingest"}`
     },
     {
       id: 'labs',
-      x: 50,
-      y: 160,
-      label: lang === 'vi' ? 'ISCM Research Labs' : 'ISCM Research Labs',
+      x: 20,
+      y: 150,
+      width: 160,
+      height: 100,
+      label: 'RESEARCH LABS UPLOAD',
       title: lang === 'vi' ? 'Hệ thống các Lab nghiên cứu' : 'Internal Research Labs',
       descVi: 'Dữ liệu địa lý độ chính xác cao từ các Lab của ISCM (Public Space Lab, MOVE Lab, DDUD Lab). Tải lên định dạng tệp Shapefile (.zip), GeoJSON, Excel, CAD.',
       descEn: 'High-precision geospatial datasets uploaded by internal ISCM research labs. Supported formats include GIS Shapefiles (.zip), GeoJSON, CAD, and Excel.',
-      inputsVi: 'Tập tin GIS (Shapefiles, GeoJSON), Bản vẽ CAD, Bảng thuộc tính Excel.',
+      inputsVi: 'Tập tin GIS (Shapefiles, GeoJSON), CAD, Excel.',
       inputsEn: 'Geospatial files (Shapefiles, GeoJSON), CAD designs, attributes.',
       roleVi: 'Cán bộ Lab / Research Specialists (Move, Public Space, DDUD)',
       roleEn: 'Lab Specialists / Researchers (Move, Public Space, DDUD)',
+      roleShort: lang === 'vi' ? 'Cán bộ nghiên cứu Lab' : 'Research Specialists',
       approverVi: 'Director Trịnh Tú Anh phê duyệt duyệt chuyển lưu trữ.',
       approverEn: 'Director Trịnh Tú Anh (Manual approve action).',
       etlVi: 'Rà soát hình học không gian (Topology), chuẩn hóa hệ quy chiếu VN2000.',
       etlEn: 'Check topological geometry constraints, reproject to VN2000 coordinate system.',
+      techShort: 'ISCM OS Portal Upload',
       stack: 'ISCM OS UI Upload, MinIO Object Storage, RabbitMQ Broker',
+      bullets: lang === 'vi'
+        ? ['• Tập sản GIS (Shapefile)', '• Định dạng: GeoJSON, CAD', '• Dữ liệu đô thị thô']
+        : ['• GIS datasets (.zip)', '• Formats: GeoJSON, CAD', '• Raw urban metrics'],
       code: `def handle_lab_geodata(file_path):\n    # Extract metadata properties and schema features\n    layer_metadata = parse_spatial_headers(file_path)\n    log_audit_trail(user_id, action="ingest_lab", file=file_path)\n    # Trigger sandbox threat screening tasks\n    sandbox_queue.put(file_path)`
     },
     {
       id: 'partners',
-      x: 50,
+      x: 20,
       y: 270,
-      label: lang === 'vi' ? 'External Partners' : 'External Partners',
+      width: 160,
+      height: 100,
+      label: 'PARTNER API INTEGRATE',
       title: lang === 'vi' ? 'Đối tác & Các viện thành viên' : 'External Partner Units',
       descVi: 'Dữ liệu liên kết từ các đơn vị thành viên UEH, sở ban ngành thành phố (Sở Quy hoạch Kiến trúc, Sở GTVT) và các đối tác nghiên cứu quốc tế.',
       descEn: 'Federated datasets exchanged with UEH units, municipal agencies (Sở QHKT, Sở GTVT), and collaborative international smart city laboratories.',
@@ -208,21 +224,28 @@ export default function IscmCore() {
       inputsEn: 'GeoTIFF raster maps, WMS/WFS API streams, Database dumps.',
       roleVi: 'Đối tác liên kết / System Integrator (External Specialists)',
       roleEn: 'Collaborating Partner Specialists / System Integrator',
+      roleShort: lang === 'vi' ? 'Sở ngành / Đối tác ngoại' : 'City Depts / Partners',
       approverVi: 'Admin / System Operator xác nhận chất lượng tích hợp.',
       approverEn: 'System Admin / Technical Lead check.',
       etlVi: 'Tải trực tiếp vào PostgreSQL qua công cụ ogr2ogr, đồng bộ bảng từ xa.',
       etlEn: 'Load database records directly via ogr2ogr, execute schema diff mappings.',
+      techShort: 'GeoServer / PostgreSQL FDW',
       stack: 'GeoServer, FastAPI Endpoints, PostgreSQL FDW (Foreign Data Wrapper)',
+      bullets: lang === 'vi'
+        ? ['• Ảnh vệ tinh Sentinel', '• Luồng WMS / WFS API', '• Dữ liệu tích hợp']
+        : ['• Satellite GeoTIFFs', '• WMS / WFS API streams', '• Federated tables'],
       code: `async def fetch_partner_layer(api_endpoint):\n    # Fetch partner remote layer payload\n    async with httpx.Client() as client:\n        resp = await client.get(f"{api_endpoint}/wfs?request=GetFeature")\n    # Verify payload digital signature keys\n    verify_signature(resp.headers["X-Partner-Signature"])\n    return parse_gml(resp.content)`
     }
   ];
 
-  // Configuration of 5 core Stages (x=210, 370, 530, 690, 850)
+  // Configuration of 5 core Stages (x=270, 455, 640, 825, 1010)
   const coreNodes = [
     {
       id: 'collect',
-      x: 210,
-      y: 160,
+      x: 270,
+      y: 90,
+      width: 145,
+      height: 200,
       label: lang === 'vi' ? '1. THU THẬP / INGEST' : '1. INGESTION HUB',
       title: lang === 'vi' ? 'Hộp nhận Ingestion Hub' : 'Ingestion Hub',
       descVi: 'Hộp nhận Ingestion Hub tiếp nhận dữ liệu đa luồng từ 3 nguồn đầu vào chính. Tách biệt tệp dữ liệu vào bộ nhớ đệm tạm thời (Buffer Store).',
@@ -231,18 +254,25 @@ export default function IscmCore() {
       inputsEn: 'All raw incoming formats (JSON, Zip, GeoJSON, Excel, CAD, GeoTIFF).',
       roleVi: 'Hệ thống tự động / Cron jobs (Ingest Daemon)',
       roleEn: 'Ingestion Daemon / Cron jobs',
+      roleShort: lang === 'vi' ? 'Cron / System Queue' : 'Cron / Buffer Queue',
       approverVi: 'Hệ thống tự động ghi nhật ký Audit Log (System level)',
       approverEn: 'Automated Audit Log registration engine',
       etlVi: 'Phân loại file, gán nhãn thời gian (timestamp) và cấp phát ID nháp.',
       etlEn: 'Catalog file metadata, attach ingestion timestamps, and assign draft IDs.',
+      techShort: 'MinIO / Redis / RabbitMQ',
       stack: 'MinIO, Redis Buffer, RabbitMQ Queue',
+      bullets: lang === 'vi'
+        ? ['• Buffer: MinIO Storage', '• Kiểm tra đuôi file', '• Tạo ID nháp tự động', '• Log: Ingestion Audit']
+        : ['• Buffer: MinIO Storage', '• Check file extension', '• Auto-generate draft ID', '• Log: Ingest Auditing'],
       code: `def process_ingest_buffer(file_stream):\n    draft_id = generate_uuid()\n    write_to_temp_buffer(draft_id, file_stream)\n    # Publish message to API Gateway validator queue\n    rabbitmq_publish("validate_queue", {"id": draft_id})`,
       icon: Package,
     },
     {
       id: 'apigw',
-      x: 370,
-      y: 160,
+      x: 455,
+      y: 90,
+      width: 145,
+      height: 200,
       label: lang === 'vi' ? '2. CỔNG API' : '2. API GATEWAY',
       title: lang === 'vi' ? 'API Gateway & SSO TLS' : 'API Gateway Authorization',
       descVi: 'Cổng tiếp nhận API Gateway kiểm tra chứng thực bảo mật SSL/TLS, xác minh tài khoản đăng nhập UEH SSO và phân tích định dạng tệp tin MIME.',
@@ -251,18 +281,25 @@ export default function IscmCore() {
       inputsEn: 'Buffered dataset files along with client credentials.',
       roleVi: 'System Admin / Hệ thống SSO',
       roleEn: 'System Admin / SSO Identity Provider',
+      roleShort: lang === 'vi' ? 'System Admin / Keycloak' : 'System Admin / Keycloak',
       approverVi: 'Kiểm soát truy cập tự động qua token bảo mật JWT.',
       approverEn: 'SSO Token Validator (System level)',
       etlVi: 'Giải mã Payload, lọc headers và từ chối các kết nối không hợp lệ.',
       etlEn: 'Decrypt requests, filter headers, and drop invalid socket connections.',
+      techShort: 'FastAPI / Nginx Proxy',
       stack: 'FastAPI SSO middleware, Keycloak LDAP, Nginx Reverse Proxy',
+      bullets: lang === 'vi'
+        ? ['• Xác thực UEH SSO JWT', '• Kiểm tra bắt tay SSL', '• MIME type validation', '• Chặn request lạ']
+        : ['• Auth: UEH SSO (JWT)', '• SSL/TLS certificate', '• MIME type validation', '• Drop anonymous traffic'],
       code: `def authorize_api_request(headers):\n    auth_header = headers.get("Authorization")\n    # Validate JWT claims against UEH Keycloak Server\n    claims = keycloak_verify(auth_header)\n    if not claims.has_role("Researcher"):\n        raise HTTPException(status_code=403, detail="Forbidden")\n    return claims`,
       icon: KeyRound,
     },
     {
       id: 'sandbox',
-      x: 530,
-      y: 160,
+      x: 640,
+      y: 90,
+      width: 145,
+      height: 200,
       label: lang === 'vi' ? '3. KIỂM DUYỆT (SANDBOX)' : '3. SANDBOX AUDIT',
       title: lang === 'vi' ? 'Phân vùng cách ly Sandbox' : 'Sandbox Audit & Approve',
       descVi: 'Tệp dữ liệu được giữ lại tại Sandbox để quét virus tự động (ClamAV). Cán bộ phụ trách kiểm tra thuộc tính và gửi yêu cầu phê duyệt lên Director.',
@@ -271,18 +308,25 @@ export default function IscmCore() {
       inputsEn: 'Securely parsed files waiting for malware validation.',
       roleVi: 'Cán bộ Lab chuẩn bị, Director Trịnh Tú Anh phê duyệt quyết định lưu kho.',
       roleEn: 'Lab Specialist reviews, Director Trịnh Tú Anh executes approval.',
+      roleShort: lang === 'vi' ? 'Director Tú Anh phê duyệt' : 'Director Board Approved',
       approverVi: 'Director Trịnh Tú Anh (Bấm duyệt lưu kho tại Cổng phê duyệt).',
       approverEn: 'Director Trịnh Tú Anh (Approval Action).',
       etlVi: 'Kiểm tra topology không gian tự động (đứt gãy hình học, chồng đè thuộc tính).',
       etlEn: 'Run automated geometry topology audit routines to highlight spatial errors.',
+      techShort: 'ClamAV / Shapely / OS UI',
       stack: 'ClamAV, Python Shapely Geometry Checker, ISCM OS Approval Queue',
+      bullets: lang === 'vi'
+        ? ['• Quét virus: ClamAV', '• Kiểm tra topology GIS', '• Director duyệt thuộc tính', '• Nút Duyệt / Từ chối']
+        : ['• Malware scan: ClamAV', '• Verify GIS topology', '• Director reviews metadata', '• Approve / Reject action'],
       code: `def sandbox_validation(file_path):\n    # ClamAV daemon virus scan\n    if scan_for_viruses(file_path) == "INFECTED":\n        quarantine_file(file_path)\n        return False\n    # Evaluate topology invalid intersections\n    geom = read_geojson_shapes(file_path)\n    return geom.is_valid`,
       icon: ShieldAlert,
     },
     {
       id: 'etl',
-      x: 690,
-      y: 160,
+      x: 825,
+      y: 90,
+      width: 145,
+      height: 200,
       label: lang === 'vi' ? '4. XỬ LÝ ETL' : '4. ETL ENGINE',
       title: lang === 'vi' ? 'Python & GeoPandas ETL' : 'Transform & Spatial Projection',
       descVi: 'Động cơ xử lý không gian trích xuất hình học không gian, xử lý các bản ghi lỗi, và chuẩn hóa hệ tọa độ sang hệ VN2000 kinh tuyến trục TP.HCM (EPSG:5899).',
@@ -291,18 +335,25 @@ export default function IscmCore() {
       inputsEn: 'Raw geometric shapes (WGS84, EPSG:4326, etc.).',
       roleVi: 'Hệ thống tự động chạy các script xử lý dữ liệu (ETL Worker)',
       roleEn: 'ETL Workers (System level task engine)',
+      roleShort: lang === 'vi' ? 'System Worker Engine' : 'System Worker Engine',
       approverVi: 'Hệ thống tự động hậu kiểm schemas trước khi ghi.',
       approverEn: 'Post-ETL schema validation checker',
       etlVi: 'Chuyển hệ tọa độ (Reprojection), giải quyết đứt gãy không gian, định dạng kiểu dữ liệu thuộc tính.',
       etlEn: 'Geographic coordinate transformation, geometric correction, schema casting.',
+      techShort: 'Python GeoPandas / PyProj',
       stack: 'Python GeoPandas, PyProj Engine, SQL Alchemy',
+      bullets: lang === 'vi'
+        ? ['• Engine: GeoPandas', '• Chuyển hệ VN2000', '• Lọc thuộc tính rác', '• Tính diện tích hình học']
+        : ['• Engine: GeoPandas', '• Project: VN2000 CRS', '• Clean null attributes', '• Calculate polygon area'],
       code: `import geopandas as gpd\n\ndef etl_transform(file_path):\n    # Load raw file into GeoPandas GeoDataFrame\n    gdf = gpd.read_file(file_path)\n    # Reproject coordinates standard to VN2000 (EPSG:5899)\n    gdf = gdf.to_crs(epsg=5899)\n    # Fill missing values and compute geometric area\n    gdf['area_m2'] = gdf.geometry.area\n    return gdf`,
       icon: Cog,
     },
     {
       id: 'stored',
-      x: 850,
-      y: 160,
+      x: 1010,
+      y: 90,
+      width: 145,
+      height: 200,
       label: lang === 'vi' ? '5. LƯU TRỮ' : '5. STORED CATALOG',
       title: lang === 'vi' ? 'PostGIS Spatial DB' : 'PostGIS Data Lake Store',
       descVi: 'Lưu trữ tệp tin sạch đã qua xử lý vào cơ sở dữ liệu không gian PostGIS và CityDB. Lập chỉ mục không gian GIST (R-Tree) sẵn sàng phục vụ các dự án.',
@@ -311,11 +362,16 @@ export default function IscmCore() {
       inputsEn: 'Cleaned, structured tables in VN2000 schema.',
       roleVi: 'Database Administrator (DBA)',
       roleEn: 'Database Administrator (DBA)',
+      roleShort: lang === 'vi' ? 'DBA Administrator' : 'DBA Administrator',
       approverVi: 'Hệ thống kiểm soát tính toàn vẹn khóa ngoại (Referential integrity).',
       approverEn: 'DBMS Referential Integrity engine',
       etlVi: 'Tạo chỉ mục không gian GIST, tối ưu hóa câu truy vấn không gian (Spatial Queries).',
       etlEn: 'Build spatial GIST indexes, update database statistic catalogs.',
+      techShort: 'PostgreSQL / PostGIS / GIST',
       stack: 'PostgreSQL, PostGIS, GIST Indexing, CityGML Database',
+      bullets: lang === 'vi'
+        ? ['• PostGIS Database', '• Lập chỉ mục GIST R-Tree', '• Khóa ngoại / Schema OK', '• Sẵn sàng cấp phát link']
+        : ['• PostGIS Database', '• Build GIST R-Tree index', '• Schema constraints check', '• Ready for guest link'],
       code: `-- SQL storage load script\nINSERT INTO iscm_data_catalog (asset_id, file_name, geom, uploaded_by, privacy_status)\nVALUES (:id, :file_name, ST_GeomFromText(:wkt, 5899), :user, :privacy);\n-- Build spatial indexing\nCREATE INDEX IF NOT EXISTS idx_spatial ON iscm_data_catalog USING GIST(geom);`,
       icon: Warehouse,
     }
@@ -406,6 +462,12 @@ export default function IscmCore() {
     setSimIntervalId(id);
   };
 
+  useEffect(() => {
+    return () => {
+      if (simIntervalId) clearInterval(simIntervalId);
+    };
+  }, [simIntervalId]);
+
   // Sync active node info cards when simulation changes
   useEffect(() => {
     if (simStep === 0) {
@@ -428,14 +490,16 @@ export default function IscmCore() {
   // Coordinate calculations for traveling packet
   const getPacketCoords = () => {
     if (simStep === 0) {
-      const node = inputNodes.find(i => i.id === selectedSource);
-      return { cx: node?.x || 50, cy: node?.y || 160 };
+      if (selectedSource === 'website') return { cx: 180, cy: 80 };
+      if (selectedSource === 'labs') return { cx: 180, cy: 200 };
+      return { cx: 180, cy: 320 };
     }
-    if (simStep >= 1 && simStep <= 5) {
-      const node = coreNodes[simStep - 1];
-      return { cx: node.x, cy: node.y };
-    }
-    return { cx: 50, cy: 160 };
+    if (simStep === 1) return { cx: 342.5, cy: 190 };
+    if (simStep === 2) return { cx: 527.5, cy: 190 };
+    if (simStep === 3) return { cx: 712.5, cy: 190 };
+    if (simStep === 4) return { cx: 897.5, cy: 190 };
+    if (simStep === 5) return { cx: 1082.5, cy: 190 };
+    return { cx: 180, cy: 200 };
   };
 
   const packetPos = getPacketCoords();
@@ -544,7 +608,8 @@ export default function IscmCore() {
                         onClick={() => {
                           if (!simIntervalId) {
                             setSelectedSource(s.id);
-                            setActiveNode(s);
+                            const activeNodeConfig = inputNodes.find(i => i.id === s.id);
+                            setActiveNode(activeNodeConfig);
                           }
                         }}
                         disabled={!!simIntervalId}
@@ -588,7 +653,7 @@ export default function IscmCore() {
 
               {/* Animated SVG Diagram Canvas */}
               <div className="relative border border-neutral-200 bg-neutral-900 p-6 overflow-x-auto select-none rounded-none">
-                <svg viewBox="0 0 900 320" className="w-full min-w-[820px] h-auto overflow-visible">
+                <svg viewBox="0 0 1180 400" className="w-full min-w-[1100px] h-auto overflow-visible">
                   <defs>
                     <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
                       <feGaussianBlur stdDeviation="5" result="blur" />
@@ -596,17 +661,17 @@ export default function IscmCore() {
                     </filter>
                   </defs>
 
-                  {/* Flow dashed connector lines (Branching inputs to Ingest step) */}
-                  {/* Web Portal (y=50) -> Ingest (210, 160) */}
+                  {/* Connectors from Source Cards to Ingest step */}
+                  {/* Web Portal (y=30) -> Ingest (270, 90) */}
                   <path
-                    d="M 120 50 C 170 50, 175 160, 202 160"
-                    stroke={selectedSource === 'website' ? '#990000' : '#444444'}
+                    d="M 180 80 C 220 80, 235 190, 270 190"
+                    stroke={selectedSource === 'website' ? '#990000' : '#333333'}
                     strokeWidth="3.5"
                     fill="none"
                   />
                   {selectedSource === 'website' && (
                     <path
-                      d="M 120 50 C 170 50, 175 160, 202 160"
+                      d="M 180 80 C 220 80, 235 190, 270 190"
                       stroke="#ff4d4d"
                       strokeWidth="3.5"
                       fill="none"
@@ -615,16 +680,16 @@ export default function IscmCore() {
                     />
                   )}
 
-                  {/* Research Labs (y=160) -> Ingest (210, 160) */}
+                  {/* Research Labs (y=150) -> Ingest (270, 90) */}
                   <path
-                    d="M 120 160 L 202 160"
-                    stroke={selectedSource === 'labs' ? '#990000' : '#444444'}
+                    d="M 180 200 C 220 200, 235 190, 270 190"
+                    stroke={selectedSource === 'labs' ? '#990000' : '#333333'}
                     strokeWidth="3.5"
                     fill="none"
                   />
                   {selectedSource === 'labs' && (
                     <path
-                      d="M 120 160 L 202 160"
+                      d="M 180 200 C 220 200, 235 190, 270 190"
                       stroke="#ff4d4d"
                       strokeWidth="3.5"
                       fill="none"
@@ -633,16 +698,16 @@ export default function IscmCore() {
                     />
                   )}
 
-                  {/* External Partners (y=270) -> Ingest (210, 160) */}
+                  {/* External Partners (y=270) -> Ingest (270, 90) */}
                   <path
-                    d="M 120 270 C 170 270, 175 160, 202 160"
-                    stroke={selectedSource === 'partners' ? '#990000' : '#444444'}
+                    d="M 180 320 C 220 320, 235 190, 270 190"
+                    stroke={selectedSource === 'partners' ? '#990000' : '#333333'}
                     strokeWidth="3.5"
                     fill="none"
                   />
                   {selectedSource === 'partners' && (
                     <path
-                      d="M 120 270 C 170 270, 175 160, 202 160"
+                      d="M 180 320 C 220 320, 235 190, 270 190"
                       stroke="#ff4d4d"
                       strokeWidth="3.5"
                       fill="none"
@@ -651,22 +716,22 @@ export default function IscmCore() {
                     />
                   )}
 
-                  {/* Straight paths connecting the core steps 1 to 5 */}
+                  {/* Connecting paths between core cards */}
                   {/* Step 1 -> Step 2 */}
-                  <path d="M 218 160 L 362 160" stroke="#444444" strokeWidth="3.5" fill="none" />
-                  <path d="M 218 160 L 362 160" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="6,6" className="animate-flow-dash" />
+                  <path d="M 415 190 L 455 190" stroke="#333333" strokeWidth="3.5" fill="none" />
+                  <path d="M 415 190 L 455 190" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="5,5" className="animate-flow-dash" />
 
                   {/* Step 2 -> Step 3 */}
-                  <path d="M 378 160 L 522 160" stroke="#444444" strokeWidth="3.5" fill="none" />
-                  <path d="M 378 160 L 522 160" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="6,6" className="animate-flow-dash" />
+                  <path d="M 600 190 L 640 190" stroke="#333333" strokeWidth="3.5" fill="none" />
+                  <path d="M 600 190 L 640 190" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="5,5" className="animate-flow-dash" />
 
                   {/* Step 3 -> Step 4 */}
-                  <path d="M 538 160 L 682 160" stroke="#444444" strokeWidth="3.5" fill="none" />
-                  <path d="M 538 160 L 682 160" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="6,6" className="animate-flow-dash" />
+                  <path d="M 785 190 L 825 190" stroke="#333333" strokeWidth="3.5" fill="none" />
+                  <path d="M 785 190 L 825 190" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="5,5" className="animate-flow-dash" />
 
                   {/* Step 4 -> Step 5 */}
-                  <path d="M 698 160 L 842 160" stroke="#444444" strokeWidth="3.5" fill="none" />
-                  <path d="M 698 160 L 842 160" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="6,6" className="animate-flow-dash" />
+                  <path d="M 970 190 L 1010 190" stroke="#333333" strokeWidth="3.5" fill="none" />
+                  <path d="M 970 190 L 1010 190" stroke="#ff4d4d" strokeWidth="3.5" fill="none" strokeDasharray="5,5" className="animate-flow-dash" />
 
                   {/* Dynamic Simulation Travelling Packet Circle */}
                   {simStep >= 0 && (
@@ -681,14 +746,14 @@ export default function IscmCore() {
                     />
                   )}
 
-                  {/* Input Source Nodes (Website, Labs, Partners) */}
+                  {/* Render Input Source Cards directly on SVG canvas */}
                   {inputNodes.map((s) => {
                     const isActive = activeNode?.id === s.id;
                     const isSelectedSource = selectedSource === s.id;
                     return (
                       <g
                         key={s.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer group"
                         onClick={() => {
                           if (!simIntervalId) {
                             setSelectedSource(s.id);
@@ -696,54 +761,158 @@ export default function IscmCore() {
                           }
                         }}
                       >
-                        <circle
-                          cx={s.x}
-                          cy={s.y}
-                          r={28}
-                          fill={isActive ? '#990000' : (isSelectedSource ? '#1f1f1f' : '#121212')}
-                          stroke={isActive ? '#ff4d4d' : (isSelectedSource ? '#ff4d4d' : '#333333')}
-                          strokeWidth="2.5"
+                        {/* Outer Card Body */}
+                        <rect
+                          x={s.x}
+                          y={s.y}
+                          width={s.width}
+                          height={s.height}
+                          rx={4}
+                          fill={isActive ? '#18181b' : '#0f0f11'}
+                          stroke={isActive ? '#ff4d4d' : (isSelectedSource ? '#990000' : '#27272a')}
+                          strokeWidth={isActive ? 2 : 1}
                           className="transition-all duration-300"
                         />
-                        {/* Icon */}
-                        <g transform={`translate(${s.x - 9}, ${s.y - 9})`}>
-                          {s.id === 'website' && <Globe2 className={`h-4.5 w-4.5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />}
-                          {s.id === 'labs' && <Users className={`h-4.5 w-4.5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />}
-                          {s.id === 'partners' && <Server className={`h-4.5 w-4.5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />}
-                        </g>
-                        <text x={s.x} y={s.y + 44} textAnchor="middle" className="font-barlow-condensed text-[9px] font-bold text-neutral-300 fill-current uppercase tracking-wider">{s.label}</text>
+                        {/* Colored Top Header Banner */}
+                        <rect
+                          x={s.x}
+                          y={s.y}
+                          width={s.width}
+                          height={20}
+                          rx={2}
+                          fill={isActive ? '#990000' : '#1f1f23'}
+                        />
+                        {/* Banner Label Text */}
+                        <text
+                          x={s.x + 8}
+                          y={s.y + 13}
+                          fill="#ffffff"
+                          className="font-barlow-condensed text-[9px] font-black uppercase tracking-wider"
+                        >
+                          {s.label}
+                        </text>
+                        {/* P.I.C Role */}
+                        <text x={s.x + 8} y={s.y + 34} fill="#a1a1aa" className="font-ibm text-[8px] font-bold">
+                          {lang === 'vi' ? 'THỰC HIỆN:' : 'P.I.C:'}
+                        </text>
+                        <text x={s.x + 8} y={s.y + 44} fill="#ffffff" className="font-ibm text-[8.5px]">
+                          {s.roleShort}
+                        </text>
+                        {/* Description Bullet lines inside card */}
+                        {s.bullets.map((bullet, index) => (
+                          <text
+                            key={index}
+                            x={s.x + 8}
+                            y={s.y + 60 + index * 10}
+                            fill="#d4d4d8"
+                            className="font-ibm text-[8px] fill-current"
+                          >
+                            {bullet}
+                          </text>
+                        ))}
+                        {/* Tech Stack Badge container */}
+                        <rect
+                          x={s.x + 8}
+                          y={s.y + 82}
+                          width={s.width - 16}
+                          height={12}
+                          fill="#18181b"
+                          stroke="#27272a"
+                          rx={2}
+                        />
+                        <text
+                          x={s.x + s.width / 2}
+                          y={s.y + 90}
+                          textAnchor="middle"
+                          fill="#ff4d4d"
+                          className="font-mono text-[7.5px] font-bold"
+                        >
+                          {s.techShort}
+                        </text>
                       </g>
                     );
                   })}
 
-                  {/* Core Steps Nodes (1 to 5) */}
+                  {/* Render Core Step Cards (1 to 5) directly on SVG canvas */}
                   {coreNodes.map((node, index) => {
-                    const NodeIcon = node.icon;
                     const isActive = activeNode?.id === node.id;
                     const isPassed = simStep >= index + 1;
                     return (
                       <g
                         key={node.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer group"
                         onClick={() => {
                           if (!simIntervalId) setActiveNode(node);
                         }}
                       >
-                        <circle
-                          cx={node.x}
-                          cy={node.y}
-                          r={30}
-                          fill={isActive ? '#990000' : (isPassed ? '#1f1f1f' : '#121212')}
-                          stroke={isActive ? '#ff4d4d' : (isPassed ? '#ff4d4d' : '#333333')}
-                          strokeWidth="2.5"
+                        {/* Card Body */}
+                        <rect
+                          x={node.x}
+                          y={node.y}
+                          width={node.width}
+                          height={node.height}
+                          rx={4}
+                          fill={isActive ? '#18181b' : '#0f0f11'}
+                          stroke={isActive ? '#ff4d4d' : (isPassed ? '#990000' : '#27272a')}
+                          strokeWidth={isActive ? 2 : 1}
                           className="transition-all duration-300"
                         />
-                        {/* Icon */}
-                        <g transform={`translate(${node.x - 10}, ${node.y - 10})`}>
-                          <NodeIcon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
-                        </g>
-                        {/* Labels */}
-                        <text x={node.x} y={node.y + 45} textAnchor="middle" className="font-barlow-condensed text-[9.5px] font-extrabold text-neutral-200 fill-current tracking-wider uppercase">{node.label}</text>
+                        {/* Card Top Colored Banner */}
+                        <rect
+                          x={node.x}
+                          y={node.y}
+                          width={node.width}
+                          height={24}
+                          rx={2}
+                          fill={isActive ? '#990000' : (isPassed ? '#1c1c1f' : '#1f1f23')}
+                        />
+                        {/* Card title inside banner */}
+                        <text
+                          x={node.x + 8}
+                          y={node.y + 15}
+                          fill="#ffffff"
+                          className="font-barlow-condensed text-[9.5px] font-black uppercase tracking-wider"
+                        >
+                          {node.label}
+                        </text>
+                        {/* P.I.C Role */}
+                        <text x={node.x + 8} y={node.y + 38} fill="#a1a1aa" className="font-ibm text-[8.5px] font-bold">
+                          {lang === 'vi' ? 'THỰC HIỆN:' : 'P.I.C:'}
+                        </text>
+                        <text x={node.x + 8} y={node.y + 49} fill="#ffffff" className="font-ibm text-[8.5px] leading-tight">
+                          {node.roleShort}
+                        </text>
+                        {/* Operational Bullet lists inside SVG card */}
+                        {node.bullets.map((bullet, idx) => (
+                          <text
+                            key={idx}
+                            x={node.x + 8}
+                            y={node.y + 72 + idx * 11}
+                            fill="#d4d4d8"
+                            className="font-ibm text-[8.5px] fill-current"
+                          >
+                            {bullet}
+                          </text>
+                        ))}
+                        {/* Technology badge banner */}
+                        <rect
+                          x={node.x + 8}
+                          y={node.y + 174}
+                          width={node.width - 16}
+                          height={18}
+                          fill="#18181b"
+                          stroke="#27272a"
+                          rx={2}
+                        />
+                        <text
+                          x={node.x + node.width / 2}
+                          y={node.y + 186}
+                          textAnchor="middle"
+                          fill="#ff4d4d"
+                          className="font-mono text-[7.5px] font-bold"
+                        >
+                          {node.techShort}
+                        </text>
                       </g>
                     );
                   })}
@@ -761,7 +930,9 @@ export default function IscmCore() {
                         {activeNode.id === 'website' && <Globe2 className="h-4 w-4 text-[#990000]" />}
                         {activeNode.id === 'labs' && <Users className="h-4 w-4 text-[#990000]" />}
                         {activeNode.id === 'partners' && <Server className="h-4 w-4 text-[#990000]" />}
-                        {!['website', 'labs', 'partners'].includes(activeNode.id) && <activeNode.icon className="h-4 w-4 text-[#990000]" />}
+                        {!['website', 'labs', 'partners'].includes(activeNode.id) && activeNode.icon && (
+                          <activeNode.icon className="h-4 w-4 text-[#990000]" />
+                        )}
                       </div>
                       <h3 className="font-barlow text-sm font-bold uppercase tracking-wider text-neutral-800">
                         {activeNode.title}
