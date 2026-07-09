@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   UserCheck, Wallet, GraduationCap, FlaskConical, UsersRound,
   Megaphone, Handshake, Workflow, Cpu, Hammer, Search, ChevronRight, X,
