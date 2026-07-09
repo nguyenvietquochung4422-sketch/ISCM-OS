@@ -94,7 +94,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('workspace')}>
             <button
               onClick={() => (openMenu === 'workspace' ? setOpenMenu(null) : openAt('workspace'))}
-              className={topBtnClass('workspace', ['personal-dashboard', 'matrix-assigner', 'hierarchical-projects', 'approval-engine', 'iscm-core'].includes(active))}
+              className={topBtnClass('workspace', ['personal-dashboard', 'matrix-assigner', 'hierarchical-projects', 'approval-engine'].includes(active))}
             >
               {t.WORKSPACE}
               <ChevronDown className="h-3 w-3" />
@@ -135,14 +135,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                       className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
                     >
                       {t.APPROVAL_WORKFLOW}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('iscm-core')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.ISCM_CORE}
                     </button>
                   </li>
                 </ul>
@@ -254,6 +246,50 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
               </div>
             )}
           </div>
+          
+          {/* ISCM CORE Dropdown */}
+          <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('iscm-core-root')}>
+            <button
+              onClick={() => (openMenu === 'iscm-core-root' ? setOpenMenu(null) : openAt('iscm-core-root'))}
+              className={topBtnClass('iscm-core-root', ['iscm-core', 'core-pipeline', 'core-dashboard', 'core-policy'].includes(active))}
+            >
+              {t.ISCM_CORE}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+            {openMenu === 'iscm-core-root' && (
+              <div 
+                className={`${dropdownClass} w-96 left-0`}
+                onMouseEnter={() => openAt('iscm-core-root')}
+              >
+                <ul className="space-y-0.5">
+                  <li>
+                    <button
+                      onClick={() => navigateTo('iscm-core', 'core-pipeline')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
+                    >
+                      {lang === 'vi' ? 'Sơ đồ luồng dữ liệu' : 'Data Pipeline Map'}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => navigateTo('iscm-core', 'core-dashboard')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
+                    >
+                      {lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard'}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => navigateTo('iscm-core', 'core-policy')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
+                    >
+                      {lang === 'vi' ? 'Chính sách bảo mật thông tin' : 'Information Security Policy'}
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Far-right Search & Profile info */}
@@ -341,7 +377,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
             <button onClick={() => navigateTo('matrix-assigner')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.HR_MANAGEMENT}</button>
             <button onClick={() => navigateTo('hierarchical-projects')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.PROJECT_MANAGEMENT}</button>
             <button onClick={() => navigateTo('approval-engine')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.APPROVAL_WORKFLOW}</button>
-            <button onClick={() => navigateTo('iscm-core')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ISCM_CORE}</button>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.GROUP_MANAGEMENT}</div>
@@ -356,6 +391,12 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
             <button onClick={() => navigateTo('placeholder-dl2')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.UEH_UNITS}</button>
             <button onClick={() => navigateTo('placeholder-dl3')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ISCM_ORGANIZATION}</button>
             <button onClick={() => navigateTo('placeholder-dl4')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ISCM_UNITS}</button>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.ISCM_CORE}</div>
+            <button onClick={() => navigateTo('iscm-core', 'core-pipeline')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{lang === 'vi' ? 'Sơ đồ luồng dữ liệu' : 'Data Pipeline Map'}</button>
+            <button onClick={() => navigateTo('iscm-core', 'core-dashboard')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard'}</button>
+            <button onClick={() => navigateTo('iscm-core', 'core-policy')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{lang === 'vi' ? 'Chính sách bảo mật thông tin' : 'Information Security Policy'}</button>
           </div>
         </div>
       )}

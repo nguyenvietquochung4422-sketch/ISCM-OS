@@ -9,14 +9,14 @@ export const NAVIGATION_LOCALIZATION = {
     APPROVAL_WORKFLOW: 'Trình ký và phê duyệt',
     ISCM_CORE: 'ISCM CORE',
 
-    GROUP_MANAGEMENT: 'QUẢN LÝ KHỐI CHỨC NĂNG MA TRẬN',
+    GROUP_MANAGEMENT: 'QUẢN LÝ KHỐI CHỨC NĂNG',
     OP_FINANCE: 'Vận hành & Tài chính',
     ACADEMIA: 'Học thuật & Đào tạo',
     RESEARCH: 'Nghiên cứu khoa học & Dự án',
     COMMUNITY: 'Gắn kết cộng đồng',
     PARTNERSHIP: 'Hợp tác chiến lược',
 
-    ISCM_OVERVIEW: 'TỔNG QUAN HỆ SINH THÁI ISCM',
+    ISCM_OVERVIEW: 'TỔNG QUAN ISCM',
     UEH_UNITS: 'UEH & Các đơn vị thành viên',
     ISCM_ORGANIZATION: 'Cơ cấu tổ chức ISCM',
     ISCM_UNITS: 'ISCM & Các đối tác ngoại khối',
@@ -337,6 +337,17 @@ export const NAVIGATION_LOCALIZATION = {
           { key: 'contacts-support', label: 'Liên hệ khẩn' },
           { key: 'contacts-departments', label: 'Cơ cấu phòng ban' },
           { key: 'contacts-colleagues', label: 'Danh bạ nhân sự' }
+        ]
+      }
+    ],
+    ISCM_CORE_TREE: [
+      {
+        id: 'iscm-core-root',
+        label: 'ISCM CORE',
+        children: [
+          { key: 'core-pipeline', label: 'Sơ đồ luồng dữ liệu' },
+          { key: 'core-dashboard', label: 'Tổng kho dữ liệu' },
+          { key: 'core-policy', label: 'Chính sách bảo mật thông tin' }
         ]
       }
     ]
@@ -671,6 +682,17 @@ export const NAVIGATION_LOCALIZATION = {
           { key: 'contacts-support', label: 'Support Contacts' },
           { key: 'contacts-departments', label: 'Departments' },
           { key: 'contacts-colleagues', label: 'Colleagues' }
+        ]
+      }
+    ],
+    ISCM_CORE_TREE: [
+      {
+        id: 'iscm-core-root',
+        label: 'ISCM CORE',
+        children: [
+          { key: 'core-pipeline', label: 'Data Pipeline Map' },
+          { key: 'core-dashboard', label: 'Data Catalog Dashboard' },
+          { key: 'core-policy', label: 'Information Security Policy' }
         ]
       }
     ]
