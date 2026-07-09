@@ -261,12 +261,65 @@ const DEPARTMENTS = [
   }
 ];
 
+const SIMULATED_USERS = [
+  // ROLE A
+  { id: 'u1', name: 'Assoc.Prof. Tu Anh Trinh, PhD', role: 'ROLE A: GOVERNANCE BOARD', title: 'Director', roleType: 'A', email: 'tuanh.trinh@ueh.edu.vn' },
+  { id: 'u2', name: 'Hung Quoc Viet Nguyen, B.A', role: 'ROLE A: ARCHITECT', title: 'Smart City - Data Core Architect', roleType: 'A', email: 'hung.nvq@ueh.edu.vn' },
+  // ROLE B
+  { id: 'u3', name: 'Mai Quynh Thi Tran, M.Arch', role: 'ROLE B: DATA STEWARD', title: 'Director of Bachelor Program - Dual Degree', roleType: 'B', email: 'mai.tran@ueh.edu.vn' },
+  { id: 'u4', name: 'Hien The Dang, M.Sc', role: 'ROLE B: DATA STEWARD', title: 'Director of Bachelor Program - Architect', roleType: 'B', email: 'hien.dang@ueh.edu.vn' },
+  { id: 'u5', name: 'Hoai Nguyen Pham, PhD', role: 'ROLE B: DATA STEWARD', title: 'Director of Bachelor Program - Smart Mobility', roleType: 'B', email: 'hoai.pham@ueh.edu.vn' },
+  { id: 'u6', name: 'Dr. Arch, Lan Ngoc Hoang', role: 'ROLE B: DATA STEWARD', title: 'Head of Academia', roleType: 'B', email: 'lan.hoang@ueh.edu.vn' },
+  { id: 'u7', name: 'Dr. Arch, Khang Van Huynh', role: 'ROLE B: DATA STEWARD', title: 'Head of Community Engagement', roleType: 'B', email: 'khang.huynh@ueh.edu.vn' },
+  { id: 'u8', name: 'Dung Lai Phuong, M.A', role: 'ROLE B: DATA STEWARD', title: 'Head of Partnership', roleType: 'B', email: 'dung.lai@ueh.edu.vn' },
+  { id: 'u9', name: 'Tien Thuy Thi Le, B.E', role: 'ROLE B: DATA STEWARD', title: 'Head of PR & Communication', roleType: 'B', email: 'tien.le@ueh.edu.vn' },
+  // ROLE C
+  { id: 'u10', name: 'Tam Phuc Le Do, M.Sc', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Smart Urban Development', roleType: 'C', email: 'tam.le@ueh.edu.vn' },
+  { id: 'u11', name: 'Nam Thanh Le, PhD', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Urban Infrastructure & Sustainable Development', roleType: 'C', email: 'nam.le@ueh.edu.vn' },
+  { id: 'u12', name: 'Long Phi Hoang, PhD', role: 'ROLE C: RESEARCHER', title: 'Adjunct Lecturer - Environmental Science', roleType: 'C', email: 'long.hoang@ueh.edu.vn' },
+  { id: 'u13', name: 'Dao Chi Vo, PhD', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Urban Infrastructure & Sustainable Development', roleType: 'C', email: 'dao.vo@ueh.edu.vn' },
+  { id: 'u14', name: 'Quang Tran Vuong, PhD', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Environmental Science', roleType: 'C', email: 'quang.vuong@ueh.edu.vn' },
+  { id: 'u15', name: 'Sandhya Rao, M.Arch', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Architecture & Urban Design', roleType: 'C', email: 'sandhya.rao@ueh.edu.vn' },
+  { id: 'u16', name: 'Nam-Hai Hoang, M.Arch', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Architecture & Urban Design', roleType: 'C', email: 'namhai.hoang@ueh.edu.vn' },
+  { id: 'u17', name: 'Daniela Hurtarte, M.Sc', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Urban Planning & Design', roleType: 'C', email: 'daniela.hurtarte@ueh.edu.vn' },
+  { id: 'u18', name: 'Trung Nguyen Tan, PhD', role: 'ROLE C: RESEARCHER', title: 'Lecturer - Environmental Engineering & Science', roleType: 'C', email: 'trung.nguyen@ueh.edu.vn' },
+  { id: 'u19', name: 'An Truong Phan Le, MUD', role: 'ROLE C: RESEARCHER', title: 'Officer - Smart Mobility', roleType: 'C', email: 'an.le@ueh.edu.vn' },
+  { id: 'u20', name: 'Phuc Hoang Nguyen, B.Arch', role: 'ROLE C: RESEARCHER', title: 'Officer MakerSpace', roleType: 'C', email: 'phuc.nguyen@ueh.edu.vn' },
+  { id: 'u21', name: 'Toan Phuc Le, B.E', role: 'ROLE C: RESEARCHER', title: 'Designer', roleType: 'C', email: 'toan.le@ueh.edu.vn' },
+  { id: 'u22', name: 'Vu Anh Thai, M.Sc', role: 'ROLE C: RESEARCHER', title: 'Researcher - Smart City', roleType: 'C', email: 'thai.vu@ueh.edu.vn' },
+  { id: 'u23', name: 'Tram Quynh Nguyen, B.A', role: 'ROLE C: RESEARCHER', title: 'Coordinator - UEH CoLab', roleType: 'C', email: 'tram.nguyen@ueh.edu.vn' },
+  { id: 'u24', name: 'Binh Thanh Pham Luu, B.A', role: 'ROLE C: RESEARCHER', title: 'Design Collaborator - UEH CoLab', roleType: 'C', email: 'binh.pham@ueh.edu.vn' },
+  { id: 'u25', name: 'Tai Vinh Tran, B.A', role: 'ROLE C: RESEARCHER', title: 'Collaborator - Studio Lab', roleType: 'C', email: 'tai.tran@ueh.edu.vn' },
+  // ROLE D
+  { id: 'u26', name: 'Dung Hong Vo Pham, B.A', role: 'ROLE D: INTERN', title: 'PR & Communication Intern', roleType: 'D', email: 'intern.dung@ueh.edu.vn' },
+  { id: 'u27', name: 'Bùi Thảo Nguyên', role: 'ROLE D: INTERN', title: 'PR & Communication Intern', roleType: 'D', email: 'intern.nguyen@ueh.edu.vn' },
+  { id: 'u28', name: 'Nguyen Ha Cam Tien', role: 'ROLE D: INTERN', title: 'PR & Communication Intern', roleType: 'D', email: 'intern.tien@ueh.edu.vn' },
+  { id: 'u29', name: 'Luong Thi Thuy An', role: 'ROLE D: INTERN', title: 'Design Intern', roleType: 'D', email: 'intern.an@ueh.edu.vn' },
+  { id: 'u30', name: 'Nguyen Minh Huy', role: 'ROLE D: INTERN', title: 'Design Intern', roleType: 'D', email: 'intern.huy@ueh.edu.vn' },
+  { id: 'u31', name: 'Truong Thanh Dat', role: 'ROLE D: INTERN', title: 'IT Digital Platform Intern', roleType: 'D', email: 'intern.dat@ueh.edu.vn' },
+  { id: 'u32', name: 'Nguyen Ngọc Thien', role: 'ROLE D: INTERN', title: 'Tech Convergence Hub Intern', roleType: 'D', email: 'intern.thien@ueh.edu.vn' },
+  { id: 'u33', name: 'Ngô An Phú', role: 'ROLE D: INTERN', title: 'smART Hub Intern', roleType: 'D', email: 'intern.phu@ueh.edu.vn' },
+  { id: 'u34', name: 'Nguyễn Lương Minh Thư', role: 'ROLE D: INTERN', title: 'Public Space Living Lab Intern', roleType: 'D', email: 'intern.thu@ueh.edu.vn' },
+  { id: 'u35', name: 'Hoàng Trương Tiến Đạt', role: 'ROLE D: INTERN', title: 'Public Space Living Lab Intern', roleType: 'D', email: 'intern.tiendat@ueh.edu.vn' }
+];
+
 export default function ISCMOrganizationalChart({ lang = 'vi' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState(null);
-  const [viewMode, setViewMode] = useState('chart'); // 'chart' or 'matrix'
+  const [viewMode, setViewMode] = useState('chart'); // 'chart' or 'matrix' or 'directory'
   const [hoveredPic, setHoveredPic] = useState(null);
   const [selectedPic, setSelectedPic] = useState(null);
+
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return SIMULATED_USERS;
+    const query = searchTerm.toLowerCase();
+    return SIMULATED_USERS.filter(u => 
+      u.name.toLowerCase().includes(query) ||
+      u.title.toLowerCase().includes(query) ||
+      u.role.toLowerCase().includes(query) ||
+      u.email.toLowerCase().includes(query)
+    );
+  }, [searchTerm]);
 
   // Search filter matching
   const matchesSearch = (dept) => {
@@ -384,7 +437,7 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
-            {lang === 'vi' ? 'Sơ đồ cây chi tiết' : 'Detailed Flowchart'}
+            {lang === 'vi' ? 'Sơ đồ cây' : 'Flowchart'}
           </button>
           <button
             onClick={() => setViewMode('matrix')}
@@ -393,7 +446,16 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
             }`}
           >
             <Activity className="h-3.5 w-3.5" />
-            {lang === 'vi' ? 'Ma trận chi tiết' : 'Detailed Matrix'}
+            {lang === 'vi' ? 'Ma trận' : 'Matrix'}
+          </button>
+          <button
+            onClick={() => setViewMode('directory')}
+            className={`py-1.5 px-3 transition-colors flex items-center gap-1.5 rounded-none ${
+              viewMode === 'directory' ? 'bg-white text-[#990000] shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <UsersRound className="h-3.5 w-3.5" />
+            {lang === 'vi' ? 'Danh bạ nhân sự' : 'Directory'}
           </button>
         </div>
       </div>
@@ -762,6 +824,112 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* VIEWPORT 3: Personnel Directory Grid */}
+      {viewMode === 'directory' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            
+            {/* GOVERNANCE BOARD */}
+            <div className="bg-white border border-neutral-200 p-4 shadow-sm text-left">
+              <div className="border-b border-neutral-100 pb-2 mb-3">
+                <span className="block font-black text-[#990000] text-xs uppercase tracking-wide">
+                  ROLE A: GOVERNANCE BOARD
+                </span>
+                <span className="text-[10px] text-neutral-400 font-ibm block mt-0.5">
+                  {lang === 'vi' ? 'Ban Giám đốc & Kiến trúc sư Dữ liệu' : 'Director & Core Architects'}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {filteredUsers.filter(u => u.roleType === 'A').map(u => (
+                  <div key={u.id} className="border-l-2 border-[#990000] pl-2 py-0.5">
+                    <p className="font-bold text-xs text-neutral-800">{u.name}</p>
+                    <p className="text-[10px] text-neutral-500 leading-tight mt-0.5">{u.title}</p>
+                    <p className="text-[9px] font-mono text-neutral-400 mt-0.5">{u.email}</p>
+                  </div>
+                ))}
+                {filteredUsers.filter(u => u.roleType === 'A').length === 0 && (
+                  <p className="text-[10px] text-neutral-400">{lang === 'vi' ? 'Không tìm thấy' : 'No records found'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* DATA STEWARDS */}
+            <div className="bg-white border border-neutral-200 p-4 shadow-sm text-left">
+              <div className="border-b border-neutral-100 pb-2 mb-3">
+                <span className="block font-black text-blue-800 text-xs uppercase tracking-wide">
+                  ROLE B: DATA STEWARDS
+                </span>
+                <span className="text-[10px] text-neutral-400 font-ibm block mt-0.5">
+                  {lang === 'vi' ? 'Quản trị viên & Trưởng chương trình' : 'Program Directors & Stewards'}
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {filteredUsers.filter(u => u.roleType === 'B').map(u => (
+                  <div key={u.id} className="border-l-2 border-blue-600 pl-2 py-0.5">
+                    <p className="font-bold text-xs text-neutral-800">{u.name}</p>
+                    <p className="text-[10px] text-neutral-500 leading-tight mt-0.5">{u.title}</p>
+                    <p className="text-[9px] font-mono text-neutral-400 mt-0.5">{u.email}</p>
+                  </div>
+                ))}
+                {filteredUsers.filter(u => u.roleType === 'B').length === 0 && (
+                  <p className="text-[10px] text-neutral-400">{lang === 'vi' ? 'Không tìm thấy' : 'No records found'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* LAB RESEARCHERS */}
+            <div className="bg-white border border-neutral-200 p-4 shadow-sm text-left">
+              <div className="border-b border-neutral-100 pb-2 mb-3">
+                <span className="block font-black text-neutral-800 text-xs uppercase tracking-wide">
+                  ROLE C: LAB RESEARCHERS
+                </span>
+                <span className="text-[10px] text-neutral-400 font-ibm block mt-0.5">
+                  {lang === 'vi' ? 'Giảng viên & Nghiên cứu viên các Lab' : 'Research Specialists & Staff'}
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {filteredUsers.filter(u => u.roleType === 'C').map(u => (
+                  <div key={u.id} className="border-l-2 border-neutral-400 pl-2 py-0.5">
+                    <p className="font-bold text-xs text-neutral-800">{u.name}</p>
+                    <p className="text-[10px] text-neutral-500 leading-tight mt-0.5">{u.title}</p>
+                    <p className="text-[9px] font-mono text-neutral-400 mt-0.5">{u.email}</p>
+                  </div>
+                ))}
+                {filteredUsers.filter(u => u.roleType === 'C').length === 0 && (
+                  <p className="text-[10px] text-neutral-400">{lang === 'vi' ? 'Không tìm thấy' : 'No records found'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* EXTERNAL INTERNS */}
+            <div className="bg-white border border-neutral-200 p-4 shadow-sm text-left">
+              <div className="border-b border-neutral-100 pb-2 mb-3">
+                <span className="block font-black text-red-800 text-xs uppercase tracking-wide">
+                  ROLE D: EXTERNAL INTERNS
+                </span>
+                <span className="text-[10px] text-neutral-400 font-ibm block mt-0.5">
+                  {lang === 'vi' ? 'Thực tập sinh & Cộng tác viên' : 'Interns & External Contributors'}
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {filteredUsers.filter(u => u.roleType === 'D').map(u => (
+                  <div key={u.id} className="border-l-2 border-red-500 pl-2 py-0.5">
+                    <p className="font-bold text-xs text-neutral-800">{u.name}</p>
+                    <p className="text-[10px] text-neutral-500 leading-tight mt-0.5">{u.title}</p>
+                    <p className="text-[9px] font-mono text-neutral-400 mt-0.5">{u.email}</p>
+                  </div>
+                ))}
+                {filteredUsers.filter(u => u.roleType === 'D').length === 0 && (
+                  <p className="text-[10px] text-neutral-400">{lang === 'vi' ? 'Không tìm thấy' : 'No records found'}</p>
+                )}
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
 
