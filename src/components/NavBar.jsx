@@ -286,6 +286,15 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                       {lang === 'vi' ? 'Chính sách bảo mật thông tin' : 'Information Security Policy'}
                     </button>
                   </li>
+                  <li className="border-t border-neutral-100 mt-0.5 pt-0.5">
+                    <button
+                      onClick={() => navigateTo('urban-data-core')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#5467a6] hover:text-white transition-colors font-bold text-[#5467a6] flex items-center justify-between"
+                    >
+                      <span>{lang === 'vi' ? 'Urban Data Core — Data Catalog' : 'Urban Data Core — Data Catalog'}</span>
+                      <span className="text-[8px] bg-[#5467a6] text-white px-1.5 py-0.5 font-black uppercase tracking-wider">NEW</span>
+                    </button>
+                  </li>
                 </ul>
               </div>
             )}
