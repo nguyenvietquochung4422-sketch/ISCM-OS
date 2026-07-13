@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Power, Menu, X } from 'lucide-react';
+import { ChevronDown, LogIn, LogOut, Menu, X } from 'lucide-react';
 import GlobalSearch from './GlobalSearch.jsx';
 import { users } from '../data/mockData.js';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
 export default function NavBar({ active, onNavigate, onOpenAsset }) {
   const { lang, toggle } = useLanguage();
+  const { user: authUser, signInWithGoogle, signOut } = useAuth();
   const [openMenu, setOpenMenu] = useState(null); // 'workspace' | 'group' | 'overview' | 'profile-dropdown' | null
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeTimer = useRef(null);
@@ -16,24 +18,31 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
   const [dbUser, setDbUser] = useState(null);
 
   useEffect(() => {
-    if (!isLive) return;
+    if (!isLive || !authUser) { setDbUser(null); return; }
     const fetchUser = async () => {
       try {
+        // Look up the signed-in Google account's own row — this is what
+        // determines their real global_system_role (e.g. 'Director'/admin),
+        // not just "whichever profile happens to be flagged Director".
         const { data } = await supabase
           .from('users_profiles')
           .select('*')
-          .eq('global_system_role', 'Director')
-          .limit(1)
+          .eq('id', authUser.id)
           .single();
         if (data) setDbUser(data);
       } catch (e) {
-        console.error('Failed to load user email in Navbar:', e);
+        console.error('Failed to load signed-in user profile in Navbar:', e);
       }
     };
     fetchUser();
-  }, []);
+  }, [authUser]);
 
   const currentUser = dbUser || users[0];
+  // A real Google sign-in (via Supabase Auth) overrides the mock/demo profile above.
+  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name || 'TRỊNH TÚ ANH';
+  const displayEmail = authUser?.email || currentUser.email;
+  // DB rows use `global_system_role`; the mock fallback array uses `system_role`.
+  const displayRole = currentUser.global_system_role || currentUser.system_role || 'Director';
 
   const openAt = (key) => {
     clearTimeout(closeTimer.current);
@@ -111,14 +120,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                       className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
                     >
                       {t.MY_WORKSPACE}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('matrix-assigner')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.HR_MANAGEMENT}
                     </button>
                   </li>
                   <li>
@@ -269,18 +270,18 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
             className="hidden xl:flex flex-col justify-center h-full px-4 border-l border-neutral-800 text-right hover:bg-neutral-800 transition-colors focus:outline-none"
             title="Open Profile Navigation"
           >
-            <span className="font-sans text-[11px] font-bold text-white uppercase leading-none">{currentUser.full_name || 'TRỊNH TÚ ANH'}</span>
-            <span className="font-sans text-[9px] text-neutral-400 mt-1 leading-none truncate max-w-[150px]">{currentUser.email}</span>
+            <span className="font-sans text-[11px] font-bold text-white uppercase leading-none">{displayName}</span>
+            <span className="font-sans text-[9px] text-neutral-400 mt-1 leading-none truncate max-w-[150px]">{displayEmail}</span>
           </button>
-          
+
           {openMenu === 'profile-dropdown' && (
             <div className={`${dropdownClass} w-64 right-12 top-14 text-left`}>
               <div className="px-3 py-2 border-b border-neutral-100 mb-1">
                 <span className="block font-sans text-xs font-bold text-neutral-900 uppercase">
-                  {currentUser.full_name || 'TRỊNH TÚ ANH'}
+                  {displayName}
                 </span>
                 <span className="block font-sans text-[9px] text-neutral-400 uppercase tracking-widest mt-0.5">
-                  {currentUser.system_role || 'Director'}
+                  {displayRole}
                 </span>
               </div>
               <ul className="space-y-0.5 text-xs text-neutral-700">
@@ -306,13 +307,29 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                   </li>
                 ))}
               </ul>
+              <ul className="space-y-0.5 text-xs text-neutral-700 mt-1 pt-1 border-t border-neutral-100">
+                {authUser ? (
+                  <li>
+                    <button
+                      onClick={() => { signOut(); closeAll(); }}
+                      className="w-full flex items-center gap-1.5 text-left rounded-none px-3 py-1.5 hover:bg-[#990000] hover:text-white transition-colors font-semibold"
+                    >
+                      <LogOut className="h-3 w-3" /> {t.LOGOUT}
+                    </button>
+                  </li>
+                ) : (
+                  <li>
+                    <button
+                      onClick={() => { signInWithGoogle(); closeAll(); }}
+                      className="w-full flex items-center gap-1.5 text-left rounded-none px-3 py-1.5 hover:bg-[#990000] hover:text-white transition-colors font-semibold"
+                    >
+                      <LogIn className="h-3 w-3" /> {t.SIGN_IN_GOOGLE}
+                    </button>
+                  </li>
+                )}
+              </ul>
             </div>
           )}
-
-          {/* Log Out Button */}
-          <button className="rounded-none border border-neutral-700 bg-neutral-800 text-neutral-300 p-1.5 hover:border-[#990000] hover:bg-[#990000] hover:text-white transition-colors" title={t.LOGOUT}>
-            <Power className="h-3.5 w-3.5" />
-          </button>
 
           {/* Mobile responsive toggle */}
           <button 
@@ -330,7 +347,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.WORKSPACE}</div>
             <button onClick={() => navigateTo('personal-dashboard', 'ws-calendar')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.MY_WORKSPACE}</button>
-            <button onClick={() => navigateTo('matrix-assigner')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.HR_MANAGEMENT}</button>
             <button onClick={() => navigateTo('hierarchical-projects')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.PROJECT_MANAGEMENT}</button>
             <button onClick={() => navigateTo('approval-engine')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.APPROVAL_WORKFLOW}</button>
           </div>

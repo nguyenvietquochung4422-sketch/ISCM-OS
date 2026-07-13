@@ -27,6 +27,7 @@ export const NAVIGATION_LOCALIZATION = {
     USER_WIKI: 'Tri thức dùng chung',
     USER_CONTACTS: 'Danh bạ',
     LOGOUT: 'Đăng xuất',
+    SIGN_IN_GOOGLE: 'Đăng nhập bằng Google',
     LANGUAGE_LABEL: 'Vi',
 
     // Workspace Calendar Panel
@@ -117,8 +118,7 @@ export const NAVIGATION_LOCALIZATION = {
             children: [
               { key: 'form:purchase-permission', label: 'Xin chủ trương mua sắm công nghệ' },
               { key: 'form:order-equipment', label: 'Đăng ký mượn thiết bị phòng Lab' },
-              { key: 'form:order-book', label: 'Yêu cầu mượn sách/Tài liệu khoa học' },
-              { key: 'form:tech-request', label: 'Yêu cầu cải thiện nền tảng số' }
+              { key: 'form:order-book', label: 'Yêu cầu mượn sách/Tài liệu khoa học' }
             ]
           },
           {
@@ -380,6 +380,7 @@ export const NAVIGATION_LOCALIZATION = {
     USER_WIKI: 'WIKI HUB',
     USER_CONTACTS: 'CONTACTS',
     LOGOUT: 'Log Out',
+    SIGN_IN_GOOGLE: 'Sign in with Google',
     LANGUAGE_LABEL: 'En',
 
     // Workspace Calendar Panel
@@ -470,8 +471,7 @@ export const NAVIGATION_LOCALIZATION = {
             children: [
               { key: 'form:purchase-permission', label: 'Purchase permission' },
               { key: 'form:order-equipment', label: 'Order Equipment Form' },
-              { key: 'form:order-book', label: 'Order Book/Documents Form' },
-              { key: 'form:tech-request', label: 'Technology Request Form' }
+              { key: 'form:order-book', label: 'Order Book/Documents Form' }
             ]
           },
           {

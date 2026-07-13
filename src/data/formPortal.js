@@ -34,8 +34,7 @@ export const FORM_GROUPS = [
     forms: [
       { key: 'purchase-permission', label: 'Purchase permission', cat: 'IT', desc: 'Get pre-approval for technical purchases.' },
       { key: 'order-equipment', label: 'Order Equipment Form', cat: 'IT', desc: 'Order standard laptop or lab peripherals.' },
-      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' },
-      { key: 'tech-request', label: 'Technology Request Form', cat: 'IT', desc: 'General IT support & tech request.' }
+      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' }
     ]
   },
   {

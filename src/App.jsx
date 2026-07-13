@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { LanguageProvider } from './i18n/LanguageContext.jsx';
+import { AuthProvider } from './auth/AuthContext.jsx';
+import AuthGate from './auth/AuthGate.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import PersonalDashboard from './pages/PersonalDashboard.jsx';
 import ExecutiveCalendar from './pages/ExecutiveCalendar.jsx';
@@ -53,7 +55,9 @@ export default function App() {
   };
 
   return (
+    <AuthProvider>
     <LanguageProvider>
+    <AuthGate>
       <AppLayout
         active={activeModule}
         onNavigate={setActiveModule}
@@ -92,6 +96,8 @@ export default function App() {
         activeModule !== 'placeholder-dl3' && 
         renderPlaceholder(activeModule)}
       </AppLayout>
+    </AuthGate>
     </LanguageProvider>
+    </AuthProvider>
   );
 }

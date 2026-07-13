@@ -23,9 +23,10 @@ function loadStore() {
       cellEdits: parsed.cellEdits ?? {},
       customColumns: parsed.customColumns ?? [],
       extraRows: parsed.extraRows ?? [],
+      deletedRowIds: parsed.deletedRowIds ?? [],
     };
   } catch {
-    return { cellEdits: {}, customColumns: [], extraRows: [] };
+    return { cellEdits: {}, customColumns: [], extraRows: [], deletedRowIds: [] };
   }
 }
 
@@ -125,8 +126,9 @@ export default function ResearchSubWorkspace() {
 
   const allRows = useMemo(() => {
     if (!rows) return [];
-    return [...rows, ...store.extraRows];
-  }, [rows, store.extraRows]);
+    const deleted = new Set(store.deletedRowIds || []);
+    return [...rows, ...store.extraRows].filter((r) => !deleted.has(r.id));
+  }, [rows, store.extraRows, store.deletedRowIds]);
 
   // Apply cell edits dynamically
   const allRowsResolved = useMemo(() => {
@@ -383,6 +385,7 @@ export default function ResearchSubWorkspace() {
             setStore={setStore}
             source={source}
             researchUnits={researchUnits}
+            setResearchUnits={setResearchUnits}
             taskTypes={taskTypes}
           />
         ),

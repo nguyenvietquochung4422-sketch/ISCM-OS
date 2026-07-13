@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect, Fragment } from 'react';
 import {
-  Search, Plus, X, ChevronRight, ChevronDown, Folder, FileText
+  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus, Trash2
 } from 'lucide-react';
 import { RESEARCH_UNITS } from '../../data/researchList.js';
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { isMemberMatch } from './ResearchWorkload.jsx';
+import { useLanguage } from '../../i18n/LanguageContext.jsx';
 
 const resolveMemberNameAndTitle = (nameStr) => {
   if (!nameStr) return '';
@@ -103,13 +104,25 @@ export default function ResearchListTable({
   store,
   setStore,
   researchUnits = [],
+  setResearchUnits,
   taskTypes = []
 }) {
+  const { lang } = useLanguage();
   const [query, setQuery] = useState('');
   const [unit, setUnit] = useState('all');
   const [taskType, setTaskType] = useState('all');
   const [status, setStatus] = useState('all');
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [addUnitTarget, setAddUnitTarget] = useState('');
+
+  // Keep the "add task into" target in sync with the active unit filter / available units
+  useEffect(() => {
+    if (unit !== 'all') {
+      setAddUnitTarget(unit);
+    } else if (!addUnitTarget || !researchUnits.includes(addUnitTarget)) {
+      setAddUnitTarget(researchUnits[0] || '');
+    }
+  }, [unit, researchUnits]);
 
   // Set default view collapsed on load
   useEffect(() => {
@@ -131,13 +144,55 @@ export default function ResearchListTable({
     });
   };
 
-  const handleAddTask = () => {
+  // Find the main-folder row for a given research unit (its top-level "RU#" code)
+  const findMainFolder = (targetUnit) =>
+    allRowsResolved.find((r) => {
+      if (r.research_unit !== targetUnit) return false;
+      const code = (r.code || '').trim();
+      const name = (r.task_name || '').toLowerCase();
+      return name.includes('main folder') || (code.startsWith('RU') && !code.includes('.'));
+    });
+
+  // Next top-level RU code across the whole dataset (RU1, RU2, ...)
+  const nextTopLevelCode = () => {
+    let maxNum = 0;
+    allRowsResolved.forEach((r) => {
+      const code = (r.code || '').trim();
+      if (/^RU\s*\d+$/.test(code)) {
+        const n = parseInt(code.replace('RU', '').trim(), 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    });
+    return `RU${maxNum + 1}`;
+  };
+
+  // Next immediate-child code under a given parent code (e.g. RU8 -> RU8.1, RU8.1 -> RU8.1.1)
+  const nextChildCode = (parentCode) => {
+    let maxNum = 0;
+    allRowsResolved.forEach((r) => {
+      const code = (r.code || '').trim();
+      if (!code.startsWith(parentCode + '.')) return;
+      const rest = code.slice(parentCode.length + 1);
+      if (rest.includes('.')) return; // only direct children
+      const n = parseInt(rest, 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    });
+    return `${parentCode}.${maxNum + 1}`;
+  };
+
+  const handleAddTask = (targetUnitOverride) => {
+    const targetUnit = targetUnitOverride || addUnitTarget || researchUnits[0];
+    if (!targetUnit) {
+      alert(lang === 'vi' ? 'Chưa có Đơn vị nghiên cứu nào. Hãy tạo một Đơn vị trước.' : 'No Research Unit exists yet. Please create one first.');
+      return;
+    }
     inlineRowSeq += 1;
     const id = `new-task-${Date.now()}-${inlineRowSeq}`;
-    const targetUnit = unit !== 'all' ? unit : 'Data Driven and Urban Design';
+    const mainFolder = findMainFolder(targetUnit);
+    const code = mainFolder ? nextChildCode((mainFolder.code || '').trim()) : '';
     const newRow = {
       id,
-      code: 'NEW',
+      code,
       task_name: 'New Research Activity',
       research_unit: targetUnit,
       status: 'Not start',
@@ -161,10 +216,69 @@ export default function ResearchListTable({
     setSelectedTask(newRow);
   };
 
-  const removeRow = (id, e) => {
+  const handleAddUnit = () => {
+    const name = window.prompt(lang === 'vi' ? 'Nhập tên Đơn vị nghiên cứu mới:' : 'Enter new Research Unit name:');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (researchUnits.includes(trimmed)) {
+      alert(lang === 'vi' ? 'Đơn vị này đã tồn tại.' : 'This Research Unit already exists.');
+      setUnit(trimmed);
+      return;
+    }
+    setResearchUnits?.((prev) => [...prev, trimmed]);
+
+    inlineRowSeq += 1;
+    const id = `new-unit-${Date.now()}-${inlineRowSeq}`;
+    const newRow = {
+      id,
+      code: nextTopLevelCode(),
+      task_name: `${trimmed} Main Folder`,
+      research_unit: trimmed,
+      status: '',
+      start_year: '',
+      end_year: null,
+      task_type: '',
+      coordinator_manager: '',
+      members: '',
+      report_plan_link: '',
+      sdgs: '',
+    };
+    setStore((prev) => ({
+      ...prev,
+      extraRows: [...prev.extraRows, newRow]
+    }));
+    setUnit(trimmed);
+    setSelectedTask(newRow);
+  };
+
+  const removeRow = (row, e) => {
     e.stopPropagation();
-    setStore((prev) => ({ ...prev, extraRows: prev.extraRows.filter((r) => r.id !== id) }));
-    if (selectedTask?.id === id) {
+    const code = (row.code || '').trim();
+    const descendantIds = code
+      ? allRowsResolved.filter((r) => (r.code || '').trim().startsWith(code + '.')).map((r) => r.id)
+      : [];
+    const idsToDelete = [row.id, ...descendantIds];
+
+    if (descendantIds.length > 0) {
+      const ok = window.confirm(
+        lang === 'vi'
+          ? `Xoá "${row.task_name}" sẽ xoá luôn ${descendantIds.length} mục con bên trong. Tiếp tục?`
+          : `Deleting "${row.task_name}" will also delete ${descendantIds.length} item(s) inside it. Continue?`
+      );
+      if (!ok) return;
+    }
+
+    setStore((prev) => {
+      const extraIds = new Set(prev.extraRows.filter((r) => idsToDelete.includes(r.id)).map((r) => r.id));
+      const idsForDeletedList = idsToDelete.filter((id) => !extraIds.has(id));
+      return {
+        ...prev,
+        extraRows: prev.extraRows.filter((r) => !idsToDelete.includes(r.id)),
+        deletedRowIds: Array.from(new Set([...(prev.deletedRowIds || []), ...idsForDeletedList])),
+      };
+    });
+
+    if (idsToDelete.includes(selectedTask?.id)) {
       setSelectedTask(null);
     }
   };
@@ -420,17 +534,6 @@ export default function ResearchListTable({
           <option value="all">All Statuses</option>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-
-        <div className="flex items-center gap-2 ml-auto">
-          {/* Kept only the primary + Add Task button */}
-          <button
-            onClick={handleAddTask}
-            className="flex items-center gap-1 bg-[#8b0000] hover:bg-[#7a0010] text-white px-3.5 py-1.5 text-xs font-bold transition-all rounded-none shadow-sm uppercase tracking-wider"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Task
-          </button>
-        </div>
       </div>
 
       {/* 2. Grid Table */}
@@ -594,19 +697,32 @@ export default function ResearchListTable({
 
                       {/* DELETE */}
                       <td className="px-2 py-3 text-center">
-                        {store.extraRows.some((er) => er.id === row.id) && (
-                          <button
-                            onClick={(e) => removeRow(row.id, e)}
-                            title="Delete custom activity"
-                            className="text-neutral-300 hover:text-[#8b0000] transition-colors"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => removeRow(row, e)}
+                          title={level === 0
+                            ? (lang === 'vi' ? 'Xoá Đơn vị này' : 'Delete this Unit')
+                            : (lang === 'vi' ? 'Xoá tác vụ này' : 'Delete this task')}
+                          className="text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-[#8b0000] transition-all"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   );
                 })}
+
+                {/* Inline "+ Add task" row, contextual to this group */}
+                <tr
+                  onClick={() => handleAddTask(group.rows[0]?.research_unit)}
+                  className="cursor-pointer group/addrow hover:bg-neutral-50/60 transition-colors border-b border-neutral-100"
+                >
+                  <td colSpan={8 + customColumns.length + 1} className="px-4 py-2">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 group-hover/addrow:text-[#8b0000] transition-colors">
+                      <Plus className="h-3 w-3" />
+                      {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
+                    </span>
+                  </td>
+                </tr>
               </Fragment>
             ))}
 
@@ -617,6 +733,19 @@ export default function ResearchListTable({
                 </td>
               </tr>
             )}
+
+            {/* Table-wide "+ New Unit" row */}
+            <tr
+              onClick={handleAddUnit}
+              className="cursor-pointer group/addunit hover:bg-neutral-100 transition-colors bg-neutral-50/60"
+            >
+              <td colSpan={8 + customColumns.length + 1} className="px-4 py-2.5">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold font-ibm text-neutral-500 group-hover/addunit:text-[#8b0000] transition-colors uppercase tracking-wide">
+                  <FolderPlus className="h-3.5 w-3.5" />
+                  {lang === 'vi' ? 'Tạo Đơn vị nghiên cứu mới' : 'New Research Unit'}
+                </span>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
