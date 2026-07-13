@@ -1,14 +1,30 @@
 import { useState } from 'react';
 import { MonitorSmartphone, Undo2 } from 'lucide-react';
 import { MY_ASSETS } from '../../data/formPortal.js';
+import { loadCheckouts, returnCheckout } from '../../data/libraryStore.js';
 
 /* My Assets — equipment currently checked out to me; filter comes from
    the inline sidebar dropdown; booking new slots goes via Form Portal. */
 
 export default function MyAssetsPanel({ typeFilter = 'All' }) {
-  const [assets, setAssets] = useState(MY_ASSETS);
+  const [assets, setAssets] = useState(() => {
+    const books = loadCheckouts().filter((c) => !c.returned).map((c) => ({
+      id: c.id,
+      name: c.itemTitle,
+      type: 'Book',
+      checked_out: c.checked_out,
+      due: c.due,
+      isLibrary: true,
+    }));
+    return [...books, ...MY_ASSETS];
+  });
   const visible = assets.filter((a) => typeFilter === 'All' || a.type === typeFilter);
   const overdue = (a) => a.due && new Date(a.due) < new Date();
+
+  const handleReturn = (asset) => {
+    if (asset.isLibrary) returnCheckout(asset.id);
+    setAssets((prev) => prev.filter((x) => x.id !== asset.id));
+  };
 
   return (
     <div className="space-y-3">
@@ -29,7 +45,7 @@ export default function MyAssetsPanel({ typeFilter = 'All' }) {
               </div>
             </div>
             <button
-              onClick={() => setAssets((prev) => prev.filter((x) => x.id !== a.id))}
+              onClick={() => handleReturn(a)}
               className="flex items-center gap-1 rounded-lg bg-iscm-cta px-2.5 py-1.5 font-ibm text-[10px] font-semibold text-white hover:bg-iscm-charcoal"
             >
               <Undo2 className="h-3 w-3" /> Return

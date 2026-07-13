@@ -34,7 +34,7 @@ export const FORM_GROUPS = [
     forms: [
       { key: 'purchase-permission', label: 'Purchase permission', cat: 'IT', desc: 'Get pre-approval for technical purchases.' },
       { key: 'order-equipment', label: 'Order Equipment Form', cat: 'IT', desc: 'Order standard laptop or lab peripherals.' },
-      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.' },
+      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' },
       { key: 'tech-request', label: 'Technology Request Form', cat: 'IT', desc: 'General IT support & tech request.' }
     ]
   },
@@ -102,7 +102,7 @@ export const TRANSACTIONS = [
   { id: 'x6', date: '2026-05-30', desc: 'Q2 Scopus incentive — under review', track: 2, flow: 4, amount: '+5,000,000', status: 'Pending' },
 ];
 
-export const ASSET_TYPES = ['All', 'VR Headset', 'Drone', 'Spatial Computing Rig', 'Monitor', 'Laptop', 'Other'];
+export const ASSET_TYPES = ['All', 'VR Headset', 'Drone', 'Spatial Computing Rig', 'Monitor', 'Laptop', 'Book', 'Document', 'Journal', 'Other'];
 
 export const MY_ASSETS = [
   { id: 'as1', name: 'VR Headset — Quest Pro (Set A)', type: 'VR Headset', checked_out: '2026-06-20', due: '2026-07-15' },

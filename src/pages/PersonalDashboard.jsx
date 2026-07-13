@@ -1300,7 +1300,6 @@ export default function PersonalDashboard({ onNavigate }) {
   }, [selected]);
 
   const active = usePaneContent(selected, filters, setSelected, lang, wsData);
-  const ActiveIcon = active.icon ?? FileText;
 
   const toggleNode = (id) =>
     setNodeExpanded((p) => ({ ...p, [id]: !(p[id] ?? false) }));
@@ -1375,19 +1374,6 @@ export default function PersonalDashboard({ onNavigate }) {
 
         {/* RIGHT — Dynamic Content Viewport */}
         <main className="border border-neutral-200 bg-white p-5 md:col-span-8 rounded-none min-h-[500px]">
-          <div className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
-            <div>
-              <h2 className="font-barlow text-2xl font-extrabold uppercase tracking-wider text-iscm-charcoal flex items-center gap-2">
-                <ActiveIcon className="h-5 w-5 text-[#990000] shrink-0" /> {active.title}
-              </h2>
-              <p className="font-ibm text-[10px] uppercase tracking-wider text-gray-500 mt-1">
-                {isWorkspace
-                  ? (lang === 'vi' ? 'Góc nhìn vận hành không gian' : 'Workspace Operational View')
-                  : (lang === 'vi' ? 'Cổng tác nghiệp cá nhân' : 'Personal Portal Operational View')
-                }
-              </p>
-            </div>
-          </div>
           {active.body}
         </main>
       </div>

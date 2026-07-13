@@ -1,28 +1,16 @@
 import { useMemo, useState } from 'react';
 import {
-  FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, Lock,
+  FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, Lock, BookOpen, ExternalLink, Check,
+  ShoppingCart, X, ChevronLeft, ChevronRight, Search,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY } from '../../data/formPortal.js';
 import { isNameCompliant } from '../../data/wikiHub.js';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
+import { saveSubmission } from '../../data/formSubmissions.js';
+import { LIBRARY_ITEMS, LOAN_DAYS } from '../../data/libraryData.js';
+import { physicalAvailable, createBorrowRequest } from '../../data/libraryStore.js';
 
-const STORE_KEY = 'iscm_my_forms_submissions';
-
-export function loadSubmissions() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch { return []; }
-}
-
-function saveSubmission(form) {
-  const entry = {
-    id: `sub-${Date.now()}`,
-    form: form.label,
-    group: form.group,
-    date: new Date().toISOString().slice(0, 10),
-    status: 'Open',
-  };
-  localStorage.setItem(STORE_KEY, JSON.stringify([entry, ...loadSubmissions()]));
-  return entry;
-}
+export { loadSubmissions } from '../../data/formSubmissions.js';
 
 const CAT_BADGE = {
   HR: 'border border-blue-200 bg-blue-50 text-blue-800',
@@ -36,15 +24,32 @@ const CAT_BADGE = {
 
 export function FormPortalGrid({ categoryFilter = 'All', onOpenForm }) {
   const { lang } = useLanguage();
-  const groups = useMemo(
-    () => FORM_GROUPS
-      .map((g) => ({ ...g, forms: g.forms.filter((f) => categoryFilter === 'All' || f.cat === categoryFilter) }))
-      .filter((g) => g.forms.length > 0),
-    [categoryFilter]
-  );
+  const [query, setQuery] = useState('');
+  const groups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return FORM_GROUPS
+      .map((g) => ({
+        ...g,
+        forms: g.forms.filter((f) =>
+          (categoryFilter === 'All' || f.cat === categoryFilter) &&
+          (!q || f.label.toLowerCase().includes(q) || f.desc.toLowerCase().includes(q))
+        ),
+      }))
+      .filter((g) => g.forms.length > 0);
+  }, [categoryFilter, query]);
 
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={lang === 'vi' ? 'Tìm biểu mẫu theo tên hoặc mô tả...' : 'Search forms by name or description...'}
+          className="w-full rounded-none border border-neutral-300 bg-white py-1.5 pl-8 pr-2.5 font-sans text-xs focus:border-neutral-900 focus:outline-none"
+        />
+      </div>
       {groups.map((g) => (
         <section key={g.id} className="border border-neutral-200 p-3 bg-white">
           <h3 className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-neutral-900 border-b border-neutral-100 pb-1">
@@ -302,6 +307,315 @@ function LabEquipBlock({ onValid, lang }) {
   );
 }
 
+// Deterministic pastel-to-bold gradient "cover" per title — stands in for
+// real cover art in a Tiki/Netflix-style grid without hotlinking images.
+const COVER_PALETTE = [
+  'from-rose-500 to-orange-400', 'from-sky-500 to-indigo-500', 'from-emerald-500 to-teal-400',
+  'from-violet-500 to-fuchsia-500', 'from-amber-500 to-red-500', 'from-cyan-500 to-blue-500',
+];
+const coverGradient = (title) => {
+  let h = 0;
+  for (const c of title) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return COVER_PALETTE[h % COVER_PALETTE.length];
+};
+
+function CoverArt({ item, className = '' }) {
+  const [broken, setBroken] = useState(false);
+  if (item.coverUrl && !broken) {
+    return (
+      <img src={item.coverUrl} alt={item.title} onError={() => setBroken(true)}
+        className={`aspect-[2/3] w-full shrink-0 object-cover ${className}`} />
+    );
+  }
+  return (
+    <div className={`flex aspect-[2/3] w-full shrink-0 items-center justify-center bg-gradient-to-br p-2 ${coverGradient(item.title)} ${className}`}>
+      <span className="text-center font-barlow text-[11px] font-black uppercase leading-tight text-white drop-shadow">
+        {item.title}
+      </span>
+    </div>
+  );
+}
+
+// Compact grid card — cover + title only. All actions & status live in the
+// detail modal (opened on click) to keep the grid dense and scannable.
+function LibraryCard({ item, inCart, onOpenDetail, lang }) {
+  return (
+    <button type="button" onClick={() => onOpenDetail(item)}
+      className={`group relative flex flex-col border bg-white text-left transition-colors ${inCart ? 'border-[#990000] ring-1 ring-[#990000]' : 'border-neutral-200 hover:border-neutral-400'}`}>
+      <div className="relative">
+        <CoverArt item={item} />
+        <span className="absolute left-0.5 top-0.5 rounded-sm bg-black/40 px-1 py-0.5 font-sans text-[7px] font-bold uppercase tracking-wide text-white">
+          {item.category}
+        </span>
+        {inCart && (
+          <span className="absolute right-0.5 top-0.5 rounded-full bg-[#990000] p-0.5 text-white"><Check className="h-2 w-2" /></span>
+        )}
+      </div>
+      <div className="p-1.5">
+        <p className="font-sans text-[10px] font-bold leading-tight text-neutral-900 line-clamp-2 group-hover:text-[#990000]">{item.title}</p>
+        <p className="mt-0.5 font-sans text-[9px] text-neutral-400 line-clamp-1">{item.author}</p>
+      </div>
+    </button>
+  );
+}
+
+// Big detail modal — title/author + a status table (bảng thông tin) plus
+// the Borrow/Digital actions, opened when a card is clicked.
+function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedDigital, onClose, lang }) {
+  const avail = item.physical ? physicalAvailable(item.id) : null;
+  const rows = [
+    [lang === 'vi' ? 'Loại' : 'Type', item.category],
+    [lang === 'vi' ? 'Tác giả' : 'Author', item.author || '—'],
+    item.physical
+      ? [lang === 'vi' ? 'Tổng số bản' : 'Total copies', String(item.physical.totalCopies)]
+      : null,
+    item.physical
+      ? [lang === 'vi' ? 'Còn để mượn' : 'Available to borrow', avail === 0
+          ? (lang === 'vi' ? 'Hết bản' : 'None left')
+          : `${avail} / ${item.physical.totalCopies}`]
+      : null,
+    [lang === 'vi' ? 'Bản điện tử' : 'Digital edition', item.digital
+      ? (lang === 'vi' ? 'Có — truy cập không giới hạn' : 'Available — unlimited access')
+      : (lang === 'vi' ? 'Không có' : 'Not available')],
+  ].filter(Boolean);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+        className="relative flex w-full max-w-2xl flex-col overflow-hidden bg-white shadow-2xl sm:flex-row">
+        <button type="button" onClick={onClose}
+          className="absolute right-3 top-3 z-10 rounded-full bg-black/40 p-1.5 text-white hover:bg-black/60">
+          <X className="h-4 w-4" />
+        </button>
+        <CoverArt item={item} className="sm:w-56" />
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          <div>
+            <span className="w-fit border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 font-sans text-[9px] font-bold uppercase tracking-wide text-neutral-500">
+              {item.category}
+            </span>
+            <h3 className="mt-1.5 font-sans text-lg font-bold leading-snug text-neutral-900">{item.title}</h3>
+            <p className="font-sans text-sm text-neutral-500">{item.author}</p>
+          </div>
+
+          <table className="w-full border-collapse border border-neutral-200 font-sans text-xs">
+            <tbody>
+              {rows.map(([label, value]) => (
+                <tr key={label} className="border-b border-neutral-100 last:border-none">
+                  <td className="w-40 bg-neutral-50 px-2.5 py-1.5 font-bold uppercase tracking-wide text-neutral-500">{label}</td>
+                  <td className="px-2.5 py-1.5 text-neutral-800">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:flex-row">
+            {item.physical && (
+              <button type="button" disabled={avail === 0 && !inCart} onClick={() => onToggleCart(item)}
+                className={`flex flex-1 items-center justify-center gap-1.5 border px-2.5 py-2 font-sans text-xs font-bold uppercase tracking-wide transition-colors ${
+                  avail === 0 && !inCart ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400'
+                  : inCart ? 'border-[#990000] bg-[#990000] text-white'
+                  : 'border-neutral-300 text-neutral-700 hover:border-[#990000]'
+                }`}>
+                {inCart ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+                {inCart
+                  ? (lang === 'vi' ? 'Đã có trong giỏ — Bỏ ra' : 'In cart — Remove')
+                  : avail === 0
+                    ? (lang === 'vi' ? 'Hết bản' : 'Unavailable')
+                    : (lang === 'vi' ? 'Thêm vào giỏ mượn' : 'Add to borrow cart')}
+              </button>
+            )}
+            {item.digital && (
+              <a href={item.digital.url} target="_blank" rel="noreferrer" onClick={() => onOpenDigital(item)}
+                className="flex flex-1 items-center justify-center gap-1.5 border border-emerald-300 bg-emerald-50 px-2.5 py-2 font-sans text-xs font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">
+                {openedDigital[item.id] ? <Check className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                {lang === 'vi' ? 'Xem bản điện tử' : 'View digital'}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const LIBRARY_PAGE_SIZE = 15;
+
+function LibraryBlock({ onValid, onData, lang, form }) {
+  const [cart, setCart] = useState([]); // [{ itemId, itemTitle }]
+  const [pickupDate, setPickupDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [note, setNote] = useState('');
+  const [openedDigital, setOpenedDigital] = useState({});
+  const [detailItem, setDetailItem] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+
+  const types = useMemo(() => ['All', ...new Set(LIBRARY_ITEMS.map((i) => i.category))], []);
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return LIBRARY_ITEMS.filter((i) =>
+      (typeFilter === 'All' || i.category === typeFilter) &&
+      (!q || i.title.toLowerCase().includes(q) || (i.author || '').toLowerCase().includes(q))
+    );
+  }, [typeFilter, query]);
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / LIBRARY_PAGE_SIZE));
+  const pageItems = filteredItems.slice((page - 1) * LIBRARY_PAGE_SIZE, page * LIBRARY_PAGE_SIZE);
+
+  const handleTypeFilter = (t) => { setTypeFilter(t); setPage(1); };
+  const handleQuery = (v) => { setQuery(v); setPage(1); };
+
+  const emit = (nextCart, nextPickup, nextNote) => {
+    onValid(nextCart.length > 0 && Boolean(nextPickup) && Boolean(nextDue));
+    onData(nextCart.length > 0 ? { cart: nextCart, pickupDate: nextPickup, dueDate: nextDue, note: nextNote } : null);
+  };
+
+  const toggleCart = (item) => {
+    setCart((prev) => {
+      const exists = prev.some((c) => c.itemId === item.id);
+      const next = exists ? prev.filter((c) => c.itemId !== item.id) : [...prev, { itemId: item.id, itemTitle: item.title }];
+      emit(next, pickupDate, dueDate, note);
+      return next;
+    });
+  };
+
+  const removeFromCart = (itemId) => {
+    setCart((prev) => {
+      const next = prev.filter((c) => c.itemId !== itemId);
+      emit(next, pickupDate, dueDate, note);
+      return next;
+    });
+  };
+
+  const handlePickupDate = (v) => {
+    setPickupDate(v);
+    // Pre-fill a suggested due date (pickup + LOAN_DAYS) only if the member
+    // hasn't already chosen one — they can still freely override it below.
+    const nextDue = dueDate || (v ? new Date(new Date(v).getTime() + LOAN_DAYS * 86400000).toISOString().slice(0, 10) : dueDate);
+    if (nextDue !== dueDate) setDueDate(nextDue);
+    emit(cart, v, nextDue, note);
+  };
+  const handleDueDate = (v) => { setDueDate(v); emit(cart, pickupDate, v, note); };
+  const handleNote = (v) => { setNote(v); emit(cart, pickupDate, dueDate, v); };
+
+  const handleOpenDigital = (item) => {
+    if (openedDigital[item.id]) return;
+    setOpenedDigital((prev) => ({ ...prev, [item.id]: true }));
+    saveSubmission(form, { status: 'Approved', form: `${form.label} — ${item.title}` });
+  };
+
+  const minPickup = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => handleQuery(e.target.value)}
+          placeholder={lang === 'vi' ? 'Tìm sách/tài liệu theo tên hoặc tác giả...' : 'Search books/documents by title or author...'}
+          className="w-full rounded-none border border-neutral-300 bg-white py-1.5 pl-8 pr-2.5 font-sans text-xs focus:border-neutral-900 focus:outline-none"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {types.map((t) => (
+          <button key={t} type="button" onClick={() => handleTypeFilter(t)}
+            className={`border px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              typeFilter === t ? 'border-[#990000] bg-[#990000] text-white' : 'border-neutral-300 text-neutral-600 hover:border-[#990000]'
+            }`}>
+            {t}
+          </button>
+        ))}
+        <span className="ml-auto font-sans text-[10px] text-neutral-400">
+          {lang === 'vi' ? `${filteredItems.length} đầu sách/tài liệu` : `${filteredItems.length} titles`}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
+        {pageItems.map((item) => (
+          <LibraryCard key={item.id} item={item} inCart={cart.some((c) => c.itemId === item.id)}
+            onOpenDetail={setDetailItem} lang={lang} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1">
+          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="border border-neutral-300 p-1 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button key={p} type="button" onClick={() => setPage(p)}
+              className={`h-6 w-6 border font-sans text-[10px] font-bold transition-colors ${
+                page === p ? 'border-[#990000] bg-[#990000] text-white' : 'border-neutral-300 text-neutral-600 hover:border-[#990000]'
+              }`}>
+              {p}
+            </button>
+          ))}
+          <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="border border-neutral-300 p-1 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {detailItem && (
+        <LibraryDetailModal item={detailItem} inCart={cart.some((c) => c.itemId === detailItem.id)}
+          onToggleCart={toggleCart} onOpenDigital={handleOpenDigital}
+          openedDigital={openedDigital} onClose={() => setDetailItem(null)} lang={lang} />
+      )}
+
+      {cart.length > 0 && (
+        <div className="space-y-2 border border-[#990000]/30 bg-[#990000]/5 p-2.5">
+          <p className="flex items-center gap-1.5 font-sans text-[10px] font-bold uppercase tracking-wide text-[#990000]">
+            <ShoppingCart className="h-3.5 w-3.5" />
+            {lang === 'vi' ? `Giỏ mượn sách (${cart.length})` : `Borrow cart (${cart.length})`}
+          </p>
+          <ul className="space-y-1">
+            {cart.map((c) => (
+              <li key={c.itemId} className="flex items-center justify-between gap-2 border border-neutral-200 bg-white px-2 py-1">
+                <span className="truncate font-sans text-[11px] text-neutral-800">{c.itemTitle}</span>
+                <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 text-neutral-400 hover:text-[#990000]">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="block font-sans text-[10px] text-neutral-500">
+              {lang === 'vi' ? 'Ngày nhận sách' : 'Pickup date'}
+              <input type="date" min={minPickup} value={pickupDate}
+                onChange={(e) => handlePickupDate(e.target.value)}
+                className={`${inputClass} mt-0.5`} />
+            </label>
+            <label className="block font-sans text-[10px] text-neutral-500">
+              {lang === 'vi' ? 'Ngày sẽ trả' : 'Return date'}
+              <input type="date" min={pickupDate || minPickup} value={dueDate}
+                onChange={(e) => handleDueDate(e.target.value)}
+                className={`${inputClass} mt-0.5`} />
+            </label>
+          </div>
+
+          <label className="block font-sans text-[10px] text-neutral-500">
+            {lang === 'vi' ? 'Ghi chú giao nhận (tùy chọn)' : 'Pickup/return note (optional)'}
+            <textarea rows={2} value={note} onChange={(e) => handleNote(e.target.value)}
+              placeholder={lang === 'vi' ? 'VD: nhận tại quầy CoLab, buổi chiều...' : 'e.g. pick up at CoLab desk, afternoon...'}
+              className={`${inputClass} mt-0.5`} />
+          </label>
+        </div>
+      )}
+
+      <p className="font-sans text-[10px] text-neutral-400">
+        {lang === 'vi'
+          ? 'Bản điện tử được cấp quyền truy cập ngay khi bấm, không cần vào giỏ. Sách bản cứng: thêm nhiều quyển vào giỏ, điền ngày nhận rồi bấm "Gửi yêu cầu" bên dưới để gửi một lượt; sau khi duyệt sẽ hiện tại Hồ Sơ Của Tôi → Tài sản & Thiết bị đang mượn.'
+          : 'Digital items grant access the moment you click them — no cart needed. For physical books: add several to the cart, fill in a pickup date, then click "Submit request" below to send them all at once; once approved they appear under My Portal → My Assets Checked Out to Me.'}
+      </p>
+    </div>
+  );
+}
+
 function ResignationBlock({ onValid, lang }) {
   return (
     <div className="space-y-2">
@@ -323,7 +637,7 @@ function ResignationBlock({ onValid, lang }) {
 const SPECIAL_BLOCKS = {
   wfh: WfhBlock, leave: LeaveBlock, overtime: OvertimeBlock, naming: NamingBlock,
   handover: HandoverBlock, payment: PaymentBlock, training: TrainingBlock,
-  labEquip: LabEquipBlock, resignation: ResignationBlock,
+  labEquip: LabEquipBlock, resignation: ResignationBlock, library: LibraryBlock,
 };
 
 /* ---------------- Form detail view ---------------- */
@@ -332,6 +646,7 @@ export function FormDetail({ formKey, onBack }) {
   const { lang } = useLanguage();
   const form = FORM_BY_KEY[formKey];
   const [specialValid, setSpecialValid] = useState(!form?.special);
+  const [specialData, setSpecialData] = useState(null);
   const [details, setDetails] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -357,46 +672,52 @@ export function FormDetail({ formKey, onBack }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-        <button onClick={onBack} className="flex items-center gap-1 font-sans text-[10px] text-neutral-500 hover:text-[#990000] uppercase font-bold">
-          <ArrowLeft className="h-3 w-3" /> {lang === 'vi' ? 'Quay lại Form Portal' : 'Back to Form Portal'}
-        </button>
-        <span className={`badge text-[9px] font-bold ${CAT_BADGE[form.cat]}`}>{form.cat}</span>
-      </div>
-
-      <div className="bg-neutral-50 border border-neutral-200 p-3">
-        <h4 className="font-sans text-xs font-bold text-neutral-950">{form.label}</h4>
-        <p className="font-sans text-[10px] text-neutral-500 mt-1 leading-normal">{form.desc}</p>
-      </div>
-
       {form.crossRef && (
         <p className="flex items-center gap-1.5 border border-neutral-200 bg-neutral-50 px-3 py-1.5 font-sans text-[10px] text-neutral-800 rounded-none">
           <AlertTriangle className="h-3.5 w-3.5 text-neutral-500" /> Cross-ref: <strong>{form.crossRef}</strong>
         </p>
       )}
 
-      {Special && <Special onValid={setSpecialValid} lang={lang} />}
+      {Special && <Special onValid={setSpecialValid} onData={setSpecialData} lang={lang} form={form} />}
 
-      <div>
-        <label className="block text-[9px] font-bold uppercase text-neutral-400 mb-1">
-          {lang === 'vi' ? 'Chi tiết yêu cầu / lý do' : 'Justification / request details'}
-        </label>
-        <textarea
-          value={details}
-          onChange={(e) => setDetails(e.target.value)}
-          placeholder={lang === 'vi' ? 'Chi tiết yêu cầu / lý do...' : 'Justification / request details...'}
-          rows={3}
-          className={inputClass}
-        />
-      </div>
+      {form.special !== 'library' && (
+        <div>
+          <label className="block text-[9px] font-bold uppercase text-neutral-400 mb-1">
+            {lang === 'vi' ? 'Chi tiết yêu cầu / lý do' : 'Justification / request details'}
+          </label>
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder={lang === 'vi' ? 'Chi tiết yêu cầu / lý do...' : 'Justification / request details...'}
+            rows={3}
+            className={inputClass}
+          />
+        </div>
+      )}
 
       <div className="pt-2">
         <button
           disabled={!specialValid}
-          onClick={() => { saveSubmission(form); setSubmitted(true); }}
+          onClick={() => {
+            if (form.special === 'library' && specialData?.cart?.length) {
+              specialData.cart.forEach((item) => {
+                const entry = saveSubmission(form, { form: `${form.label} — ${item.itemTitle}` });
+                createBorrowRequest({
+                  id: entry.id, itemId: item.itemId, itemTitle: item.itemTitle,
+                  pickupDate: specialData.pickupDate, dueDate: specialData.dueDate, note: specialData.note,
+                });
+              });
+            } else {
+              saveSubmission(form);
+            }
+            setSubmitted(true);
+          }}
           className={`btn-primary w-full ${!specialValid && 'opacity-30 cursor-not-allowed bg-neutral-300 border-neutral-300 text-neutral-500'}`}
         >
-          <Send className="h-3.5 w-3.5" /> {lang === 'vi' ? 'Gửi yêu cầu' : 'Submit request'}
+          <Send className="h-3.5 w-3.5" />
+          {form.special === 'library' && specialData?.cart?.length
+            ? (lang === 'vi' ? `Gửi yêu cầu mượn (${specialData.cart.length} quyển)` : `Submit borrow request (${specialData.cart.length} items)`)
+            : (lang === 'vi' ? 'Gửi yêu cầu' : 'Submit request')}
         </button>
         {!specialValid && (
           <p className="font-sans text-[9px] text-neutral-400 mt-1.5 text-center">

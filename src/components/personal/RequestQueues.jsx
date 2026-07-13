@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Inbox, Check, X } from 'lucide-react';
 import { MY_TASKS, MY_FORMS_SEED } from '../../data/formPortal.js';
 import { loadSubmissions } from './FormPortalPanel.jsx';
+import { loadPendingRequests, decidePendingRequest } from '../../data/libraryStore.js';
 
 /* My Tasks (approvals waiting on me) + My Forms (my submissions).
    Status filters arrive from the inline sidebar dropdowns. */
@@ -16,10 +17,24 @@ const matches = (status, filter) =>
   filter === 'All' || (filter === 'Open' ? status === 'Open' : status !== 'Open');
 
 export function MyTasksPanel({ statusFilter = 'All' }) {
-  const [tasks, setTasks] = useState(MY_TASKS);
+  const [tasks, setTasks] = useState(() => {
+    const libraryTasks = loadPendingRequests().map((r) => ({
+      id: r.id,
+      title: `Borrow request: ${r.itemTitle}`,
+      requester: r.requester,
+      form: 'Order Book/Documents Form',
+      date: r.date,
+      status: r.status,
+      isLibrary: true,
+    }));
+    return [...libraryTasks, ...MY_TASKS];
+  });
   const visible = tasks.filter((t) => matches(t.status, statusFilter));
 
-  const decide = (id, status) => setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+  const decide = (id, status) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+    if (tasks.find((t) => t.id === id)?.isLibrary) decidePendingRequest(id, status);
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200">
