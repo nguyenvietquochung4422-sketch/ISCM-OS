@@ -12,9 +12,7 @@ import GovernanceRegulations from './pages/GovernanceRegulations.jsx';
 import HierarchicalProjects from './pages/HierarchicalProjects.jsx';
 import ApprovalEngine from './pages/ApprovalEngine.jsx';
 import EquipmentTracking from './pages/EquipmentTracking.jsx';
-import IscmCore from './pages/IscmCore.jsx';
 import IscmOverviewStructure from './pages/IscmOverviewStructure.jsx';
-import UrbanDataCore from './pages/UrbanDataCore.jsx';
 
 export default function App() {
   const [activeModule, setActiveModule] = useState('personal-dashboard');
@@ -72,9 +70,6 @@ export default function App() {
       {activeModule === 'hierarchical-projects' && <HierarchicalProjects />}
       {activeModule === 'approval-engine' && <ApprovalEngine />}
       {activeModule === 'equipment-tracking' && <EquipmentTracking />}
-      {/* Đề án 2 — ISCM CORE */}
-      {activeModule === 'iscm-core' && <IscmCore />}
-      {activeModule === 'urban-data-core' && <UrbanDataCore />}
       {activeModule === 'placeholder-dl3' && <IscmOverviewStructure />}
       
       {/* Governance & Policy Regulations (CR1, CR2, CR3) */}

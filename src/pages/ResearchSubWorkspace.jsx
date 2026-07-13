@@ -1,126 +1,499 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Folder, FolderOpen, FileText, ChevronRight, ChevronDown,
   Search, BookOpen, AlertCircle, Info, Landmark, HelpCircle, Download, GraduationCap,
-  Table2, Database
+  Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X, ArrowRight
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { supabase, isLive } from '../lib/supabaseClient.js';
+import { researchList as fallbackRows, RESEARCH_UNITS } from '../data/researchList.js';
+import { ISCM_MEMBERS } from '../data/iscmMembers.js';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
+import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
+import ResearchPublications from '../components/research/ResearchPublications.jsx';
+import DataCatalog from '../components/research/DataCatalog.jsx';
+import DataSubmit from '../components/research/DataSubmit.jsx';
 
-// Structured document data
-const DOCUMENT_CONTENTS = {
-  'research-list': {
-    title: 'Research List — 2026 ISCM Research Activities',
-    updated: 'Đồng bộ trực tiếp từ Supabase (iscm_research_list)',
-    author: 'Hoài (Head of Research)',
-    icon: Table2,
-    body: <ResearchListTable />,
-  },
+const STORE_KEY = 'iscm_research_list_edits_v1';
 
-
-  'activities-list': {
-    title: 'Internal Seminar Series / Chuỗi sinh hoạt học thuật định kỳ',
-    updated: 'Cập nhật: 20/06/2026',
-    author: 'ISCM Lab Team',
-    icon: HelpCircle,
-    body: (
-      <div className="space-y-4 text-xs font-ibm text-iscm-charcoal">
-        <p>Danh sách các buổi sinh hoạt khoa học, chuyên đề (Seminar) định kỳ tại ISCM:</p>
-        <ul className="space-y-2">
-          <li className="bg-iscm-surface p-2.5 rounded border-l-4 border-iscm-crimson">
-            <div className="font-semibold text-iscm-charcoal">Seminar #12: Spatio-Temporal modelling in urban night-economy</div>
-            <div className="text-[10px] text-gray-500">Diễn giả: Võ Anh Khoa · Thời gian: 15/07/2026</div>
-          </li>
-          <li className="bg-iscm-surface p-2.5 rounded border-l-4 border-iscm-crimson">
-            <div className="font-semibold text-iscm-charcoal">Seminar #13: Sidewalk walkability audit and accessibility calibration</div>
-            <div className="text-[10px] text-gray-500">Diễn giả: Lê Thu Thảo · Thời gian: 22/07/2026</div>
-          </li>
-        </ul>
-      </div>
-    )
-  },
-  'publication-list': {
-    title: 'Các công bố khoa học / Publication',
-    updated: 'Cập nhật: 03/07/2026',
-    author: 'ISCM Authors',
-    icon: BookOpen,
-    body: (
-      <div className="space-y-4 text-xs font-ibm text-iscm-charcoal">
-        <p className="font-semibold text-iscm-crimson">Danh sách các bài báo nghiên cứu khoa học của ISCM được xuất bản trên tạp chí quốc tế Q1/Q2:</p>
-        <ul className="divide-y divide-gray-100 space-y-3">
-          <li className="pt-2">
-            <div className="font-semibold text-iscm-charcoal">"2SFCA Walkability modeling: Sidney and HCMC comparison audit"</div>
-            <div className="text-gray-500 italic mt-0.5">Journal of Transport Geography (Q1 Scopus) - 2026</div>
-            <div className="text-gray-400 text-[10px]">Tác giả: Trần Ngọc Lan, Võ Anh Khoa</div>
-          </li>
-          <li className="pt-2">
-            <div className="font-semibold text-iscm-charcoal">"Night-time economy and spatio-temporal surveys along coastal Nha Trang"</div>
-            <div className="text-gray-500 italic mt-0.5">Cities (Q1 Scopus) - 2025</div>
-            <div className="text-gray-400 text-[10px]">Tác giả: Nguyễn Việt Quốc Hưng, Phạm Quang Minh</div>
-          </li>
-        </ul>
-      </div>
-    )
+function loadStore() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    return {
+      cellEdits: parsed.cellEdits ?? {},
+      customColumns: parsed.customColumns ?? [],
+      extraRows: parsed.extraRows ?? [],
+    };
+  } catch {
+    return { cellEdits: {}, customColumns: [], extraRows: [] };
   }
-};
+}
+
+function saveStore(store) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(store));
+}
+
+// UN SDG definitions
+const ALL_SDGS = [
+  { id: 'SDG1', label: '1. No Poverty', color: '#e5243b' },
+  { id: 'SDG2', label: '2. Zero Hunger', color: '#dda63a' },
+  { id: 'SDG3', label: '3. Good Health & Well-being', color: '#4c9f38' },
+  { id: 'SDG4', label: '4. Quality Education', color: '#c5192d' },
+  { id: 'SDG5', label: '5. Gender Equality', color: '#ff3a21' },
+  { id: 'SDG6', label: '6. Clean Water & Sanitation', color: '#26bde2' },
+  { id: 'SDG7', label: '7. Affordable & Clean Energy', color: '#fcc30b' },
+  { id: 'SDG8', label: '8. Decent Work & Economic Growth', color: '#a21942' },
+  { id: 'SDG9', label: '9. Industry, Innovation & Infrastructure', color: '#fd6925' },
+  { id: 'SDG10', label: '10. Reduced Inequalities', color: '#dd1367' },
+  { id: 'SDG11', label: '11. Sustainable Cities & Communities', color: '#fd9d24' },
+  { id: 'SDG12', label: '12. Responsible Consumption & Production', color: '#c9933b' },
+  { id: 'SDG13', label: '13. Climate Action', color: '#3f7e44' },
+  { id: 'SDG14', label: '14. Life Below Water', color: '#0a97d9' },
+  { id: 'SDG15', label: '15. Life on Land', color: '#56c02b' },
+  { id: 'SDG16', label: '16. Peace, Justice & Strong Institutions', color: '#00689d' },
+  { id: 'SDG17', label: '17. Partnerships for the Goals', color: '#19486a' }
+];
+
+const STATUS_OPTIONS = ['In progress', 'Completed', 'Cancel', 'Not start', 'Failed'];
+const TASK_TYPES = ['IRL', 'Research', 'Paper', 'Training', 'New initiative'];
+
+const PILLARS = [
+  { key: 'framework_transition', label: 'Framework Transition' },
+  { key: 'glocal_design', label: 'Glocal Design' },
+  { key: 'human_centric_orientation', label: 'Human Centric Orientation' },
+  { key: 'tech_solutions', label: 'Tech Solutions' },
+  { key: 'urban_system', label: 'Urban System' },
+];
 
 export default function ResearchSubWorkspace() {
   const { lang } = useLanguage();
   const [selectedNode, setSelectedNode] = useState('research-list');
-  const [expandedFolders, setExpandedFolders] = useState({
-    calls: true,
-    data: true,
-    pubs: true,
-    iscmInfo: true,
-    uehInfo: true
-  });
 
-  const toggleFolder = (key) => {
-    setExpandedFolders((prev) => ({
+  // Shared Data States
+  const [rows, setRows] = useState(null);
+  const [researchUnits, setResearchUnits] = useState(RESEARCH_UNITS);
+  const [taskTypes, setTaskTypes] = useState([
+    'IRL', 
+    'Research', 
+    'Paper', 
+    'Training', 
+    'New initiative', 
+    'Student research', 
+    'Fund Raising', 
+    'Project', 
+    'PL', 
+    'Event'
+  ]);
+  const [source, setSource] = useState('local');
+  const [store, setStore] = useState(loadStore);
+  const [selectedTask, setSelectedTask] = useState(null);
+
+  // File Upload states
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Sync edits to LocalStorage
+  useEffect(() => {
+    saveStore(store);
+  }, [store]);
+
+  // Load database rows on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!isLive) { setRows(fallbackRows); return; }
+      try {
+        const { data, error } = await supabase
+          .from('iscm_research_list')
+          .select('*')
+          .order('research_unit', { ascending: true })
+          .order('code', { ascending: true, nullsFirst: false });
+        if (cancelled) return;
+        if (error || !data || data.length === 0) {
+          setRows(fallbackRows);
+        } else {
+          setRows(data);
+          setSource(source => 'live');
+        }
+      } catch {
+        if (!cancelled) setRows(fallbackRows);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const allRows = useMemo(() => {
+    if (!rows) return [];
+    return [...rows, ...store.extraRows];
+  }, [rows, store.extraRows]);
+
+  // Apply cell edits dynamically
+  const allRowsResolved = useMemo(() => {
+    return allRows.map((r) => {
+      const resolved = { ...r };
+      const edits = store.cellEdits[r.id] || {};
+      Object.keys(edits).forEach((k) => {
+        resolved[k] = edits[k];
+      });
+      return resolved;
+    });
+  }, [allRows, store.cellEdits]);
+
+  const setCell = (rowId, key, value) => {
+    setStore((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      cellEdits: {
+        ...prev.cellEdits,
+        [rowId]: { ...prev.cellEdits[rowId], [key]: value },
+      },
     }));
   };
 
-  const handleSelectNode = (key) => {
-    setSelectedNode(key);
+  // Helper to normalize and resolve names for matching
+  const getShortNamesForMember = (member) => {
+    const names = [];
+    const cleanVi = member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
+    names.push(cleanVi);
+    const wordsVi = cleanVi.split(' ');
+    const firstNameVi = wordsVi[wordsVi.length - 1];
+    names.push(firstNameVi);
+    if (wordsVi.length >= 2) {
+      names.push(wordsVi.slice(-2).join(' '));
+      names.push(wordsVi.slice(-2).join(''));
+    }
+    const cleanEn = member.nameEn.split(',')[0].trim();
+    names.push(cleanEn);
+    const wordsEn = cleanEn.split(' ');
+    const firstNameEn = wordsEn[wordsEn.length - 1];
+    names.push(firstNameEn);
+    if (wordsEn.length >= 2) {
+      names.push(wordsEn.slice(-2).join(' '));
+      names.push(wordsEn.slice(-2).join(''));
+    }
+    if (member.id === 'm01') {
+      names.push('tú anh', 'tu anh', 'tuanh-lead', 'tuanh');
+    }
+    return [...new Set(names.map(n => n.toLowerCase().trim()))];
   };
 
+  const isMemberMatch = (member, targetStr) => {
+    if (!targetStr) return false;
+    const target = targetStr.toLowerCase();
+    const searchTerms = getShortNamesForMember(member);
+    return searchTerms.some(term => {
+      if (target.includes(term)) return true;
+      const normTarget = target.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const normTerm = term.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (normTarget.includes(normTerm)) return true;
+      return false;
+    });
+  };
+
+  const resolveMemberFullName = (shortName) => {
+    if (!shortName) return '';
+    const member = ISCM_MEMBERS.find(m => isMemberMatch(m, shortName));
+    if (member) {
+      return member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
+    }
+    return shortName;
+  };
+
+  const resolveMemberFullNameAndTitle = (nameStr) => {
+    if (!nameStr) return '';
+    const clean = nameStr.trim();
+    const member = ISCM_MEMBERS.find(m => isMemberMatch(m, clean));
+    if (member) {
+      return member.nameVi;
+    }
+    return clean;
+  };
+
+  // Find currently active selected task in resolved rows
+  const currentSelectedTask = useMemo(() => {
+    if (!selectedTask) return null;
+    return allRowsResolved.find((r) => r.id === selectedTask.id) || null;
+  }, [selectedTask, allRowsResolved]);
+
+  // Roster / Outside Members partition and handlers
+  const { rosterMembers, outsideMembers } = useMemo(() => {
+    if (!currentSelectedTask?.members) return { rosterMembers: [], outsideMembers: [] };
+    const list = currentSelectedTask.members.split(',').map(m => m.trim()).filter(Boolean);
+    const roster = [];
+    const outside = [];
+    list.forEach(name => {
+      const isRoster = ISCM_MEMBERS.some(m => isMemberMatch(m, name));
+      if (isRoster) {
+        const resolved = resolveMemberFullName(name);
+        if (!roster.includes(resolved)) roster.push(resolved);
+      } else {
+        if (!outside.includes(name)) outside.push(name);
+      }
+    });
+    return { rosterMembers: roster, outsideMembers: outside };
+  }, [currentSelectedTask?.members]);
+
+  const handleRosterChange = (nextRoster) => {
+    if (!currentSelectedTask) return;
+    const merged = [...nextRoster, ...outsideMembers].join(', ');
+    setCell(currentSelectedTask.id, 'members', merged);
+  };
+
+  const handleOutsideChange = (nextOutside) => {
+    if (!currentSelectedTask) return;
+    const merged = [...rosterMembers, ...nextOutside].join(', ');
+    setCell(currentSelectedTask.id, 'members', merged);
+  };
+
+  // Roster Members multi-select component
+  const RosterMemberSelect = ({ value, onChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    const toggleMember = (memberName) => {
+      let next;
+      if (value.includes(memberName)) {
+        next = value.filter(m => m !== memberName);
+      } else {
+        next = [...value, memberName];
+      }
+      onChange(next);
+    };
+
+    return (
+      <div className="relative font-ibm">
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          className="min-h-[36px] w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus-within:border-[#8b0000] focus-within:ring-1 focus-within:ring-[#8b0000] transition-all cursor-pointer flex flex-wrap gap-1 items-center"
+        >
+          {value.length === 0 && <span className="text-neutral-400">Select Roster Members...</span>}
+          {value.map(m => (
+            <span key={m} className="inline-flex items-center gap-1 bg-[#8b0000]/10 border border-[#8b0000]/20 text-[#8b0000] px-2 py-0.5 text-[10px] font-bold">
+              {resolveMemberFullNameAndTitle(m)}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMember(m);
+                }}
+                className="hover:text-black shrink-0"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto border border-neutral-200 bg-white shadow-lg text-xs">
+              {ISCM_MEMBERS.map(member => {
+                const name = member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
+                const isSelected = value.includes(name) || value.some(m => m.toLowerCase() === name.toLowerCase());
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => toggleMember(name)}
+                    className={`flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-neutral-50 ${isSelected ? 'bg-red-50/50 text-[#8b0000] font-bold' : ''}`}
+                  >
+                    <span>{member.nameVi} ({member.titleVi})</span>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-[#8b0000]" />}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Outside Members tag selector component
+  const OutsideMemberSelect = ({ value, onChange }) => {
+    const [externalName, setExternalName] = useState('');
+
+    const removeMember = (name) => {
+      onChange(value.filter(m => m !== name));
+    };
+
+    const addMember = (e) => {
+      e.preventDefault();
+      const name = externalName.trim();
+      if (name && !value.some(m => m.toLowerCase() === name.toLowerCase())) {
+        onChange([...value, name]);
+        setExternalName('');
+      }
+    };
+
+    return (
+      <div className="font-ibm mt-1 border border-neutral-200 bg-white p-2 flex flex-col gap-2">
+        <div className="flex flex-wrap gap-1 items-center min-h-[24px]">
+          {value.length === 0 && <span className="text-neutral-400 text-xs italic">No outside members.</span>}
+          {value.map(m => (
+            <span key={m} className="inline-flex items-center gap-1 bg-neutral-100 border border-neutral-200 text-neutral-700 px-2 py-0.5 text-[10px] font-bold">
+              {m}
+              <button
+                type="button"
+                onClick={() => removeMember(m)}
+                className="hover:text-black shrink-0"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-1.5 border-t border-neutral-100 pt-2 mt-1">
+          <input
+            type="text"
+            value={externalName}
+            onChange={(e) => setExternalName(e.target.value)}
+            placeholder="Enter outside member name..."
+            className="flex-1 border border-neutral-200 bg-white px-2 py-1 text-xs focus:border-[#8b0000] focus:outline-none"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                addMember(e);
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={addMember}
+            className="bg-neutral-900 hover:bg-[#8b0000] text-white px-3 py-1 text-[10px] font-bold uppercase shrink-0 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+    const DOCUMENT_CONTENTS = useMemo(() => {
+    return {
+      'research-list': {
+        title: lang === 'vi' ? 'Danh sách đề tài NCKH' : 'RESEARCH LIST — 2026 ISCM RESEARCH ACTIVITIES',
+        updated: lang === 'vi' ? 'Đồng bộ trực tiếp từ Supabase' : 'SCIENTIFIC RESEARCH OPERATIONS · SYNCED WITH SUPABASE',
+        author: 'Hoài (Head of Research)',
+        icon: Table2,
+        body: (
+          <ResearchListTable
+            allRowsResolved={allRowsResolved}
+            setCell={setCell}
+            selectedTask={selectedTask}
+            setSelectedTask={setSelectedTask}
+            store={store}
+            setStore={setStore}
+            source={source}
+            researchUnits={researchUnits}
+            taskTypes={taskTypes}
+          />
+        ),
+      },
+      'workload': {
+        title: lang === 'vi' ? 'Khối lượng công việc' : 'WORKLOAD CAPACITY TRACKER',
+        updated: lang === 'vi' ? 'Đồng bộ từ sơ đồ tổ chức' : 'STAFF WORK CAPACITY ANALYSIS',
+        author: 'ISCM Lab Team',
+        icon: Users,
+        body: (
+          <ResearchWorkload
+            allRowsResolved={allRowsResolved}
+            setSelectedTask={setSelectedTask}
+            setCell={setCell}
+          />
+        ),
+      },
+      'publication-list': {
+        title: lang === 'vi' ? 'Các công bố khoa học' : 'Publications — ISCM Scientific Research',
+        updated: lang === 'vi' ? 'Đồng bộ từ thư viện công trình' : 'PUBLICATION INDEX · SYNCHRONIZED',
+        author: 'ISCM Authors',
+        icon: BookOpen,
+        body: (
+          <ResearchPublications lang={lang} />
+        )
+      },
+      'data-submit': {
+        title: lang === 'vi' ? 'Nộp tài sản dữ liệu' : 'Submit Data Asset',
+        updated: lang === 'vi' ? 'Mở cho tất cả thành viên' : 'OPEN SUBMISSION · ALL MEMBERS',
+        author: 'ISCM Members',
+        icon: UploadCloud,
+        body: (
+          <DataSubmit lang={lang} />
+        )
+      },
+      'data-catalog': {
+        title: lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard',
+        updated: lang === 'vi' ? 'Đồng bộ từ cổng thông tin địa lý' : 'APPROVED DATA CATALOG · CONTROLLED SHARING',
+        author: 'ISCM Core Team',
+        icon: Database,
+        body: (
+          <DataCatalog mode="core" lang={lang} />
+        )
+      },
+      'central-catalog': {
+        title: lang === 'vi' ? 'Dữ liệu chờ kiểm duyệt' : 'Central Data Asset Catalog',
+        updated: lang === 'vi' ? 'Đường ống dữ liệu đang thẩm định' : 'STAGE BUFFER · INGESTION UNDER AUDIT',
+        author: 'ISCM Ingestion Hub',
+        icon: Server,
+        body: (
+          <DataCatalog mode="staging" lang={lang} />
+        )
+      }
+    };
+  }, [lang, allRowsResolved, selectedTask, store, source, researchUnits, taskTypes]);
+
   const activeDoc = DOCUMENT_CONTENTS[selectedNode] || DOCUMENT_CONTENTS['research-list'];
-  const isResearchList = selectedNode === 'research-list';
   const DocIcon = activeDoc.icon || FileText;
 
   const treeNodeClass = (key) =>
-    `w-full text-left font-sans text-[11px] font-bold uppercase py-1.5 px-2 border-b border-neutral-100 transition-colors flex items-center justify-between rounded-none mt-1 mb-0.5 ${
+    `w-full text-left font-sans text-[11px] font-bold uppercase py-2 px-2.5 border-b border-neutral-100 transition-colors flex items-center justify-between rounded-none mt-1 mb-0.5 ${
       selectedNode === key
-        ? '!bg-[#990000] !text-white !font-bold'
+        ? '!bg-[#8b0000] !text-white !font-bold'
         : 'text-neutral-900 hover:bg-neutral-50'
     }`;
 
+  // Handle simulated document upload drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && currentSelectedTask) {
+      setUploading(true);
+      setUploadProgress(0);
+      const filename = files[0].name;
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setUploading(false);
+            setCell(currentSelectedTask.id, 'report_plan_link', filename);
+            return 100;
+          }
+          return prev + 25;
+        });
+      }, 150);
+    }
+  };
+
   return (
-    <div className="w-full flex flex-col gap-5 h-full">
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-2 flex flex-wrap items-start justify-between gap-3 rounded-none">
+    <div className="w-full flex flex-col gap-5 h-full relative">
+      <header className="border-l-4 border-[#8b0000] pl-4 py-1 mb-2 flex flex-wrap items-start justify-between gap-3 rounded-none">
         <div>
           <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
             {lang === 'vi' ? 'KHÔNG GIAN NGHIÊN CỨU KHOA HỌC' : 'Scientific Research Sub-Workspace'}
           </h1>
           <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            {lang === 'vi' ? 'Quản trị & Kiểm soát hoạt động nghiên cứu khoa học' : 'Scientific Research Operations Control'} · {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}: <span className="font-semibold text-iscm-crimson font-barlow">Hoài (Head of Research)</span>.
+            {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}: <span className="font-semibold text-[#8b0000] font-barlow">Hoài</span>
           </p>
-        </div>
-        <div className="flex items-center gap-1.5 bg-iscm-crimson text-white font-barlow text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full scale-90">
-          IP Restricted Library
         </div>
       </header>
 
-      {/* Two Column Layout: Sidebar + Content Area (aligned dimensions with Personal Dashboard) */}
+      {/* Two Column Layout: Sidebar + Content Area */}
       <div className="grid gap-6 md:grid-cols-10 items-start">
 
-        {/* Left Side: Navigation Directory Sidebar (identical to Personal Dashboard layout) */}
+        {/* Left Side: Navigation Directory Sidebar */}
         <aside className="border border-neutral-200 bg-white p-2.5 md:col-span-2 rounded-none flex flex-col min-h-[600px]">
-          
-          {/* Header block exactly matching Personal Dashboard */}
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left font-sans">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b0000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left font-sans">
             {lang === 'vi' ? 'NGHIÊN CỨU KHOA HỌC' : 'SCIENTIFIC RESEARCH'}
           </div>
 
@@ -129,59 +502,423 @@ export default function ResearchSubWorkspace() {
             <input
               type="text"
               placeholder={lang === 'vi' ? 'Tìm kiếm tài liệu NCKH...' : 'Search research materials...'}
-              className="w-full pl-8 pr-3 py-1.5 border border-neutral-200 bg-white font-ibm text-xs focus:border-[#990000] focus:outline-none text-iscm-charcoal placeholder:text-gray-400 rounded-none"
+              className="w-full pl-8 pr-3 py-1.5 border border-neutral-200 bg-white font-ibm text-xs focus:border-[#8b0000] focus:outline-none text-iscm-charcoal placeholder:text-gray-400 rounded-none"
             />
           </div>
 
           <div className="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
-            {/* ⚡ INDEPENDENT ROOT LINKS */}
+            {/* ⚡ Tab navigation in exact requested order */}
             <div className="space-y-0.5">
-              <button onClick={() => handleSelectNode('research-list')} className={treeNodeClass('research-list')}>
+              <button onClick={() => setSelectedNode('research-list')} className={treeNodeClass('research-list')}>
                 <span className="truncate">{lang === 'vi' ? 'Danh sách đề tài NCKH' : 'Research List'}</span>
                 <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'research-list' ? 'text-white' : 'text-neutral-400'}`} />
               </button>
-              <button onClick={() => handleSelectNode('activities-list')} className={treeNodeClass('activities-list')}>
-                <span className="truncate">{lang === 'vi' ? 'Chuỗi sinh hoạt khoa học' : 'Internal Seminar Series'}</span>
-                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'activities-list' ? 'text-white' : 'text-neutral-400'}`} />
+              
+              <button onClick={() => setSelectedNode('workload')} className={treeNodeClass('workload')}>
+                <span className="truncate">{lang === 'vi' ? 'Khối lượng công việc' : 'Workload'}</span>
+                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'workload' ? 'text-white' : 'text-neutral-400'}`} />
               </button>
-              <button onClick={() => handleSelectNode('publication-list')} className={treeNodeClass('publication-list')}>
-                <span className="truncate">{lang === 'vi' ? 'Công báo khoa học' : 'Publications'}</span>
+
+              <button onClick={() => setSelectedNode('publication-list')} className={treeNodeClass('publication-list')}>
+                <span className="truncate">{lang === 'vi' ? 'Công bố khoa học' : 'Publications'}</span>
                 <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'publication-list' ? 'text-white' : 'text-neutral-400'}`} />
+              </button>
+
+              <button onClick={() => setSelectedNode('data-submit')} className={treeNodeClass('data-submit')}>
+                <span className="truncate">{lang === 'vi' ? 'Nộp dữ liệu mới' : 'Submit Data Asset'}</span>
+                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'data-submit' ? 'text-white' : 'text-neutral-400'}`} />
+              </button>
+
+              <button onClick={() => setSelectedNode('data-catalog')} className={treeNodeClass('data-catalog')}>
+                <span className="truncate">{lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard'}</span>
+                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'data-catalog' ? 'text-white' : 'text-neutral-400'}`} />
+              </button>
+
+              <button onClick={() => setSelectedNode('central-catalog')} className={treeNodeClass('central-catalog')}>
+                <span className="truncate">{lang === 'vi' ? 'Dữ liệu chờ kiểm duyệt' : 'Central Data Asset Catalog'}</span>
+                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'central-catalog' ? 'text-white' : 'text-neutral-400'}`} />
               </button>
             </div>
           </div>
         </aside>
 
-        {/* Right Side: Content Area (identical to Personal Dashboard layout) */}
+        {/* Right Side: Content Area */}
         <main className="border border-neutral-200 bg-white p-5 md:col-span-8 rounded-none min-h-[600px] flex flex-col min-h-0">
-          <div className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none shrink-0">
-            <div>
-              <h2 className="font-barlow text-xl font-extrabold uppercase tracking-wider text-iscm-charcoal flex items-center gap-2">
-                <DocIcon className="h-5 w-5 text-[#990000] shrink-0" /> {activeDoc.title}
-              </h2>
-              <p className="font-ibm text-[10px] uppercase tracking-wider text-gray-500 mt-1">
-                {lang === 'vi' ? 'QUẢN TRỊ NGHIÊN CỨU KHOA HỌC' : 'SCIENTIFIC RESEARCH OPERATIONS'} · {lang === 'vi' ? 'Phụ trách' : 'P.I.C'}: {activeDoc.author} · {activeDoc.updated}
-              </p>
-            </div>
-          </div>
 
           {/* Body content */}
-          {isResearchList ? (
-            <div className="min-h-0 flex-1">{activeDoc.body}</div>
-          ) : (
-            <div className="space-y-4 flex-1">
-              <div className="pt-2">{activeDoc.body}</div>
-            </div>
-          )}
+          <div className="min-h-0 flex-1">{activeDoc.body}</div>
 
-          {!isResearchList && (
-            <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400 font-ibm">
-              <span>© Institute of Smart City and Management (ISCM-UEH)</span>
-              <span>Security Protocol: SSL v3 + RLS Enabled</span>
-            </div>
-          )}
+          <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400 font-ibm">
+            <span>© Institute of Smart City and Management (ISCM-UEH)</span>
+            <span>Security Protocol: SSL v3 + RLS Enabled</span>
+          </div>
         </main>
       </div>
+
+      {/* Shared Slide-in Detail Side Panel */}
+      {selectedTask && currentSelectedTask && (
+        <>
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-all duration-300"
+            onClick={() => setSelectedTask(null)}
+          />
+
+          {/* Slide Drawer (35vw) */}
+          <div className="fixed right-0 top-0 z-50 h-screen w-[35vw] bg-white shadow-2xl border-l border-neutral-200 flex flex-col transition-transform duration-300 transform translate-x-0 font-ibm">
+            
+            {/* Drawer Header */}
+            <div className="p-5 border-b border-neutral-100 bg-neutral-900 text-white flex items-center justify-between">
+              <div className="min-w-0 pr-4">
+                <span className="text-[10px] font-mono tracking-widest text-[#8b0000] bg-[#8b0000]/10 px-2 py-0.5 border border-[#8b0000]/30 font-bold block w-fit mb-1.5 uppercase">
+                  {currentSelectedTask.code || 'NO CODE'}
+                </span>
+                <h2 className="font-barlow text-base font-black uppercase tracking-wide truncate" title={currentSelectedTask.task_name}>
+                  {currentSelectedTask.task_name || 'Untitled Task'}
+                </h2>
+              </div>
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white hover:text-white transition-all shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Drawer Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              
+              {/* Section 1: Core Metadata */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5 text-[#8b0000]" />
+                  Core Metadata
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Code</label>
+                    <input
+                      type="text"
+                      value={currentSelectedTask.code || ''}
+                      onChange={(e) => setCell(currentSelectedTask.id, 'code', e.target.value)}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Task Title</label>
+                    <input
+                      type="text"
+                      value={currentSelectedTask.task_name || ''}
+                      onChange={(e) => setCell(currentSelectedTask.id, 'task_name', e.target.value)}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Research Unit</label>
+                    <select
+                      value={currentSelectedTask.research_unit || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__add_new__') {
+                          const newUnit = prompt(lang === 'vi' ? 'Nhập tên Đơn vị nghiên cứu mới:' : 'Enter new Research Unit name:');
+                          if (newUnit && newUnit.trim()) {
+                            const trimmed = newUnit.trim();
+                            if (!researchUnits.includes(trimmed)) {
+                              setResearchUnits(prev => [...prev, trimmed]);
+                            }
+                            setCell(currentSelectedTask.id, 'research_unit', trimmed);
+                          }
+                        } else {
+                          setCell(currentSelectedTask.id, 'research_unit', val);
+                        }
+                      }}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
+                    >
+                      {researchUnits.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                      <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm Đơn vị...' : 'Add Unit...'}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Task Type</label>
+                    <select
+                      value={currentSelectedTask.task_type || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__add_new__') {
+                          const newType = prompt(lang === 'vi' ? 'Nhập tên Loại công việc mới:' : 'Enter new Task Type name:');
+                          if (newType && newType.trim()) {
+                            const trimmed = newType.trim();
+                            if (!taskTypes.includes(trimmed)) {
+                              setTaskTypes(prev => [...prev, trimmed]);
+                            }
+                            setCell(currentSelectedTask.id, 'task_type', trimmed);
+                          }
+                        } else {
+                          setCell(currentSelectedTask.id, 'task_type', val);
+                        }
+                      }}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
+                    >
+                      {taskTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                      <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm loại...' : 'Add Type...'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Coordinator Directory Selector */}
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Coordinator / Manager</label>
+                    <select
+                      value={resolveMemberFullName(currentSelectedTask.coordinator_manager) || ''}
+                      onChange={(e) => setCell(currentSelectedTask.id, 'coordinator_manager', e.target.value)}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
+                    >
+                      <option value="">Select Coordinator...</option>
+                      {ISCM_MEMBERS.map((m) => {
+                        const cleanName = m.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
+                        return (
+                          <option key={m.id} value={cleanName}>
+                            {m.nameVi} ({m.titleVi})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Status</label>
+                    <select
+                      value={currentSelectedTask.status || ''}
+                      onChange={(e) => setCell(currentSelectedTask.id, 'status', e.target.value)}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Start Year</label>
+                    <input
+                      type="text"
+                      value={currentSelectedTask.start_year || ''}
+                      onChange={(e) => setCell(currentSelectedTask.id, 'start_year', e.target.value)}
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">End Year</label>
+                    <input
+                      type="text"
+                      value={currentSelectedTask.end_year || ''}
+                      onChange={(e) => setCell(currentSelectedTask.id, 'end_year', e.target.value)}
+                      placeholder="--"
+                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Members (ISCM Roster) */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Members (ISCM Roster)</label>
+                  <RosterMemberSelect
+                    value={rosterMembers}
+                    onChange={handleRosterChange}
+                  />
+                </div>
+
+                {/* Members (Outside ISCM) */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Members (Outside ISCM)</label>
+                  <OutsideMemberSelect
+                    value={outsideMembers}
+                    onChange={handleOutsideChange}
+                  />
+                </div>
+              </div>
+
+              {/* Section 2: Minute Report or Plan */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-[#8b0000]" />
+                  Minute Report or Plan
+                </h3>
+
+                {currentSelectedTask.report_plan_link ? (
+                  <div className="flex flex-col gap-2">
+                    {currentSelectedTask.report_plan_link.startsWith('http') || currentSelectedTask.report_plan_link.toLowerCase().includes('doc') || currentSelectedTask.report_plan_link === 'Link' ? (
+                      <a
+                        href={currentSelectedTask.report_plan_link === 'Link' ? 'https://docs.google.com' : currentSelectedTask.report_plan_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50/60 border border-blue-100 hover:bg-blue-50 transition-colors w-full"
+                      >
+                        <Link className="h-4 w-4 shrink-0" />
+                        <span>View Minute Report</span>
+                        <ArrowRight className="h-3 w-3 ml-auto text-blue-400" />
+                      </a>
+                    ) : (
+                      <div className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-neutral-700 bg-neutral-50 border border-neutral-200 w-full">
+                        <Paperclip className="h-4 w-4 text-neutral-400 shrink-0" />
+                        <span className="truncate">{currentSelectedTask.report_plan_link}</span>
+                        <button
+                          onClick={() => setCell(currentSelectedTask.id, 'report_plan_link', '')}
+                          className="ml-auto text-neutral-400 hover:text-neutral-600"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-neutral-400 italic">No document attached.</p>
+                )}
+
+                {/* Simulated Drag & Drop Zone */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  className="border-2 border-dashed border-neutral-200 bg-neutral-50/50 hover:bg-neutral-50 p-6 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer rounded-none group"
+                >
+                  {uploading ? (
+                    <div className="w-full space-y-2 text-center">
+                      <div className="text-xs font-bold text-neutral-600">Uploading Document...</div>
+                      <div className="w-full bg-neutral-200 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#8b0000] h-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-neutral-400 font-mono">{uploadProgress}%</div>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="h-8 w-8 text-neutral-300 group-hover:text-neutral-400 transition-colors" />
+                      <div className="text-xs text-neutral-600 font-medium">
+                        Drag & Drop document files here
+                      </div>
+                      <div className="text-[10px] text-neutral-400">
+                        Supports PDF, Word, and Excel files
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Or Insert Document URL</label>
+                  <input
+                    type="text"
+                    value={currentSelectedTask.report_plan_link || ''}
+                    onChange={(e) => setCell(currentSelectedTask.id, 'report_plan_link', e.target.value)}
+                    placeholder="https://docs.google.com/document/..."
+                    className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                  />
+                </div>
+              </div>
+
+              {/* Section 3: Framework Transition Pillars */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                  <CheckSquare className="h-3.5 w-3.5 text-[#8b0000]" />
+                  Framework Transition Pillars
+                </h3>
+
+                <div className="space-y-2 bg-neutral-50/60 p-3 border border-neutral-200/50">
+                  {PILLARS.map(({ key, label }) => {
+                    const isChecked = currentSelectedTask[key] && currentSelectedTask[key] !== 'Không';
+                    return (
+                      <label
+                        key={key}
+                        className="flex items-center gap-3 cursor-pointer select-none py-1 group/checkbox"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setCell(currentSelectedTask.id, key, isChecked ? 'Không' : label);
+                          }}
+                          className="h-4 w-4 accent-[#8b0000]"
+                        />
+                        <span className={`text-xs font-medium ${isChecked ? 'text-neutral-900 font-semibold' : 'text-neutral-500'}`}>
+                          {label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 4: SDGs */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5 text-[#8b0000]" />
+                  Sustainable Development Goals (SDG Tags)
+                </h3>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_SDGS.map((sdg) => {
+                    const sdgsStr = currentSelectedTask.sdgs || '';
+                    const isSelected = sdgsStr.split(',').map(s => s.trim()).includes(sdg.id);
+
+                    return (
+                      <button
+                        key={sdg.id}
+                        onClick={() => {
+                          const list = sdgsStr.split(',').map(s => s.trim()).filter(Boolean);
+                          let nextList;
+                          if (isSelected) {
+                            nextList = list.filter(item => item !== sdg.id);
+                          } else {
+                            nextList = [...list, sdg.id];
+                          }
+                          setCell(currentSelectedTask.id, 'sdgs', nextList.join(', '));
+                        }}
+                        className={`flex items-center gap-2 p-1.5 text-[10px] font-bold text-left uppercase transition-all duration-200 border ${
+                          isSelected
+                            ? 'bg-white border-neutral-300 text-neutral-900 shadow-sm'
+                            : 'bg-neutral-50/50 border-neutral-200 text-neutral-400 hover:bg-neutral-50'
+                        }`}
+                        style={isSelected ? { borderLeft: `4px solid ${sdg.color}` } : {}}
+                      >
+                        <span
+                          className="h-3 w-3 inline-block shrink-0"
+                          style={{ backgroundColor: sdg.color }}
+                        />
+                        <span className="truncate">{sdg.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-neutral-100 bg-neutral-50 text-right">
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
+              >
+                Save & Close
+              </button>
+            </div>
+
+          </div>
+        </>
+      )}
+
     </div>
   );
 }

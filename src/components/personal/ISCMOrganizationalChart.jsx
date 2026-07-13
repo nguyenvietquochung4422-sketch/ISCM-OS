@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import {
   UserCheck, Wallet, GraduationCap, FlaskConical, UsersRound,
   Megaphone, Handshake, Workflow, Cpu, Hammer, Search, ChevronRight, X,
-  Layers, Activity, Star
+  Layers, Activity, Star, ChevronDown
 } from 'lucide-react';
+import { ISCM_MEMBERS, MEMBER_GROUPS, memberInitials } from '../../data/iscmMembers.js';
 
 const DEPARTMENTS = [
   {
@@ -18,7 +19,8 @@ const DEPARTMENTS = [
     descVi: 'Nắm quyền điều hành tối cao tại ISCM; trực tiếp phân công, bổ nhiệm các vị trí: Head, Lead, Manager, Coordinator, Host.',
     descEn: 'Supreme executive authority at ISCM; directly assigns and appoints Head, Lead, Manager, Coordinator, Host positions.',
     members: [
-      { roleVi: 'Viện trưởng / Director', name: 'Trịnh Tú Anh' }
+      { roleVi: 'Viện trưởng / Director', name: 'Trịnh Tú Anh' },
+      { roleVi: 'Viện phó / Vice Director', name: 'Trần Thị Quỳnh Mai' }
     ]
   },
   {
@@ -27,28 +29,28 @@ const DEPARTMENTS = [
     nameEn: 'Operation & Finance (O&F)',
     roleVi: 'Trưởng bộ phận (Head)',
     roleEn: 'Head of Department',
-    pic: 'Mai',
+    pic: 'Trần Thị Quỳnh Mai',
     icon: Wallet,
     color: 'border-emerald-600 bg-emerald-50 text-emerald-800',
     descVi: 'Bảo đảm nền tảng vận hành ổn định, hiệu quả và minh bạch cho toàn bộ hoạt động của ISCM; quản lý tài chính, nhân sự, thiết bị và hạ tầng.',
     descEn: 'Ensure a stable, efficient, and transparent operational foundation for all activities of ISCM; manage finance, HR, equipment and infrastructure.',
     subgroups: [
-      { nameVi: 'HR & Internal Affairs', nameEn: 'HR & Internal Affairs', pic: 'Trâm', descVi: 'Quản lý hợp đồng, database thành viên (Cơ hữu, Thỉnh giảng, Cố vấn); thanh quyết toán Event Series; quản lý email ISCM & thông báo.', descEn: 'Manage contracts, member database (Full-time, Adjunct, Advisor); settle Event Series payments; manage email & announcements.' },
-      { nameVi: 'Facility B (Cơ sở B)', nameEn: 'Facility B', pic: 'Phúc', descVi: 'Giám sát an toàn, thiết bị và tối ưu hóa việc sử dụng hai StudioLab cho sinh viên và nhà nghiên cứu.', descEn: 'Supervise safety, equipment and optimize StudioLab usage for students and researchers.' },
-      { nameVi: 'Facility V (Cơ sở V)', nameEn: 'Facility V', pic: 'An', descVi: 'Trực tiếp quản lý vận hành tại V; kiểm kê, cấp phát và bảo trì toàn bộ thiết bị.', descEn: 'Directly manage operations at V; inventory, allocate and maintain all equipment.' },
-      { nameVi: 'All Equipment (Thiết bị)', nameEn: 'All Equipment', pic: 'Vũ', descVi: 'Trực tiếp quản lý vận hành, kiểm kê, cấp phát và bảo trì toàn bộ thiết bị trong các dự án.', descEn: 'Directly manage operations, inventory, allocation and maintenance of all project equipment.' },
-      { nameVi: 'Document: International', nameEn: 'Document: International', pic: 'An', descVi: 'Soạn thảo, trình duyệt Tờ trình/Kế hoạch trên Smart Office; thanh toán quốc tế; booking phòng/xe/khách sạn; cấp điểm rèn luyện.', descEn: 'Draft/approve proposals on Smart Office; international payments; book room/car/hotel; student training points.' },
-      { nameVi: 'Document: Domestic', nameEn: 'Document: Domestic', pic: 'Vũ', descVi: 'Soạn thảo, trình duyệt Tờ trình/Kế hoạch trên Smart Office; thanh toán nội địa cho các sự kiện trong nước.', descEn: 'Draft/approve proposals on Smart Office; domestic payments for local events.' },
+      { nameVi: 'HR & Internal Affairs', nameEn: 'HR & Internal Affairs', pic: 'Nguyễn Quỳnh Trâm', descVi: 'Quản lý hợp đồng, database thành viên (Cơ hữu, Thỉnh giảng, Cố vấn); thanh quyết toán Event Series; quản lý email ISCM & thông báo.', descEn: 'Manage contracts, member database (Full-time, Adjunct, Advisor); settle Event Series payments; manage email & announcements.' },
+      { nameVi: 'Facility B (Cơ sở B)', nameEn: 'Facility B', pic: 'Nguyễn Hoàng Phúc', descVi: 'Giám sát an toàn, thiết bị và tối ưu hóa việc sử dụng hai StudioLab cho sinh viên và nhà nghiên cứu.', descEn: 'Supervise safety, equipment and optimize StudioLab usage for students and researchers.' },
+      { nameVi: 'Facility V (Cơ sở V)', nameEn: 'Facility V', pic: 'Lê Phan Trường An', descVi: 'Trực tiếp quản lý vận hành tại V; kiểm kê, cấp phát và bảo trì toàn bộ thiết bị.', descEn: 'Directly manage operations at V; inventory, allocate and maintain all equipment.' },
+      { nameVi: 'All Equipment (Thiết bị)', nameEn: 'All Equipment', pic: 'Thái Anh Vũ', descVi: 'Trực tiếp quản lý vận hành, kiểm kê, cấp phát và bảo trì toàn bộ thiết bị trong các dự án.', descEn: 'Directly manage operations, inventory, allocation and maintenance of all project equipment.' },
+      { nameVi: 'Document: International', nameEn: 'Document: International', pic: 'Lê Phan Trường An', descVi: 'Soạn thảo, trình duyệt Tờ trình/Kế hoạch trên Smart Office; thanh toán quốc tế; booking phòng/xe/khách sạn; cấp điểm rèn luyện.', descEn: 'Draft/approve proposals on Smart Office; international payments; book room/car/hotel; student training points.' },
+      { nameVi: 'Document: Domestic', nameEn: 'Document: Domestic', pic: 'Thái Anh Vũ', descVi: 'Soạn thảo, trình duyệt Tờ trình/Kế hoạch trên Smart Office; thanh toán nội địa cho các sự kiện trong nước.', descEn: 'Draft/approve proposals on Smart Office; domestic payments for local events.' },
       { nameVi: 'Booklist', nameEn: 'Booklist', pic: 'O&F Team', descVi: 'Vận hành hệ thống sách vật lý & sách điện tử; phối hợp biên tập, trình bày ấn phẩm sách, tạp chí.', descEn: 'Operate physical and digital book system; coordinate editing and presentation of publications.' }
     ],
     members: [
-      { roleVi: 'Head (Trưởng bộ phận)', name: 'Mai' },
-      { roleVi: 'HR & Internal Affairs', name: 'Trâm' },
-      { roleVi: 'Facility B (Cơ sở B)', name: 'Phúc' },
-      { roleVi: 'Facility V (Cơ sở V)', name: 'An' },
-      { roleVi: 'All Equipment (Thiết bị)', name: 'Vũ' },
-      { roleVi: 'Document International', name: 'An' },
-      { roleVi: 'Document Domestic', name: 'Vũ' }
+      { roleVi: 'Head (Trưởng bộ phận)', name: 'Trần Thị Quỳnh Mai' },
+      { roleVi: 'HR & Internal Affairs', name: 'Nguyễn Quỳnh Trâm' },
+      { roleVi: 'Facility B (Cơ sở B)', name: 'Nguyễn Hoàng Phúc' },
+      { roleVi: 'Facility V (Cơ sở V)', name: 'Lê Phan Trường An' },
+      { roleVi: 'All Equipment (Thiết bị)', name: 'Thái Anh Vũ' },
+      { roleVi: 'Document International', name: 'Lê Phan Trường An' },
+      { roleVi: 'Document Domestic', name: 'Thái Anh Vũ' }
     ]
   },
   {
@@ -57,32 +59,32 @@ const DEPARTMENTS = [
     nameEn: 'Academia',
     roleVi: 'Trưởng bộ phận (Head)',
     roleEn: 'Head of Department',
-    pic: 'Lan',
+    pic: 'Hoàng Ngọc Lan',
     icon: GraduationCap,
     color: 'border-blue-600 bg-blue-50 text-blue-800',
     descVi: 'Bảo đảm chất lượng và đổi mới trong giảng dạy, đào tạo, và phát triển năng lực toàn cầu cho sinh viên; thiết kế chương trình dài hạn và ngắn hạn.',
     descEn: 'Ensure quality and innovation in teaching, training, and global capacity development for students; design long and short-term programs.',
     subgroups: [
-      { nameVi: 'Head & Academic Affairs', nameEn: 'Head & Academic Affairs', pic: 'Lan', descVi: 'Quản lý phân công giảng dạy, đề xuất tuyển dụng giảng viên và giám sát triển khai kế hoạch năm (chuẩn ASIIN).', descEn: 'Manage teaching assignments, propose lecturer recruitment and monitor annual plan (ASIIN standard).' },
-      { nameVi: 'Admission & Outreach', nameEn: 'Admission & Outreach', pic: 'Mai', descVi: 'Xây dựng và điều phối kế hoạch tuyển sinh toàn bộ chương trình Đại học và Thạc sĩ; quản lý nhập học.', descEn: 'Build and coordinate admission plan for all Bachelor and Master programs; manage enrollment.' },
-      { nameVi: 'Non-Degree Coordinator', nameEn: 'Non-Degree Coordinator', pic: 'Hải', descVi: 'Thiết kế Syllabus, xây dựng nội dung khóa học ngắn hạn và tuyển chọn giảng viên chuyên gia.', descEn: 'Design Syllabus, construct short-course content and recruit expert lecturers.' },
-      { nameVi: 'Academic Programs (Giám đốc CTĐT)', nameEn: 'Academic Programs (Directors)', pic: 'Lan / Hoài', descVi: 'Đầu mối phụ trách thiết kế triết lý, syllabus, quy chuẩn kỹ thuật và giám sát chất lượng đồ án sinh viên.', descEn: 'Responsible for designing philosophy, syllabus, technical standards and monitoring student project quality.', isProgramBranch: true }
+      { nameVi: 'Head & Academic Affairs', nameEn: 'Head & Academic Affairs', pic: 'Hoàng Ngọc Lan', descVi: 'Quản lý phân công giảng dạy, đề xuất tuyển dụng giảng viên và giám sát triển khai kế hoạch năm (chuẩn ASIIN).', descEn: 'Manage teaching assignments, propose lecturer recruitment and monitor annual plan (ASIIN standard).' },
+      { nameVi: 'Admission & Outreach', nameEn: 'Admission & Outreach', pic: 'Trần Thị Quỳnh Mai', descVi: 'Xây dựng và điều phối kế hoạch tuyển sinh toàn bộ chương trình Đại học và Thạc sĩ; quản lý nhập học.', descEn: 'Build and coordinate admission plan for all Bachelor and Master programs; manage enrollment.' },
+      { nameVi: 'Non-Degree Coordinator', nameEn: 'Non-Degree Coordinator', pic: 'Hoàng Lê Nam Hải', descVi: 'Thiết kế Syllabus, xây dựng nội dung khóa học ngắn hạn và tuyển chọn giảng viên chuyên gia.', descEn: 'Design Syllabus, construct short-course content and recruit expert lecturers.' },
+      { nameVi: 'Academic Programs (Giám đốc CTĐT)', nameEn: 'Academic Programs (Directors)', pic: 'Hoàng Ngọc Lan / Phạm Nguyễn Hoài', descVi: 'Đầu mối phụ trách thiết kế triết lý, syllabus, quy chuẩn kỹ thuật và giám sát chất lượng đồ án sinh viên.', descEn: 'Responsible for designing philosophy, syllabus, technical standards and monitoring student project quality.', isProgramBranch: true }
     ],
     programDirectors: [
-      { name: 'BAUD.d (Quy hoạch)', pic: 'Mai' },
-      { name: 'BAUD.a (Thiết kế)', pic: 'Hiển' },
-      { name: 'BMOM (Smart Mobility)', pic: 'Hoài' },
-      { name: 'SCIM (Data Science)', pic: 'Lan' },
+      { name: 'BAUD.d (Quy hoạch)', pic: 'Trần Thị Quỳnh Mai' },
+      { name: 'BAUD.a (Thiết kế)', pic: 'Đặng Thế Hiển' },
+      { name: 'BMOM (Smart Mobility)', pic: 'Phạm Nguyễn Hoài' },
+      { name: 'SCIM (Data Science)', pic: 'Hoàng Ngọc Lan' },
       { name: 'Event Coordinator', pic: 'Host' },
-      { name: 'Glocal Design Theory', pic: 'Mai' },
-      { name: 'Smart City Innovation', pic: 'Tâm' },
-      { name: 'Glocal StudioLab', pic: 'Hiển' },
-      { name: 'Engineering Systems', pic: 'Hoài' }
+      { name: 'Glocal Design Theory', pic: 'Trần Thị Quỳnh Mai' },
+      { name: 'Smart City Innovation', pic: 'Đỗ Lê Phúc Tâm' },
+      { name: 'Glocal StudioLab', pic: 'Đặng Thế Hiển' },
+      { name: 'Engineering Systems', pic: 'Phạm Nguyễn Hoài' }
     ],
     members: [
-      { roleVi: 'Head & Academic Affairs', name: 'Lan' },
-      { roleVi: 'Admission & Outreach', name: 'Mai' },
-      { roleVi: 'Non-Degree Coordinator', name: 'Hải' }
+      { roleVi: 'Head & Academic Affairs', name: 'Hoàng Ngọc Lan' },
+      { roleVi: 'Admission & Outreach', name: 'Trần Thị Quỳnh Mai' },
+      { roleVi: 'Non-Degree Coordinator', name: 'Hoàng Lê Nam Hải' }
     ]
   },
   {
@@ -91,31 +93,31 @@ const DEPARTMENTS = [
     nameEn: 'Research',
     roleVi: 'Trưởng bộ phận (Head)',
     roleEn: 'Head of Department',
-    pic: 'Hoài',
+    pic: 'Phạm Nguyễn Hoài',
     icon: FlaskConical,
     color: 'border-amber-600 bg-amber-50 text-amber-800',
     descVi: 'Thúc đẩy tri thức học thuật và chuyển giao giải pháp đô thị bền vững; hoạch định lộ trình nghiên cứu quốc tế, quản trị hệ thống ấn phẩm.',
     descEn: 'Promote academic knowledge and transfer sustainable urban solutions; plan international research roadmap, manage publications system.',
     subgroups: [
-      { nameVi: 'Seminar', nameEn: 'Seminar Series', pic: 'Quang', descVi: 'Tổ chức và điều phối chuỗi hội thảo khoa học nội bộ để trao đổi tri thức; tập huấn kỹ thuật viết bài, phương pháp luận.', descEn: 'Organize and coordinate internal scientific seminars; train in article writing and methodologies.' },
-      { nameVi: 'Research Progress & Publication', nameEn: 'Research Progress & Publication', pic: 'Hoài / Quang', descVi: 'Theo dõi tiến độ đề tài; điều hành hệ thống lưu trữ bài báo; thống kê KPIs/OKRs học thuật.', descEn: 'Track project progress; run article storage system; compile academic KPIs/OKRs.' },
-      { nameVi: 'Fund Raising', nameEn: 'Fund Raising', pic: 'Quang', descVi: 'Xây dựng Danh mục Quỹ (Fund Mapping); đánh giá khả năng trúng thầu; điều phối viết hồ sơ xin quỹ.', descEn: 'Build Fund Mapping directory; evaluate bidding feasibility; coordinate application writing.' },
-      { nameVi: 'Research Units & Labs', nameEn: 'Research Units & Labs', pic: 'Hoài / Tâm', descVi: 'Dẫn dắt các nhóm nghiên cứu, Centers và Labs tập trung vào các hướng mũi nhọn.', descEn: 'Lead research units, centers and labs focused on specialized academic streams.', isResearchBranch: true }
+      { nameVi: 'Seminar', nameEn: 'Seminar Series', pic: 'Vương Trần Quang', descVi: 'Tổ chức và điều phối chuỗi hội thảo khoa học nội bộ để trao đổi tri thức; tập huấn kỹ thuật viết bài, phương pháp luận.', descEn: 'Organize and coordinate internal scientific seminars; train in article writing and methodologies.' },
+      { nameVi: 'Research Progress & Publication', nameEn: 'Research Progress & Publication', pic: 'Phạm Nguyễn Hoài / Vương Trần Quang', descVi: 'Theo dõi tiến độ đề tài; điều hành hệ thống lưu trữ bài báo; thống kê KPIs/OKRs học thuật.', descEn: 'Track project progress; run article storage system; compile academic KPIs/OKRs.' },
+      { nameVi: 'Fund Raising', nameEn: 'Fund Raising', pic: 'Vương Trần Quang', descVi: 'Xây dựng Danh mục Quỹ (Fund Mapping); đánh giá khả năng trúng thầu; điều phối viết hồ sơ xin quỹ.', descEn: 'Build Fund Mapping directory; evaluate bidding feasibility; coordinate application writing.' },
+      { nameVi: 'Research Units & Labs', nameEn: 'Research Units & Labs', pic: 'Phạm Nguyễn Hoài / Đỗ Lê Phúc Tâm', descVi: 'Dẫn dắt các nhóm nghiên cứu, Centers và Labs tập trung vào các hướng mũi nhọn.', descEn: 'Lead research units, centers and labs focused on specialized academic streams.', isResearchBranch: true }
     ],
     researchUnits: [
-      { name: 'Move System - IRL', pic: 'Hoài' },
-      { name: 'Smart City - RL', pic: 'Tâm' },
-      { name: 'Data Driven & UD', pic: 'Chi' },
-      { name: 'New Economy - PL', pic: 'Hoài' },
-      { name: 'Governance & Planning', pic: 'Mai' },
-      { name: 'Public Space Lab', pic: 'Dani' },
-      { name: 'Net Zero Open - PL', pic: 'Sandhya' },
-      { name: 'Immersive Tech (TIL)', pic: 'Tâm' }
+      { name: 'Move System - IRL', pic: 'Phạm Nguyễn Hoài' },
+      { name: 'Smart City - RL', pic: 'Đỗ Lê Phúc Tâm' },
+      { name: 'Data Driven & UD', pic: 'Võ Dao Chi' },
+      { name: 'New Economy - PL', pic: 'Phạm Nguyễn Hoài' },
+      { name: 'Governance & Planning', pic: 'Trần Thị Quỳnh Mai' },
+      { name: 'Public Space Lab', pic: 'Daniela Hurtarte' },
+      { name: 'Net Zero Open - PL', pic: 'Sandhya Rao' },
+      { name: 'Immersive Tech (TIL)', pic: 'Đỗ Lê Phúc Tâm' }
     ],
     members: [
-      { roleVi: 'Head (Trưởng bộ phận)', name: 'Hoài' },
-      { roleVi: 'Seminar Coordinator', name: 'Quang' },
-      { roleVi: 'Research Progress & Pubs', name: 'Hoài / Quang' }
+      { roleVi: 'Head (Trưởng bộ phận)', name: 'Phạm Nguyễn Hoài' },
+      { roleVi: 'Seminar Coordinator', name: 'Vương Trần Quang' },
+      { roleVi: 'Research Progress & Pubs', name: 'Phạm Nguyễn Hoài / Vương Trần Quang' }
     ]
   },
   {
@@ -124,22 +126,22 @@ const DEPARTMENTS = [
     nameEn: 'Community Engagement',
     roleVi: 'Trưởng bộ phận (Head)',
     roleEn: 'Head of Department',
-    pic: 'Khang',
+    pic: 'Huỳnh Văn Khang',
     icon: UsersRound,
     color: 'border-purple-600 bg-purple-50 text-purple-800',
     descVi: 'Hạt nhân kết nối hệ sinh thái ISCM qua tinh thần đồng sáng tạo (Co-creation) của sinh viên, cựu sinh viên, nghệ sĩ và doanh nghiệp.',
     descEn: 'Core connector of ISCM ecosystem through co-creation spirit of students, alumni, artists, and enterprises.',
     subgroups: [
-      { nameVi: 'ISCM Club', nameEn: 'ISCM Club', pic: 'Khang', descVi: 'Trực tiếp điều phối, định hướng hoạt động Câu lạc bộ sinh viên; tổ chức sân chơi phát triển kỹ năng sáng tạo.', descEn: 'Directly coordinate and orient Student Club activities; organize creative skill playgrounds.' },
-      { nameVi: 'RED Series', nameEn: 'RED Series', pic: 'Khang', descVi: 'Lên kế hoạch và tổ chức chuỗi sự kiện RED (Read - Engagement - Design), kết nối học thuật với cộng đồng.', descEn: 'Plan and organize RED (Read - Engagement - Design) series, bridging academia and community.' },
-      { nameVi: 'Curator & Student Product', nameEn: 'Curator & Student Product', pic: 'Khang / Tài', descVi: 'Chỉ đạo tuyển chọn sản phẩm xuất sắc; điều phối lưu trữ đồ án sinh viên phục vụ triển lãm.', descEn: 'Direct selection of student products; coordinate archive of student works for exhibitions.' },
-      { nameVi: 'Alumni Network', nameEn: 'Alumni Network', pic: 'Hoài', descVi: 'Duy trì database cựu sinh viên; huy động tham gia cố vấn (Mentoring) và giới thiệu cơ hội việc làm.', descEn: 'Maintain alumni database; mobilize mentoring participation and job opportunity referrals.' }
+      { nameVi: 'ISCM Club', nameEn: 'ISCM Club', pic: 'Huỳnh Văn Khang', descVi: 'Trực tiếp điều phối, định hướng hoạt động Câu lạc bộ sinh viên; tổ chức sân chơi phát triển kỹ năng sáng tạo.', descEn: 'Directly coordinate and orient Student Club activities; organize creative skill playgrounds.' },
+      { nameVi: 'RED Series', nameEn: 'RED Series', pic: 'Huỳnh Văn Khang', descVi: 'Lên kế hoạch và tổ chức chuỗi sự kiện RED (Read - Engagement - Design), kết nối học thuật với cộng đồng.', descEn: 'Plan and organize RED (Read - Engagement - Design) series, bridging academia and community.' },
+      { nameVi: 'Curator & Student Product', nameEn: 'Curator & Student Product', pic: 'Huỳnh Văn Khang / Trần Vĩnh Tài', descVi: 'Chỉ đạo tuyển chọn sản phẩm xuất sắc; điều phối lưu trữ đồ án sinh viên phục vụ triển lãm.', descEn: 'Direct selection of student products; coordinate archive of student works for exhibitions.' },
+      { nameVi: 'Alumni Network', nameEn: 'Alumni Network', pic: 'Phạm Nguyễn Hoài', descVi: 'Duy trì database cựu sinh viên; huy động tham gia cố vấn (Mentoring) và giới thiệu cơ hội việc làm.', descEn: 'Maintain alumni database; mobilize mentoring participation and job opportunity referrals.' }
     ],
     members: [
-      { roleVi: 'Head & ISCM Club / RED', name: 'Khang' },
-      { roleVi: 'Curator', name: 'Khang' },
-      { roleVi: 'Student Product', name: 'Tài' },
-      { roleVi: 'Alumni Network', name: 'Hoài' }
+      { roleVi: 'Head & ISCM Club / RED', name: 'Huỳnh Văn Khang' },
+      { roleVi: 'Curator', name: 'Huỳnh Văn Khang' },
+      { roleVi: 'Student Product', name: 'Trần Vĩnh Tài' },
+      { roleVi: 'Alumni Network', name: 'Phạm Nguyễn Hoài' }
     ]
   },
   {
@@ -148,41 +150,41 @@ const DEPARTMENTS = [
     nameEn: 'PR & Communication',
     roleVi: 'Trưởng bộ phận (Head)',
     roleEn: 'Head of Department',
-    pic: 'Tiên',
+    pic: 'Lê Thị Thủy Tiên',
     icon: Megaphone,
     color: 'border-indigo-600 bg-indigo-50 text-indigo-800',
     descVi: 'Quản trị thương hiệu và lan tỏa ảnh hưởng tri thức toàn cầu của Viện; quản lý báo chí, thiết kế ấn phẩm và mạng xã hội.',
     descEn: 'Brand management and global dissemination of the Institute\'s academic influence; manage media relations, design publications and social networks.',
     subgroups: [
-      { nameVi: 'Branding & Media Relations', nameEn: 'Branding & Media Relations', pic: 'Tiên', descVi: 'Thực thi chiến lược định vị thương hiệu; quảng bá các dự án hợp tác; quản trị khủng hoảng thông tin.', descEn: 'Implement brand positioning strategy; promote collaborative projects; manage information risks.' },
-      { nameVi: 'Content & Social Media', nameEn: 'Content & Social Media', pic: 'Dung / Nguyên', descVi: 'Xây dựng nội dung sáng tạo cho các chiến dịch tuyển sinh, event; quản trị trực tiếp các trang mạng xã hội.', descEn: 'Create content for enrollment campaigns and events; directly manage social media channels.' },
-      { nameVi: 'IT Digital & Web', nameEn: 'IT Digital & Web', pic: 'Tiên', descVi: 'Thiết kế giao diện (UI/UX) và quản trị vận hành Website ISCM; quản lý kho dữ liệu số (hình ảnh, video).', descEn: 'Design UI/UX and operate the ISCM Website; manage digital media library (photos, videos).' },
+      { nameVi: 'Branding & Media Relations', nameEn: 'Branding & Media Relations', pic: 'Lê Thị Thủy Tiên', descVi: 'Thực thi chiến lược định vị thương hiệu; quảng bá các dự án hợp tác; quản trị khủng hoảng thông tin.', descEn: 'Implement brand positioning strategy; promote collaborative projects; manage information risks.' },
+      { nameVi: 'Content & Social Media', nameEn: 'Content & Social Media', pic: 'Phạm Võ Hồng Dung / Bùi Thảo Nguyên', descVi: 'Xây dựng nội dung sáng tạo cho các chiến dịch tuyển sinh, event; quản trị trực tiếp các trang mạng xã hội.', descEn: 'Create content for enrollment campaigns and events; directly manage social media channels.' },
+      { nameVi: 'IT Digital & Web', nameEn: 'IT Digital & Web', pic: 'Lê Thị Thủy Tiên', descVi: 'Thiết kế giao diện (UI/UX) và quản trị vận hành Website ISCM; quản lý kho dữ liệu số (hình ảnh, video).', descEn: 'Design UI/UX and operate the ISCM Website; manage digital media library (photos, videos).' },
       { nameVi: 'Design Team', nameEn: 'Design Team', pic: 'Design Team', descVi: 'Thiết kế trọn gói bộ nhận diện sự kiện (Key visual, Backdrop, Standee, Brochure, Office Kit).', descEn: 'Provide end-to-end event branding designs (Key visual, Backdrop, Standee, Brochure, Office Kit).' }
     ],
     members: [
-      { roleVi: 'Head (Trưởng bộ phận)', name: 'Tiên' },
-      { roleVi: 'Content & Social Media', name: 'Hồng Dung / Nguyên' },
-      { roleVi: 'IT Digital', name: 'Tiên' }
+      { roleVi: 'Head (Trưởng bộ phận)', name: 'Lê Thị Thủy Tiên' },
+      { roleVi: 'Content & Social Media', name: 'Phạm Võ Hồng Dung / Bùi Thảo Nguyên' },
+      { roleVi: 'IT Digital', name: 'Lê Thị Thủy Tiên' }
     ]
   },
   {
     id: 'partnership',
     nameVi: 'Partnership (Đối tác chiến lược)',
     nameEn: 'Partnership',
-    roleVi: 'Phụ trách (P.I.C)',
-    roleEn: 'P.I.C',
-    pic: 'Huyền',
+    roleVi: 'Trưởng bộ phận (Head)',
+    roleEn: 'Head of Department',
+    pic: 'Lại Phương Dung',
     icon: Handshake,
     color: 'border-cyan-600 bg-cyan-50 text-cyan-800',
     descVi: 'Xây dựng mối quan hệ đa tầng (Chính quyền - Doanh nghiệp - Nhà trường) và huy động tài trợ, học bổng cho ISCM.',
     descEn: 'Build multi-tier relations (Triple Helix: Government - Industry - Academia) and mobilize sponsorships/scholarships.',
     subgroups: [
-      { nameVi: 'Triple Helix Net', nameEn: 'Triple Helix Net', pic: 'Huyền', descVi: 'Kết nối Doanh nghiệp, Trường Đại học và Cơ quan Nhà nước phục vụ hoạt động đào tạo, nghiên cứu của Viện.', descEn: 'Connect Industry, Academia and Government for training and research activities.' },
-      { nameVi: 'Resource Mobilization', nameEn: 'Resource Mobilization', pic: 'Huyền', descVi: 'Huy động tài trợ, học bổng, thiết bị và chuẩn bị hồ sơ ký kết MOU/MOA.', descEn: 'Mobilize sponsorships, scholarships and equipment; prepare MOU/MOA agreements.' }
+      { nameVi: 'Triple Helix Net', nameEn: 'Triple Helix Net', pic: 'Lại Phương Dung', descVi: 'Kết nối Doanh nghiệp, Trường Đại học và Cơ quan Nhà nước phục vụ hoạt động đào tạo, nghiên cứu của Viện.', descEn: 'Connect Industry, Academia and Government for training and research activities.' },
+      { nameVi: 'Resource Mobilization', nameEn: 'Resource Mobilization', pic: 'Lại Phương Dung', descVi: 'Huy động tài trợ, học bổng, thiết bị và chuẩn bị hồ sơ ký kết MOU/MOA.', descEn: 'Mobilize sponsorships, scholarships and equipment; prepare MOU/MOA agreements.' }
     ],
     members: [
-      { roleVi: 'Partnership Coordinator', name: 'Huyền' },
-      { roleVi: 'Student Mentors/Crew', name: 'Phúc' }
+      { roleVi: 'Head (Trưởng bộ phận)', name: 'Lại Phương Dung' },
+      { roleVi: 'G-B-A Network (Academia · Industry · Authority)', name: 'Lại Phương Dung' }
     ]
   },
   {
@@ -199,18 +201,18 @@ const DEPARTMENTS = [
     subgroups: [
       { nameVi: 'Digital & Data Governance', nameEn: 'Digital & Data Governance', pic: 'Christopher Han / Lương', descVi: 'Vận hành Smart Data Platform; xây dựng Dashboard thông minh; thúc đẩy thương mại hóa tài sản trí tuệ (IP) và spin-off.', descEn: 'Operate Smart Data Platform; build intelligent dashboards; promote IP commercialization and spin-offs.' },
       { nameVi: 'UEH Green Office', nameEn: 'UEH Green Office', pic: 'Hạnh An / Thu', descVi: 'Thực hiện Chương trình Net Zero Campus, quản lý các Living Labs và lập báo cáo xếp hạng UI GreenMetric.', descEn: 'Implement Net Zero Campus Program, manage Living Labs and prepare UI GreenMetric reports.' },
-      { nameVi: 'Co-creation & Operations', nameEn: 'Co-creation & Operations', pic: 'Trâm', descVi: 'Đầu mối điều phối hành chính - tài chính liên kết; mở rộng mạng lưới Social Impact Network và Creative Hub.', descEn: 'Administrative-finance coordination link; expand Social Impact Network and Creative Hub.' },
-      { nameVi: 'Sub-projects (Living Labs)', nameEn: 'Sub-projects (Living Labs)', pic: 'Tâm / Hiển', descVi: 'smART-Hub (Hiển), Mekong (Mai), Nexus (Tâm). Điều phối tiến độ, thi công và vận hành.', descEn: 'smART-Hub (Hiển), Mekong (Mai), Nexus (Tâm). Coordinate progress, construction and operations.', isColabBranch: true }
+      { nameVi: 'Co-creation & Operations', nameEn: 'Co-creation & Operations', pic: 'Nguyễn Quỳnh Trâm', descVi: 'Đầu mối điều phối hành chính - tài chính liên kết; mở rộng mạng lưới Social Impact Network và Creative Hub.', descEn: 'Administrative-finance coordination link; expand Social Impact Network and Creative Hub.' },
+      { nameVi: 'Sub-projects (Living Labs)', nameEn: 'Sub-projects (Living Labs)', pic: 'Đỗ Lê Phúc Tâm / Đặng Thế Hiển', descVi: 'smART-Hub (Đặng Thế Hiển), Mekong (Trần Thị Quỳnh Mai), Nexus (Đỗ Lê Phúc Tâm). Điều phối tiến độ, thi công và vận hành.', descEn: 'smART-Hub (Dang The Hien), Mekong (Tran Thi Quynh Mai), Nexus (Do Le Phuc Tam). Coordinate progress, construction and operations.', isColabBranch: true }
     ],
     colabProjects: [
-      { name: 'smART-Hub (Living Lab)', pic: 'Hiển' },
-      { name: 'MeKong (Living Lab)', pic: 'Mai' },
-      { name: 'Nexus (Living Lab)', pic: 'Tâm' }
+      { name: 'smART-Hub (Living Lab)', pic: 'Đặng Thế Hiển' },
+      { name: 'MeKong (Living Lab)', pic: 'Trần Thị Quỳnh Mai' },
+      { name: 'Nexus (Living Lab)', pic: 'Đỗ Lê Phúc Tâm' }
     ],
     members: [
       { roleVi: 'Director of CoLab', name: 'Christopher Han' },
       { roleVi: 'UEH Green Office Lead', name: 'Hạnh An' },
-      { roleVi: 'Co-creation Coordinator', name: 'Trâm' }
+      { roleVi: 'Co-creation Coordinator', name: 'Nguyễn Quỳnh Trâm' }
     ]
   },
   {
@@ -219,21 +221,21 @@ const DEPARTMENTS = [
     nameEn: 'Tech Convergence Hub',
     roleVi: 'Điều phối viên (Coordinator)',
     roleEn: 'Coordinator',
-    pic: 'Tâm',
+    pic: 'Đỗ Lê Phúc Tâm',
     icon: Cpu,
     color: 'border-violet-600 bg-violet-50 text-violet-800',
     descVi: 'Hội tụ công nghệ liên ngành, quản lý sở hữu trí tuệ, ươm tạo và chuyển giao sản phẩm công nghệ (Tech Transfer).',
     descEn: 'Converge interdisciplinary tech, manage IP portfolio, incubate prototypes and conduct tech transfer processes.',
     subgroups: [
-      { nameVi: 'Tech Integration', nameEn: 'Tech Integration', pic: 'Tâm', descVi: 'Đảm bảo tính hội tụ công nghệ trong các dự án liên ngành; lập kế hoạch phát triển hệ sinh thái Hub.', descEn: 'Ensure tech convergence in interdisciplinary projects; plan Hub ecosystem development.' },
+      { nameVi: 'Tech Integration', nameEn: 'Tech Integration', pic: 'Đỗ Lê Phúc Tâm', descVi: 'Đảm bảo tính hội tụ công nghệ trong các dự án liên ngành; lập kế hoạch phát triển hệ sinh thái Hub.', descEn: 'Ensure tech convergence in interdisciplinary projects; plan Hub ecosystem development.' },
       { nameVi: 'Operation & Quality Control', nameEn: 'Operation & Quality Control', pic: 'Cường', descVi: 'Quản lý các hoạt động đào tạo, nghiên cứu dùng chung; quản lý sở hữu trí tuệ và pháp lý.', descEn: 'Manage shared training/research activities; manage intellectual property and compliance.' },
-      { nameVi: 'Events & Equipment', nameEn: 'Events & Equipment', pic: 'ISC / Tài', descVi: 'Tổ chức các buổi triển lãm Showcase; điều phối Workshop; quản lý hệ thống thiết bị dùng chung.', descEn: 'Organize Showcase exhibitions; coordinate Workshops; manage shared high-tech equipment.' }
+      { nameVi: 'Events & Equipment', nameEn: 'Events & Equipment', pic: 'ISC / Trần Vĩnh Tài', descVi: 'Tổ chức các buổi triển lãm Showcase; điều phối Workshop; quản lý hệ thống thiết bị dùng chung.', descEn: 'Organize Showcase exhibitions; coordinate Workshops; manage shared high-tech equipment.' }
     ],
     members: [
-      { roleVi: 'Coordinator', name: 'Tâm' },
+      { roleVi: 'Coordinator', name: 'Đỗ Lê Phúc Tâm' },
       { roleVi: 'Operation Manager', name: 'Cường' },
       { roleVi: 'Events & Showcase', name: 'ISC' },
-      { roleVi: 'Equipment Manager', name: 'Tài' }
+      { roleVi: 'Equipment Manager', name: 'Trần Vĩnh Tài' }
     ]
   },
   {
@@ -249,13 +251,13 @@ const DEPARTMENTS = [
     descEn: 'Experimental workspace, prototyping (3D print, laser cut, CNC...) for academic learning, research, and corporate R&D services.',
     subgroups: [
       { nameVi: 'Management & Safety', nameEn: 'Management & Safety', pic: 'Manager', descVi: 'Thiết lập quy trình vận hành; đảm bảo các tiêu chuẩn an toàn (Safety Protocols) tại Campus B.', descEn: 'Establish operational processes; ensure safety protocols at Campus B.' },
-      { nameVi: 'R&D & Production', nameEn: 'R&D & Production', pic: 'Phúc / Zioo', descVi: 'Gia công nguyên mẫu (Prototype), mô hình kiến trúc/đô thị theo đơn hàng; quản lý vật tư tiêu hao.', descEn: 'Fabricate prototypes, architectural models per order; manage consumables.' },
-      { nameVi: 'PR & Engagement', nameEn: 'PR & Engagement', pic: 'Tiên / Thảo Nguyên', descVi: 'Quảng bá các câu chuyện "Maker"; tổ chức các cuộc thi thiết kế; vận hành nhóm sinh viên MS Interns.', descEn: 'Promote Maker stories; organize design competitions; run MS Interns team.' }
+      { nameVi: 'R&D & Production', nameEn: 'R&D & Production', pic: 'Nguyễn Hoàng Phúc / Zioo', descVi: 'Gia công nguyên mẫu (Prototype), mô hình kiến trúc/đô thị theo đơn hàng; quản lý vật tư tiêu hao.', descEn: 'Fabricate prototypes, architectural models per order; manage consumables.' },
+      { nameVi: 'PR & Engagement', nameEn: 'PR & Engagement', pic: 'Lê Thị Thủy Tiên / Bùi Thảo Nguyên', descVi: 'Quảng bá các câu chuyện "Maker"; tổ chức các cuộc thi thiết kế; vận hành nhóm sinh viên MS Interns.', descEn: 'Promote Maker stories; organize design competitions; run MS Interns team.' }
     ],
     members: [
       { roleVi: 'Admin Coordinator', name: 'Zioo' },
-      { roleVi: 'Operation & Product', name: 'Phúc' },
-      { roleVi: 'PR & Communication', name: 'Tiên / Thảo Nguyên' },
+      { roleVi: 'Operation & Product', name: 'Nguyễn Hoàng Phúc' },
+      { roleVi: 'PR & Communication', name: 'Lê Thị Thủy Tiên / Bùi Thảo Nguyên' },
       { roleVi: 'Partnership', name: 'Huyền' }
     ]
   }
@@ -266,11 +268,11 @@ const SIMULATED_USERS = [
   { id: 'u1', name: 'Assoc.Prof. Tu Anh Trinh, PhD', role: 'ROLE A: GOVERNANCE BOARD', title: 'Director', roleType: 'A', email: 'tuanh.trinh@ueh.edu.vn' },
   { id: 'u2', name: 'Hung Quoc Viet Nguyen, B.A', role: 'ROLE A: ARCHITECT', title: 'Smart City - Data Core Architect', roleType: 'A', email: 'hung.nvq@ueh.edu.vn' },
   // ROLE B
-  { id: 'u3', name: 'Mai Quynh Thi Tran, M.Arch', role: 'ROLE B: DATA STEWARD', title: 'Director of Bachelor Program - Dual Degree', roleType: 'B', email: 'mai.tran@ueh.edu.vn' },
+  { id: 'u3', name: 'Mai Quynh Thi Tran, M.Arch', role: 'ROLE B: DATA STEWARD', title: 'Vice Director · Director of Bachelor Program - Dual Degree', roleType: 'B', email: 'mai.tran@ueh.edu.vn' },
   { id: 'u4', name: 'Hien The Dang, M.Sc', role: 'ROLE B: DATA STEWARD', title: 'Director of Bachelor Program - Architect', roleType: 'B', email: 'hien.dang@ueh.edu.vn' },
   { id: 'u5', name: 'Hoai Nguyen Pham, PhD', role: 'ROLE B: DATA STEWARD', title: 'Director of Bachelor Program - Smart Mobility', roleType: 'B', email: 'hoai.pham@ueh.edu.vn' },
-  { id: 'u6', name: 'Dr. Arch, Lan Ngoc Hoang', role: 'ROLE B: DATA STEWARD', title: 'Head of Academia', roleType: 'B', email: 'lan.hoang@ueh.edu.vn' },
-  { id: 'u7', name: 'Dr. Arch, Khang Van Huynh', role: 'ROLE B: DATA STEWARD', title: 'Head of Community Engagement', roleType: 'B', email: 'khang.huynh@ueh.edu.vn' },
+  { id: 'u6', name: 'Lan Ngoc Hoang, PhD', role: 'ROLE B: DATA STEWARD', title: 'Head of Academia', roleType: 'B', email: 'lan.hoang@ueh.edu.vn' },
+  { id: 'u7', name: 'Khang Van Huynh, PhD', role: 'ROLE B: DATA STEWARD', title: 'Head of Community Engagement', roleType: 'B', email: 'khang.huynh@ueh.edu.vn' },
   { id: 'u8', name: 'Dung Lai Phuong, M.A', role: 'ROLE B: DATA STEWARD', title: 'Head of Partnership', roleType: 'B', email: 'dung.lai@ueh.edu.vn' },
   { id: 'u9', name: 'Tien Thuy Thi Le, B.E', role: 'ROLE B: DATA STEWARD', title: 'Head of PR & Communication', roleType: 'B', email: 'tien.le@ueh.edu.vn' },
   // ROLE C
@@ -303,10 +305,132 @@ const SIMULATED_USERS = [
   { id: 'u35', name: 'Hoàng Trương Tiến Đạt', role: 'ROLE D: INTERN', title: 'Public Space Living Lab Intern', roleType: 'D', email: 'intern.tiendat@ueh.edu.vn' }
 ];
 
+/* Màu nhận diện theo nhóm thành viên (danh bạ đầy đủ: src/data/iscmMembers.js) */
+const MEMBER_GROUP_TONE = {
+  board: 'bg-[#990000] text-white',
+  program: 'bg-blue-700 text-white',
+  head: 'bg-emerald-700 text-white',
+  lecturer: 'bg-amber-600 text-white',
+  staff: 'bg-cyan-700 text-white',
+  intern: 'bg-neutral-500 text-white',
+};
+
+/** Tab "Thông tin thành viên ISCM" — danh bạ song ngữ dạng lưới, lọc theo
+ *  nhóm và đồng bộ với ô tìm kiếm chung của trang. */
+function MemberDirectorySection({ lang, searchTerm }) {
+  const [group, setGroup] = useState('all');
+
+  const query = searchTerm.trim().toLowerCase();
+  const filtered = useMemo(() => ISCM_MEMBERS.filter((m) => {
+    if (group !== 'all' && m.group !== group) return false;
+    if (!query) return true;
+    return [m.nameVi, m.nameEn, m.titleVi, m.titleEn, m.fieldVi, m.fieldEn, ...(m.duties ?? [])]
+      .some((f) => f && f.toLowerCase().includes(query));
+  }), [group, query]);
+
+  const staffCount = ISCM_MEMBERS.filter((m) => m.group !== 'intern').length;
+  const internCount = ISCM_MEMBERS.filter((m) => m.group === 'intern').length;
+
+  const renderCard = (m) => (
+    <div key={m.id} className="flex items-start gap-2.5 border border-neutral-200 bg-neutral-50 p-2.5 card-scale">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center font-barlow text-[11px] font-black ${MEMBER_GROUP_TONE[m.group]}`}>
+        {memberInitials(m.nameVi)}
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-bold leading-tight text-neutral-900">{lang === 'vi' ? m.nameVi : m.nameEn}</p>
+        <p className="text-[10px] font-semibold text-[#990000]">{lang === 'vi' ? m.titleVi : m.titleEn}</p>
+        {(lang === 'vi' ? m.fieldVi : m.fieldEn) && (
+          <p className="text-[10px] leading-snug text-neutral-500">{lang === 'vi' ? m.fieldVi : m.fieldEn}</p>
+        )}
+        {/* Chức vụ phụ trách vận hành (P.I.C) theo "Chức năng & Nhiệm vụ các bộ phận" */}
+        {m.duties?.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {m.duties.map((d) => (
+              <span key={d} className="border border-[#990000]/20 bg-white px-1 py-px text-[8px] font-bold uppercase tracking-wide text-[#990000]/80">
+                {d}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="rounded-none border border-neutral-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-neutral-100 pb-3">
+        <div>
+          <h2 className="font-barlow text-sm font-black uppercase tracking-wider text-neutral-900">
+            {lang === 'vi' ? 'Thông tin thành viên ISCM' : 'ISCM Member Information'}
+          </h2>
+          <p className="mt-1 text-[11px] text-neutral-500">
+            {lang === 'vi'
+              ? 'Danh bạ đầy đủ thành viên kèm chức danh học thuật và các chức vụ phụ trách (P.I.C) theo Chức năng & Nhiệm vụ các bộ phận 2026.'
+              : 'Complete member directory with academic titles and P.I.C operational duties per the 2026 Functions & Duties framework.'}
+          </p>
+        </div>
+        <span className="rounded-none border border-[#990000]/20 bg-[#990000]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#990000]">
+          {staffCount} {lang === 'vi' ? 'thành viên' : 'members'} · {internCount} {lang === 'vi' ? 'thực tập sinh' : 'interns'}
+        </span>
+      </div>
+
+      {/* Bộ lọc theo nhóm */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {MEMBER_GROUPS.map((g) => {
+          const count = g.key === 'all' ? ISCM_MEMBERS.length : ISCM_MEMBERS.filter((m) => m.group === g.key).length;
+          return (
+            <button
+              key={g.key}
+              onClick={() => setGroup(g.key)}
+              className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-all rounded-none ${
+                group === g.key
+                  ? 'bg-[#990000] text-white border-[#990000]'
+                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
+              }`}
+            >
+              {lang === 'vi' ? g.labelVi : g.labelEn} <span className="opacity-60">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Lưới thành viên — khi xem "Tất cả" thì chia theo nhóm cho dễ quét */}
+      {group === 'all' && !query ? (
+        <div className="mt-4 space-y-4">
+          {MEMBER_GROUPS.filter((g) => g.key !== 'all').map((g) => {
+            const members = filtered.filter((m) => m.group === g.key);
+            if (members.length === 0) return null;
+            return (
+              <div key={g.key}>
+                <p className="mb-1.5 flex items-center gap-1.5 font-barlow text-[10px] font-black uppercase tracking-[0.15em] text-neutral-400">
+                  <span className={`inline-block h-2 w-2 ${MEMBER_GROUP_TONE[g.key]}`} />
+                  {lang === 'vi' ? g.labelVi : g.labelEn}
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {members.map(renderCard)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(renderCard)}
+          {filtered.length === 0 && (
+            <p className="col-span-full py-6 text-center text-xs text-neutral-400">
+              {lang === 'vi' ? 'Không tìm thấy thành viên phù hợp.' : 'No matching members found.'}
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function ISCMOrganizationalChart({ lang = 'vi' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState(null);
-  const [viewMode, setViewMode] = useState('chart'); // 'chart' or 'matrix' or 'directory'
+  const [viewMode, setViewMode] = useState('members'); // 'members' | 'chart' | 'matrix'
   const [hoveredPic, setHoveredPic] = useState(null);
   const [selectedPic, setSelectedPic] = useState(null);
 
@@ -428,8 +552,17 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
           )}
         </div>
 
-        {/* View Mode Toggle */}
+        {/* View Mode Toggle — 3 mục: Thành viên · Sơ đồ cây · Ma trận */}
         <div className="flex border border-neutral-200 p-0.5 bg-neutral-100 rounded-none font-barlow text-xs font-bold uppercase tracking-wider">
+          <button
+            onClick={() => setViewMode('members')}
+            className={`py-1.5 px-3 transition-colors flex items-center gap-1.5 rounded-none ${
+              viewMode === 'members' ? 'bg-white text-[#990000] shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <UsersRound className="h-3.5 w-3.5" />
+            {lang === 'vi' ? 'Thông tin thành viên' : 'Member Information'}
+          </button>
           <button
             onClick={() => setViewMode('chart')}
             className={`py-1.5 px-3 transition-colors flex items-center gap-1.5 rounded-none ${
@@ -448,24 +581,16 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
             <Activity className="h-3.5 w-3.5" />
             {lang === 'vi' ? 'Ma trận' : 'Matrix'}
           </button>
-          <button
-            onClick={() => setViewMode('directory')}
-            className={`py-1.5 px-3 transition-colors flex items-center gap-1.5 rounded-none ${
-              viewMode === 'directory' ? 'bg-white text-[#990000] shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
-            }`}
-          >
-            <UsersRound className="h-3.5 w-3.5" />
-            {lang === 'vi' ? 'Danh bạ nhân sự' : 'Directory'}
-          </button>
         </div>
       </div>
 
-      {/* Staff shortcut highlights bar */}
+      {/* Staff shortcut highlights bar — phục vụ Sơ đồ cây & Ma trận */}
+      {viewMode !== 'members' && (
       <div className="flex flex-nowrap items-center gap-1.5 text-xs border-b border-neutral-100 pb-3 overflow-x-auto select-none no-scrollbar scroll-smooth">
         <span className="text-[10px] uppercase font-bold text-neutral-400 mr-2 tracking-wider shrink-0">
           {lang === 'vi' ? 'Rà soát vai trò nhân sự' : 'Highlight P.I.C Roles'}:
         </span>
-        {['Trịnh Tú Anh', 'Mai', 'Trâm', 'Phúc', 'An', 'Vũ', 'Lan', 'Hải', 'Hoài', 'Quang', 'Hiển', 'Host', 'Tâm', 'Chi', 'Dani', 'Sandhya', 'Khang', 'Tài', 'Tiên', 'Hồng Dung', 'Nguyên', 'Huyền', 'Thảo Nguyên', 'Christopher Han', 'Lương', 'Hạnh An', 'Thu', 'Trường', 'Cường', 'ISC', 'Zioo'].map(name => (
+        {['Trịnh Tú Anh', 'Trần Thị Quỳnh Mai', 'Nguyễn Quỳnh Trâm', 'Nguyễn Hoàng Phúc', 'Lê Phan Trường An', 'Thái Anh Vũ', 'Hoàng Ngọc Lan', 'Hoàng Lê Nam Hải', 'Phạm Nguyễn Hoài', 'Vương Trần Quang', 'Đặng Thế Hiển', 'Host', 'Đỗ Lê Phúc Tâm', 'Võ Dao Chi', 'Daniela Hurtarte', 'Sandhya Rao', 'Huỳnh Văn Khang', 'Trần Vĩnh Tài', 'Lê Thị Thủy Tiên', 'Lại Phương Dung', 'Phạm Võ Hồng Dung', 'Bùi Thảo Nguyên', 'Huyền', 'Christopher Han', 'Lương', 'Hạnh An', 'Thu', 'Cường', 'ISC', 'Zioo'].map(name => (
           <button
             key={name}
             onMouseEnter={() => setHoveredPic(name)}
@@ -481,6 +606,10 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
           </button>
         ))}
       </div>
+      )}
+
+      {/* VIEWPORT 0: Thông tin thành viên ISCM */}
+      {viewMode === 'members' && <MemberDirectorySection lang={lang} searchTerm={searchTerm} />}
 
       {/* VIEWPORT 1: Global Tree Flowchart with Nested Branches directly in the tree diagram */}
       {viewMode === 'chart' && (

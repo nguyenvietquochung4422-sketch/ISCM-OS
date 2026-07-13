@@ -1,362 +1,619 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search, Database, WifiOff, Plus, X, RotateCcw } from 'lucide-react';
-import { supabase, isLive } from '../../lib/supabaseClient.js';
-import { researchList as fallbackRows, RESEARCH_UNITS } from '../../data/researchList.js';
+import { useMemo, useState, useEffect, Fragment } from 'react';
+import {
+  Search, Plus, X, ChevronRight, ChevronDown, Folder, FileText
+} from 'lucide-react';
+import { RESEARCH_UNITS } from '../../data/researchList.js';
+import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
+import { isMemberMatch } from './ResearchWorkload.jsx';
 
-/* ------------------------------------------------------------------ */
-/* Research List — full-screen editable grid, Excel-style.             */
-/* Live Supabase query (authenticated read policy); falls back to the  */
-/* bundled TSV-derived dataset when offline or unauthenticated. Cell    */
-/* edits, custom columns, assignees and new rows persist to            */
-/* localStorage so the sheet behaves like a live working document.     */
-/* ------------------------------------------------------------------ */
-
-const STORE_KEY = 'iscm_research_list_edits_v1';
-
-function loadStore() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
-    return {
-      cellEdits: parsed.cellEdits ?? {},
-      customColumns: parsed.customColumns ?? [],
-      extraRows: parsed.extraRows ?? [],
-    };
-  } catch {
-    return { cellEdits: {}, customColumns: [], extraRows: [] };
+const resolveMemberNameAndTitle = (nameStr) => {
+  if (!nameStr) return '';
+  const clean = nameStr.trim();
+  const member = ISCM_MEMBERS.find(m => isMemberMatch(m, clean));
+  if (member) {
+    return member.nameVi;
   }
-}
-function saveStore(store) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(store));
-}
-
-const STATUS_STYLES = {
-  'In progress': 'bg-blue-50 text-blue-700 border-blue-200',
-  Done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Funded: 'bg-emerald-600 text-white border-emerald-600',
-  Review: 'bg-amber-50 text-amber-700 border-amber-200',
-  'On hold': 'bg-gray-100 text-gray-600 border-gray-200',
-  'Not start': 'bg-gray-50 text-gray-500 border-gray-200',
-  Delay: 'bg-orange-50 text-orange-700 border-orange-200',
-  'Delay/File Clearance': 'bg-orange-50 text-orange-700 border-orange-200',
-  'Submitted/ Termination': 'bg-violet-50 text-violet-700 border-violet-200',
-  Failed: 'bg-red-50 text-iscm-crimson border-red-200',
-  Cancel: 'bg-red-50 text-red-400 border-red-100 line-through',
+  return clean;
 };
 
-/** The five ISCM framework pillars stored as flag columns on each row */
-const PILLARS = [
-  { key: 'framework_transition', label: 'FT' },
-  { key: 'glocal_design', label: 'GD' },
-  { key: 'human_centric_orientation', label: 'HC' },
-  { key: 'tech_solutions', label: 'TS' },
-  { key: 'urban_system', label: 'US' },
-];
+const STATUS_OPTIONS = ['In progress', 'Completed', 'Cancel', 'Not start', 'Failed'];
 
-const BASE_COLUMNS = [
-  { key: 'code', label: 'Code', width: 96, frozen: true },
-  { key: 'research_unit', label: 'Research Unit', width: 190 },
-  { key: 'task_name', label: 'Task Name', width: 340 },
-  { key: 'status', label: 'Status', width: 130, type: 'status' },
-  { key: 'start_year', label: 'Start', width: 76 },
-  { key: 'end_year', label: 'End', width: 76 },
-  { key: 'task_type', label: 'Type', width: 130 },
-  { key: 'ordered_by', label: 'Order by', width: 140 },
-  { key: 'coordinator_manager', label: 'Coordinator/Manager', width: 160 },
-  { key: 'members', label: 'Members', width: 260 },
-  { key: 'assignee', label: 'Assignee', width: 160, highlight: true },
-  { key: 'report_plan_link', label: 'Minute Report / Plan', width: 260 },
-  { key: 'pillars', label: 'Pillars', width: 150, type: 'pillars', readOnlyDerived: true },
-  { key: 'sdgs', label: 'SDGs', width: 220 },
-];
+const STATUS_CLASSES = {
+  'In progress': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Done': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Funded': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Cancel': 'bg-red-50 text-red-700 border-red-200',
+  'Failed': 'bg-red-50 text-red-700 border-red-200',
+  'Not start': 'bg-gray-100 text-gray-600 border-gray-200',
+  'On hold': 'bg-gray-100 text-gray-600 border-gray-200',
+  'Review': 'bg-amber-50 text-amber-700 border-amber-200',
+};
 
-function PillarChips({ row }) {
-  return (
-    <span className="flex gap-0.5">
-      {PILLARS.map(({ key, label }) => {
-        const active = row[key] && row[key] !== 'Không';
-        return (
-          <span
-            key={key}
-            title={active ? row[key] : `${label}: —`}
-            className={`inline-flex h-5 w-6 items-center justify-center rounded font-barlow-condensed text-[9px] font-bold ${
-              active ? 'bg-iscm-crimson text-white' : 'bg-gray-100 text-gray-300'
-            }`}
-          >
-            {label}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
+const TASK_TYPE_CLASSES = {
+  'Paper': 'border-purple-200 text-purple-700 bg-purple-50',
+  'Training': 'border-gray-200 text-gray-700 bg-gray-50',
+  'IRL': 'border-blue-200 text-blue-700 bg-blue-50',
+  'Research': 'border-indigo-200 text-indigo-700 bg-indigo-50',
+  'New initiative': 'border-orange-200 text-orange-700 bg-orange-50',
+  'Student research': 'border-pink-200 text-pink-700 bg-pink-50',
+  'Fund Raising': 'border-yellow-200 text-yellow-700 bg-yellow-50',
+  'Project': 'border-teal-200 text-teal-700 bg-teal-50',
+  'PL': 'border-cyan-200 text-cyan-700 bg-cyan-50',
+  'Event': 'border-rose-200 text-rose-700 bg-rose-50',
+};
 
-let newRowSeq = 0;
-let newColSeq = 0;
+let inlineRowSeq = 0;
 
-export default function ResearchListTable() {
-  const [rows, setRows] = useState(null); // null = loading (live mode)
-  const [source, setSource] = useState('local');
-  const [unit, setUnit] = useState('all');
-  const [status, setStatus] = useState('all');
-  const [query, setQuery] = useState('');
+// Hierarchical code parsing for numerical/alphabetical sorting
+const parseCodeParts = (codeStr) => {
+  if (!codeStr) return [];
+  const clean = codeStr.replace('RU', '').trim();
+  return clean.split('.').map(p => {
+    const val = parseInt(p, 10);
+    return isNaN(val) ? p.toLowerCase() : val;
+  });
+};
 
-  const [store, setStore] = useState(loadStore);
-  const [addingColumn, setAddingColumn] = useState(false);
-  const [newColName, setNewColName] = useState('');
+const compareCodes = (codeA, codeB) => {
+  if (!codeA && !codeB) return 0;
+  if (!codeA) return 1;
+  if (!codeB) return -1;
 
-  useEffect(() => { saveStore(store); }, [store]);
+  const partsA = parseCodeParts(codeA);
+  const partsB = parseCodeParts(codeB);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (!isLive) { setRows(fallbackRows); return; }
-      try {
-        const { data, error } = await supabase
-          .from('iscm_research_list')
-          .select('*')
-          .order('research_unit', { ascending: true })
-          .order('code', { ascending: true, nullsFirst: false });
-        if (cancelled) return;
-        if (error || !data || data.length === 0) {
-          setRows(fallbackRows);
-        } else {
-          setRows(data);
-          setSource('live');
-        }
-      } catch {
-        if (!cancelled) setRows(fallbackRows);
-      }
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    if (partsA[i] === undefined) return -1;
+    if (partsB[i] === undefined) return 1;
+
+    if (typeof partsA[i] === 'number' && typeof partsB[i] === 'number') {
+      if (partsA[i] !== partsB[i]) return partsA[i] - partsB[i];
+    } else {
+      const strA = String(partsA[i]);
+      const strB = String(partsB[i]);
+      if (strA !== strB) return strA.localeCompare(strB);
     }
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  }
+  return 0;
+};
 
-  const columns = useMemo(() => [...BASE_COLUMNS, ...store.customColumns], [store.customColumns]);
+// Map group name to its main numeric code for section sorting
+const getGroupMainCode = (groupName) => {
+  switch (groupName) {
+    case 'MOVE System': return 'RU1';
+    case 'Net Zero Open lab': return 'RU2';
+    case 'Public Space Lab': return 'RU3';
+    case 'Governance and Planning': return 'RU4';
+    case 'Immersive Tech Convergence Center': return 'RU5';
+    case 'Smart City': return 'RU6';
+    case 'New Economy': return 'RU7';
+    case 'Data Driven and Urban Design': return 'RU8';
+    case 'Fund Raising': return 'RU9';
+    case 'Individual & Team Initiatives': return 'RU 10';
+    default: return 'RU999';
+  }
+};
 
-  const allRows = useMemo(() => {
-    if (!rows) return [];
-    return [...rows, ...store.extraRows];
-  }, [rows, store.extraRows]);
+export default function ResearchListTable({
+  allRowsResolved,
+  setCell,
+  selectedTask,
+  setSelectedTask,
+  store,
+  setStore,
+  researchUnits = [],
+  taskTypes = []
+}) {
+  const [query, setQuery] = useState('');
+  const [unit, setUnit] = useState('all');
+  const [taskType, setTaskType] = useState('all');
+  const [status, setStatus] = useState('all');
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
-  const getCell = (row, key) => store.cellEdits[row.id]?.[key] ?? row[key] ?? '';
+  // Set default view collapsed on load
+  useEffect(() => {
+    if (allRowsResolved.length > 0 && expandedRows.size === 0) {
+      setExpandedRows(new Set());
+    }
+  }, [allRowsResolved]);
 
-  const setCell = (rowId, key, value) => {
+  const toggleRow = (id, e) => {
+    e.stopPropagation();
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleAddTask = () => {
+    inlineRowSeq += 1;
+    const id = `new-task-${Date.now()}-${inlineRowSeq}`;
+    const targetUnit = unit !== 'all' ? unit : 'Data Driven and Urban Design';
+    const newRow = {
+      id,
+      code: 'NEW',
+      task_name: 'New Research Activity',
+      research_unit: targetUnit,
+      status: 'Not start',
+      start_year: '2026',
+      end_year: null,
+      task_type: 'Research',
+      coordinator_manager: 'Ms. Chi',
+      members: '',
+      report_plan_link: '',
+      framework_transition: 'Không',
+      glocal_design: 'Không',
+      human_centric_orientation: 'Không',
+      tech_solutions: 'Không',
+      urban_system: 'Không',
+      sdgs: '',
+    };
     setStore((prev) => ({
       ...prev,
-      cellEdits: {
-        ...prev.cellEdits,
-        [rowId]: { ...prev.cellEdits[rowId], [key]: value },
-      },
+      extraRows: [...prev.extraRows, newRow]
     }));
+    setSelectedTask(newRow);
   };
 
-  const addRow = () => {
-    newRowSeq += 1;
-    const id = `new-${Date.now()}-${newRowSeq}`;
-    setStore((prev) => ({ ...prev, extraRows: [...prev.extraRows, { id }] }));
-  };
-
-  const removeRow = (id) => {
+  const removeRow = (id, e) => {
+    e.stopPropagation();
     setStore((prev) => ({ ...prev, extraRows: prev.extraRows.filter((r) => r.id !== id) }));
+    if (selectedTask?.id === id) {
+      setSelectedTask(null);
+    }
   };
 
-  const confirmAddColumn = () => {
-    const label = newColName.trim();
-    if (!label) { setAddingColumn(false); return; }
-    newColSeq += 1;
-    const key = `custom_${Date.now()}_${newColSeq}`;
-    setStore((prev) => ({ ...prev, customColumns: [...prev.customColumns, { key, label }] }));
-    setNewColName('');
-    setAddingColumn(false);
-  };
-
-  const removeColumn = (key) => {
-    setStore((prev) => ({ ...prev, customColumns: prev.customColumns.filter((c) => c.key !== key) }));
-  };
-
-  const resetEdits = () => {
-    if (!window.confirm('Xoá toàn bộ chỉnh sửa (ô, cột, dòng đã thêm) và khôi phục dữ liệu gốc?')) return;
-    const empty = { cellEdits: {}, customColumns: [], extraRows: [] };
-    setStore(empty);
-  };
-
-  const statuses = useMemo(
-    () => [...new Set(allRows.map((r) => getCell(r, 'status')).filter(Boolean))].sort(),
-    [allRows, store.cellEdits]
-  );
-
-  const filtered = useMemo(() => {
+  // Filter rows first (matching search and hierarchy parents)
+  const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allRows.filter((r) => {
-      const rUnit = getCell(r, 'research_unit');
-      const rStatus = getCell(r, 'status');
-      return (
-        (unit === 'all' || rUnit === unit) &&
-        (status === 'all' || rStatus === status) &&
-        (!q || columns.some((c) => String(getCell(r, c.key) ?? '').toLowerCase().includes(q)))
-      );
+    const isFiltered = q !== '' || unit !== 'all' || taskType !== 'all' || status !== 'all';
+
+    // 1. Compute direct matches
+    const matched = allRowsResolved.filter((r) => {
+      const rUnit = r.research_unit || '';
+      const rStatus = r.status || '';
+      const rType = r.task_type || '';
+
+      const matchQuery = !q || [
+        r.code,
+        r.task_name,
+        r.coordinator_manager,
+        r.members
+      ].some((val) => String(val || '').toLowerCase().includes(q));
+
+      const matchUnit = unit === 'all' || rUnit === unit;
+      const matchType = taskType === 'all' || rType === taskType;
+      const matchStatus = status === 'all' || rStatus === status;
+
+      return matchQuery && matchUnit && matchType && matchStatus;
     });
-  }, [allRows, unit, status, query, columns, store.cellEdits]);
 
-  const selectClass =
-    'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 font-ibm text-[11px] focus:border-iscm-crimson focus:outline-none text-iscm-charcoal';
+    if (!isFiltered) return allRowsResolved;
 
-  const cellInputClass =
-    'w-full min-w-0 bg-transparent px-1 py-0.5 font-ibm text-[11px] text-iscm-charcoal focus:bg-iscm-crimson/5 focus:rounded focus:outline-none focus:ring-1 focus:ring-iscm-crimson/40';
+    // 2. Resolve parent ancestors to preserve tree structure
+    const activeSet = new Set();
+    const codeToId = {};
+    allRowsResolved.forEach(r => { if (r.code) codeToId[r.code.trim()] = r.id; });
 
-  if (rows === null) {
-    return <div className="py-12 text-center font-ibm text-xs text-gray-400">Đang tải Research List từ Supabase…</div>;
-  }
+    matched.forEach((r) => {
+      activeSet.add(r.id);
+      
+      // Determine dynamic parent based on code pattern
+      let code = (r.code || '').trim();
+      while (code.includes('.')) {
+        const parts = code.split('.');
+        const parentCode = parts.slice(0, -1).join('.');
+        const parentId = codeToId[parentCode];
+        if (parentId) {
+          activeSet.add(parentId);
+        }
+        code = parentCode;
+      }
+    });
+
+    return allRowsResolved.filter((r) => activeSet.has(r.id));
+  }, [allRowsResolved, query, unit, taskType, status]);
+
+  // Group and sort the filtered items
+  const groupedAndSortedData = useMemo(() => {
+    // 1. Group rows by Research Unit (consolidating Individual and IndividualTEAM)
+    const groups = {};
+    filteredRows.forEach(row => {
+      let groupName = row.research_unit || 'Other';
+      if (groupName === 'Individual' || groupName === 'IndividualTEAM') {
+        groupName = 'Individual & Team Initiatives';
+      }
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(row);
+    });
+
+    // 2. Sort groups by their main folder code
+    const groupNames = Object.keys(groups).sort((a, b) => 
+      compareCodes(getGroupMainCode(a), getGroupMainCode(b))
+    );
+
+    // 3. For each group, build tree hierarchy and sort pre-order
+    const result = [];
+
+    groupNames.forEach(groupName => {
+      const groupRows = groups[groupName];
+
+      // Identify main folder for this group
+      const mainFolder = groupRows.find(r => {
+        const code = (r.code || '').trim();
+        const name = (r.task_name || '').toLowerCase();
+        return name.includes('main folder') || (code.startsWith('RU') && !code.includes('.') && code.match(/^RU\s*\d+$/));
+      });
+
+      const codeToId = {};
+      groupRows.forEach(r => { if (r.code) codeToId[r.code.trim()] = r.id; });
+
+      // Resolve parents and levels inside this group
+      const childrenMap = {};
+      const resolvedRowsMap = {};
+
+      groupRows.forEach(r => {
+        let parentId = null;
+        let level = 0;
+        const code = (r.code || '').trim();
+
+        if (mainFolder && r.id !== mainFolder.id) {
+          if (code && code.includes('.')) {
+            const parts = code.split('.');
+            const parentCode = parts.slice(0, -1).join('.');
+            if (codeToId[parentCode]) {
+              parentId = codeToId[parentCode];
+              level = parts.length - 1;
+            } else {
+              parentId = mainFolder.id;
+              level = 1;
+            }
+          } else {
+            parentId = mainFolder.id;
+            level = 1;
+          }
+        }
+
+        const resolved = { ...r, resolvedParentId: parentId, resolvedLevel: level };
+        resolvedRowsMap[r.id] = resolved;
+
+        if (parentId) {
+          if (!childrenMap[parentId]) childrenMap[parentId] = [];
+          childrenMap[parentId].push(resolved);
+        }
+      });
+
+      // Traverse pre-order to preserve tree layout and sorting
+      const sortedGroupRows = [];
+      const traverse = (node, level) => {
+        node.resolvedLevel = level;
+        sortedGroupRows.push(node);
+        const children = childrenMap[node.id] || [];
+        children.sort((a, b) => compareCodes(a.code, b.code));
+        children.forEach(child => traverse(child, level + 1));
+      };
+
+      const roots = groupRows
+        .map(r => resolvedRowsMap[r.id])
+        .filter(r => !r.resolvedParentId);
+      
+      roots.sort((a, b) => compareCodes(a.code, b.code));
+      roots.forEach(root => traverse(root, 0));
+
+      // Filter visible rows in this group based on expanded state
+      const isFiltered = query.trim() !== '' || unit !== 'all' || taskType !== 'all' || status !== 'all';
+      const visibleGroupRows = sortedGroupRows.filter(row => {
+        if (isFiltered) return true;
+        let pId = row.resolvedParentId;
+        while (pId) {
+          if (!expandedRows.has(pId)) return false;
+          const parentRow = resolvedRowsMap[pId];
+          pId = parentRow ? parentRow.resolvedParentId : null;
+        }
+        return true;
+      });
+
+      if (visibleGroupRows.length > 0) {
+        result.push({
+          groupName,
+          rows: visibleGroupRows
+        });
+      }
+    });
+
+    return result;
+  }, [filteredRows, expandedRows, query, unit, taskType, status]);
+
+  // Render avatar stack
+  const renderAvatarGroup = (membersStr) => {
+    if (!membersStr) return <span className="text-neutral-300 font-sans text-[11px]">—</span>;
+    const list = membersStr.split(',').map(m => m.trim()).filter(Boolean);
+    const displayed = list.slice(0, 3);
+    const leftover = list.length - 3;
+
+    return (
+      <div className="relative group/avatar flex items-center">
+        <div className="flex -space-x-1.5 overflow-hidden">
+          {displayed.map((name, idx) => {
+            const clean = name.replace('-Lead', '').trim();
+            const initials = clean.split(/\s+/).map(p => p[0]).join('').substring(0, 2).toUpperCase();
+            return (
+              <div
+                key={idx}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-neutral-100 border border-white text-[9px] font-bold text-neutral-800 font-ibm tracking-tighter"
+                title={resolveMemberNameAndTitle(name)}
+              >
+                {initials}
+              </div>
+            );
+          })}
+          {leftover > 0 && (
+            <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#8b0000] border border-white text-[9px] font-bold text-white font-ibm">
+              +{leftover}
+            </div>
+          )}
+        </div>
+        
+        {/* Tooltip */}
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full z-40 mt-1.5 w-52 scale-90 rounded bg-[#111] p-2.5 text-[10px] text-white opacity-0 shadow-xl transition-all duration-200 group-hover/avatar:pointer-events-auto group-hover/avatar:scale-100 group-hover/avatar:opacity-100 font-ibm">
+          <div className="font-semibold text-white/50 mb-1 uppercase tracking-wider text-[8px]">Team Members</div>
+          <ul className="space-y-0.5">
+            {list.map((name, i) => (
+              <li key={i} className="flex items-center gap-1.5 text-white/90">
+                <span className="h-1 w-1 rounded-full bg-[#8b0000]" />
+                {resolveMemberNameAndTitle(name)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  };
+
+  const customColumns = store.customColumns;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
-      {/* Toolbar: source indicator + filters + actions */}
-      <div className="flex flex-wrap items-center gap-2 px-1">
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-barlow-condensed text-[10px] font-semibold uppercase tracking-wider ${
-          source === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-        }`}>
-          {source === 'live' ? <Database className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-          {source === 'live' ? 'Live · iscm_research_list' : 'Offline snapshot (RLS: cần đăng nhập)'}
-        </span>
-        <span className="font-barlow-condensed text-xs text-gray-400">{filtered.length} / {allRows.length} hoạt động</span>
+    <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
+      
+      {/* 1. Filters Bar */}
+      <div className="flex flex-wrap items-center gap-2.5 bg-neutral-50 p-2.5 border border-neutral-200/60">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by Code, Task Name, or Member..."
+            className="w-full pl-9 pr-3 py-1.5 border border-neutral-200 bg-white text-xs text-neutral-800 placeholder:text-neutral-400 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+          />
+        </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Lọc theo tên, code, thành viên…"
-              className={`${selectClass} w-48 pl-6`}
-            />
-          </div>
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} className={selectClass}>
-            <option value="all">Tất cả Research Units</option>
-            {RESEARCH_UNITS.map((u) => <option key={u}>{u}</option>)}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
-            <option value="all">Mọi trạng thái</option>
-            {statuses.map((s) => <option key={s}>{s}</option>)}
-          </select>
+        <select
+          value={unit}
+          onChange={(e) => setUnit(e.target.value)}
+          className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+        >
+          <option value="all">All Research Units</option>
+          {researchUnits.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+
+        <select
+          value={taskType}
+          onChange={(e) => setTaskType(e.target.value)}
+          className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+        >
+          <option value="all">All Task Types</option>
+          {taskTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+        >
+          <option value="all">All Statuses</option>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Kept only the primary + Add Task button */}
           <button
-            onClick={addRow}
-            className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 font-ibm text-[11px] font-semibold text-iscm-charcoal hover:border-iscm-crimson hover:text-iscm-crimson"
+            onClick={handleAddTask}
+            className="flex items-center gap-1 bg-[#8b0000] hover:bg-[#7a0010] text-white px-3.5 py-1.5 text-xs font-bold transition-all rounded-none shadow-sm uppercase tracking-wider"
           >
-            <Plus className="h-3 w-3" /> Dòng
-          </button>
-          {addingColumn ? (
-            <span className="flex items-center gap-1">
-              <input
-                autoFocus
-                value={newColName}
-                onChange={(e) => setNewColName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') confirmAddColumn(); if (e.key === 'Escape') setAddingColumn(false); }}
-                placeholder="Tên cột mới…"
-                className={`${selectClass} w-36`}
-              />
-              <button onClick={confirmAddColumn} className="rounded-lg bg-iscm-crimson px-2 py-1.5 font-ibm text-[11px] font-semibold text-white hover:bg-iscm-crimson-dark">OK</button>
-            </span>
-          ) : (
-            <button
-              onClick={() => setAddingColumn(true)}
-              className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 font-ibm text-[11px] font-semibold text-iscm-charcoal hover:border-iscm-crimson hover:text-iscm-crimson"
-            >
-              <Plus className="h-3 w-3" /> Cột
-            </button>
-          )}
-          <button
-            onClick={resetEdits}
-            title="Khôi phục dữ liệu gốc"
-            className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 font-ibm text-[11px] font-semibold text-gray-500 hover:border-iscm-crimson hover:text-iscm-crimson"
-          >
-            <RotateCcw className="h-3 w-3" /> Reset
+            <Plus className="h-3.5 w-3.5" />
+            Add Task
           </button>
         </div>
       </div>
 
-      {/* Excel-style grid: sticky header row + sticky first (Code) column */}
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-gray-200">
-        <table className="border-collapse text-left" style={{ minWidth: 'max-content' }}>
+      {/* 2. Grid Table */}
+      <div className="min-h-0 flex-1 overflow-auto border border-neutral-200 bg-white shadow-sm">
+        <table className="w-full border-collapse text-left" style={{ minWidth: '1100px' }}>
           <thead>
-            <tr className="border-b-2 border-gray-300 bg-iscm-charcoal font-barlow-condensed text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-              {columns.map((c) => (
-                <th
-                  key={c.key}
-                  className={`sticky top-0 whitespace-nowrap border-r border-white/10 px-3 py-2.5 ${c.frozen ? 'left-0 z-30 bg-iscm-charcoal' : 'z-20'} ${c.highlight ? 'bg-iscm-crimson-dark' : ''}`}
-                  style={{ minWidth: c.width }}
-                >
-                  <span className="flex items-center gap-1.5">
-                    {c.label}
-                    {!c.readOnlyDerived && c.key.startsWith('custom_') && (
-                      <button onClick={() => removeColumn(c.key)} title="Xoá cột" className="text-white/50 hover:text-white">
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </span>
-                </th>
+            <tr className="border-b border-neutral-200 bg-neutral-900 text-white font-barlow text-[10px] font-bold uppercase tracking-wider">
+              <th className="px-4 py-3 min-w-[120px]">Code</th>
+              <th className="px-4 py-3 min-w-[280px]">Task Name</th>
+              {/* strict no-wrap header */}
+              <th className="px-4 py-3 min-w-[160px] whitespace-nowrap">Research Unit</th>
+              <th className="px-4 py-3 min-w-[120px] whitespace-nowrap">Task Type</th>
+              <th className="px-4 py-3 min-w-[150px]">Coordinator / Manager</th>
+              <th className="px-4 py-3 min-w-[110px]">Members</th>
+              <th className="px-4 py-3 min-w-[130px]">Status</th>
+              <th className="px-4 py-3 min-w-[100px]">Timeline</th>
+              {customColumns.map((col) => (
+                <th key={col.key} className="px-4 py-3 min-w-[130px]" />
               ))}
-              <th className="sticky top-0 z-20 w-10 bg-iscm-charcoal" />
+              <th className="w-10 bg-neutral-900" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map((r, i) => {
-              const stripe = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60';
-              return (
-                <tr key={r.id} className={`group hover:bg-iscm-crimson/5 ${stripe}`}>
-                  {columns.map((c) => {
-                    const frozenBg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                    if (c.type === 'pillars') {
-                      return (
-                        <td key={c.key} className="border-r border-gray-100 px-3 py-2" style={{ minWidth: c.width }}>
-                          <PillarChips row={r} />
-                        </td>
-                      );
-                    }
-                    if (c.type === 'status') {
-                      const val = getCell(r, c.key);
-                      return (
-                        <td key={c.key} className="border-r border-gray-100 px-2 py-1.5" style={{ minWidth: c.width }}>
-                          <select
-                            value={val}
-                            onChange={(e) => setCell(r.id, c.key, e.target.value)}
-                            className={`rounded-full border px-2 py-0.5 font-ibm text-[10px] font-medium focus:outline-none ${STATUS_STYLES[val] ?? STATUS_STYLES['Not start']}`}
-                          >
-                            {!STATUS_STYLES[val] && val && <option value={val}>{val}</option>}
-                            {!val && <option value="">—</option>}
-                            {Object.keys(STATUS_STYLES).map((s) => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </td>
-                      );
-                    }
-                    return (
-                      <td
-                        key={c.key}
-                        className={`border-r border-gray-100 px-2 py-1.5 ${c.frozen ? `sticky left-0 z-10 ${frozenBg}` : ''} ${c.highlight ? 'bg-amber-50/60' : ''}`}
-                        style={{ minWidth: c.width }}
-                      >
-                        <input
-                          value={getCell(r, c.key)}
-                          onChange={(e) => setCell(r.id, c.key, e.target.value)}
-                          className={cellInputClass}
-                          placeholder={c.key === 'assignee' ? 'Chưa phân công' : '—'}
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-1.5 text-center">
-                    {store.extraRows.some((er) => er.id === r.id) && (
-                      <button onClick={() => removeRow(r.id)} title="Xoá dòng" className="text-gray-300 opacity-0 hover:text-iscm-crimson group-hover:opacity-100">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+          <tbody className="divide-y divide-neutral-100 text-xs font-ibm">
+            {groupedAndSortedData.map((group) => (
+              <Fragment key={group.groupName}>
+                {/* Unified Section Header Row aligned in table */}
+                <tr className="bg-neutral-100/80 border-y border-neutral-200 select-none">
+                  <td colSpan={8 + customColumns.length + 1} className="px-4 py-2.5 font-bold font-barlow text-[#8b0000] uppercase tracking-wide text-[11px]">
+                    {group.groupName}
                   </td>
                 </tr>
-              );
-            })}
-            {filtered.length === 0 && (
+
+                {/* Section Rows as siblings to align columns */}
+                {group.rows.map((row) => {
+                  const level = row.resolvedLevel || 0;
+                  const isExpanded = expandedRows.has(row.id);
+                  const isSelected = selectedTask?.id === row.id;
+
+                  // Check if row has children (has children with this row's id as parent)
+                  const hasChildren = allRowsResolved.some(r => {
+                    const pcode = (row.code || '').trim();
+                    const rcode = (r.code || '').trim();
+                    return pcode && rcode.startsWith(pcode + '.') && rcode.split('.').length === pcode.split('.').length + 1;
+                  });
+
+                  return (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedTask(row)}
+                      className={`group cursor-pointer hover:bg-neutral-50/80 transition-colors border-b border-neutral-100 last:border-none ${
+                        isSelected ? '!bg-red-50/40 border-l-4 border-[#8b0000]' : ''
+                      }`}
+                    >
+                      {/* CODE */}
+                      <td className="px-4 py-3 font-semibold min-w-[120px] max-w-[120px]">
+                        <div className="flex items-center gap-1.5">
+                          {hasChildren ? (
+                            <button
+                              onClick={(e) => toggleRow(row.id, e)}
+                              className="h-4 w-4 inline-flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors rounded-sm shrink-0"
+                            >
+                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            </button>
+                          ) : (
+                            <span className="w-4 shrink-0" />
+                          )}
+
+                          {level === 0 ? (
+                            <Folder className="h-3.5 w-3.5 text-[#8b0000] shrink-0" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+                          )}
+
+                          {row.code ? (
+                            <span className="text-[10px] font-mono bg-neutral-100 text-neutral-600 px-1 py-0.5 rounded-sm">
+                              {row.code}
+                            </span>
+                          ) : (
+                            <span className="text-neutral-300 font-mono text-[9px]">--</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* TASK NAME with progressive indentation */}
+                      <td className="px-4 py-3 font-medium min-w-[280px]" style={{ paddingLeft: `${Math.max(16, level * 20)}px` }}>
+                        <button
+                          onClick={() => setSelectedTask(row)}
+                          className="text-left font-sans text-xs font-semibold text-slate-700 group-hover:text-[#8b0000] hover:underline transition-colors whitespace-normal break-words"
+                        >
+                          {row.task_name || 'Untitled Task'}
+                        </button>
+                      </td>
+
+                      {/* RESEARCH UNIT (Strict No-Wrap Constraint) */}
+                      <td className="px-4 py-3 text-neutral-500 font-medium whitespace-nowrap truncate max-w-[180px]">
+                        {row.research_unit}
+                      </td>
+
+                      {/* TASK TYPE (Strict No-Wrap Constraint) */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {row.task_type && (
+                          <span className={`inline-block border px-2 py-0.5 text-[9px] font-semibold rounded-none tracking-wider uppercase ${
+                            TASK_TYPE_CLASSES[row.task_type] || 'border-neutral-200 text-neutral-600 bg-neutral-50'
+                          }`}>
+                            {row.task_type}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* COORDINATOR */}
+                      <td className="px-4 py-3">
+                        {row.coordinator_manager ? (
+                          <span className="inline-flex items-center bg-neutral-50 text-neutral-700 px-2 py-0.5 text-[10px] font-bold border border-neutral-200 whitespace-nowrap">
+                            {resolveMemberNameAndTitle(row.coordinator_manager)}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300 italic">—</span>
+                        )}
+                      </td>
+
+                      {/* MEMBERS — hidden on RU main folder rows, only shown on child tasks */}
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        {level > 0 && renderAvatarGroup(row.members)}
+                      </td>
+
+                      {/* STATUS — hidden on RU main folder rows, only shown on child tasks */}
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        {level > 0 && (
+                          <select
+                            value={row.status || ''}
+                            onChange={(e) => setCell(row.id, 'status', e.target.value)}
+                            className={`cursor-pointer rounded-none border px-2 py-1 text-[11px] font-bold focus:outline-none transition-all duration-200 ${
+                              STATUS_CLASSES[row.status] || 'bg-gray-100 text-gray-600 border-gray-200'
+                            }`}
+                          >
+                            {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+
+                      {/* TIMELINE */}
+                      <td className="px-4 py-3 text-neutral-500 font-mono font-medium whitespace-nowrap">
+                        {row.start_year || '—'} - {row.end_year || '--'}
+                      </td>
+
+                      {/* CUSTOM COLUMNS */}
+                      {customColumns.map((col) => (
+                        <td key={col.key} className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="text"
+                            value={row[col.key] || ''}
+                            onChange={(e) => setCell(row.id, col.key, e.target.value)}
+                            placeholder="—"
+                            className="w-full bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-[#8b0000] focus:outline-none py-0.5 text-xs text-neutral-800"
+                          />
+                        </td>
+                      ))}
+
+                      {/* DELETE */}
+                      <td className="px-2 py-3 text-center">
+                        {store.extraRows.some((er) => er.id === row.id) && (
+                          <button
+                            onClick={(e) => removeRow(row.id, e)}
+                            title="Delete custom activity"
+                            className="text-neutral-300 hover:text-[#8b0000] transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Fragment>
+            ))}
+
+            {groupedAndSortedData.length === 0 && (
               <tr>
-                <td colSpan={columns.length + 1} className="px-3 py-10 text-center font-ibm text-xs text-gray-400">
-                  Không có hoạt động nào khớp bộ lọc.
+                <td colSpan={8 + customColumns.length + 1} className="py-12 text-center text-neutral-400 font-medium">
+                  No research activities match the selected filters.
                 </td>
               </tr>
             )}
@@ -364,10 +621,6 @@ export default function ResearchListTable() {
         </table>
       </div>
 
-      <p className="px-1 font-ibm text-[10px] text-gray-400">
-        FT = Framework Transition · GD = Glocal Design · HC = Human Centric Orientation · TS = Tech Solutions · US = Urban System.
-        Bấm trực tiếp vào ô để chỉnh sửa — thay đổi được lưu tại trình duyệt này. Nguồn: <span className="font-semibold">2026 ISCM – RESEARCH – Research List</span> (bảng <code>iscm_research_list</code>).
-      </p>
     </div>
   );
 }

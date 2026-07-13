@@ -246,59 +246,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
               </div>
             )}
           </div>
-          
-          {/* ISCM CORE Dropdown */}
-          <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('iscm-core-root')}>
-            <button
-              onClick={() => (openMenu === 'iscm-core-root' ? setOpenMenu(null) : openAt('iscm-core-root'))}
-              className={topBtnClass('iscm-core-root', ['iscm-core', 'core-pipeline', 'core-dashboard', 'core-policy'].includes(active))}
-            >
-              {t.ISCM_CORE}
-              <ChevronDown className="h-3 w-3" />
-            </button>
-            {openMenu === 'iscm-core-root' && (
-              <div 
-                className={`${dropdownClass} w-96 left-0`}
-                onMouseEnter={() => openAt('iscm-core-root')}
-              >
-                <ul className="space-y-0.5">
-                  <li>
-                    <button
-                      onClick={() => navigateTo('iscm-core', 'core-pipeline')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {lang === 'vi' ? 'Sơ đồ luồng dữ liệu' : 'Data Pipeline Map'}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('iscm-core', 'core-dashboard')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard'}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('iscm-core', 'core-policy')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {lang === 'vi' ? 'Chính sách bảo mật thông tin' : 'Information Security Policy'}
-                    </button>
-                  </li>
-                  <li className="border-t border-neutral-100 mt-0.5 pt-0.5">
-                    <button
-                      onClick={() => navigateTo('urban-data-core')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#5467a6] hover:text-white transition-colors font-bold text-[#5467a6] flex items-center justify-between"
-                    >
-                      <span>{lang === 'vi' ? 'Urban Data Core — Data Catalog' : 'Urban Data Core — Data Catalog'}</span>
-                      <span className="text-[8px] bg-[#5467a6] text-white px-1.5 py-0.5 font-black uppercase tracking-wider">NEW</span>
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
         </nav>
 
         {/* Far-right Search & Profile info */}
