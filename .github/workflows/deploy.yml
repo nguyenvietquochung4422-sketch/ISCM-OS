@@ -40,6 +40,13 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+        env:
+          # The anon key is Supabase's public/client key — safe to expose in
+          # the built bundle by design (protection comes from RLS, not
+          # secrecy of this key). Without these, the deployed site silently
+          # falls back to local demo mode and Google sign-in fails.
+          VITE_SUPABASE_URL: https://gjgowdqltcdkbtuabknf.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqZ293ZHFsdGNka2J0dWFia25mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODA0NTgsImV4cCI6MjA5ODY1NjQ1OH0.rK9zxxUMN_BTZ_M-B6hj2qhTK1yoDMyg8l4fVOV6PDE
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
