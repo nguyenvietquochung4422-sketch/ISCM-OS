@@ -1,11 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogIn, LogOut, Menu, X } from 'lucide-react';
+import { Bell, ChevronDown, LogIn, LogOut, Menu, X } from 'lucide-react';
 import GlobalSearch from './GlobalSearch.jsx';
 import { users } from '../data/mockData.js';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, subscribeToNotifications } from '../lib/notifications.js';
+
+function timeAgo(iso, lang) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return lang === 'vi' ? 'Vừa xong' : 'Just now';
+  if (mins < 60) return lang === 'vi' ? `${mins} phút trước` : `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return lang === 'vi' ? `${hours} giờ trước` : `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return lang === 'vi' ? `${days} ngày trước` : `${days}d ago`;
+}
 
 export default function NavBar({ active, onNavigate, onOpenAsset }) {
   const { lang, toggle } = useLanguage();
@@ -36,6 +48,31 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
     };
     fetchUser();
   }, [authUser]);
+
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  useEffect(() => {
+    if (!isLive || !authUser) { setNotifications([]); return; }
+    fetchNotifications(authUser.id).then(setNotifications);
+    const unsubscribe = subscribeToNotifications(authUser.id, (row) => {
+      setNotifications((prev) => [row, ...prev]);
+    });
+    return unsubscribe;
+  }, [authUser]);
+
+  const handleOpenNotification = async (n) => {
+    if (!n.is_read) {
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
+      markNotificationRead(n.id);
+    }
+  };
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((x) => ({ ...x, is_read: true })));
+    if (authUser) markAllNotificationsRead(authUser.id);
+  };
 
   const currentUser = dbUser || users[0];
   // A real Google sign-in (via Supabase Auth) overrides the mock/demo profile above.
@@ -99,50 +136,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
         {/* Main Nav Tree (Desktop) */}
         <nav className="hidden lg:flex items-stretch h-full flex-1" onMouseLeave={scheduleClose}>
           
-          {/* WORKSPACE Dropdown */}
-          <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('workspace')}>
-            <button
-              onClick={() => (openMenu === 'workspace' ? setOpenMenu(null) : openAt('workspace'))}
-              className={topBtnClass('workspace', ['personal-dashboard', 'matrix-assigner', 'hierarchical-projects', 'approval-engine'].includes(active))}
-            >
-              {t.WORKSPACE}
-              <ChevronDown className="h-3 w-3" />
-            </button>
-            {openMenu === 'workspace' && (
-              <div 
-                className={`${dropdownClass} w-96 left-0`}
-                onMouseEnter={() => openAt('workspace')}
-              >
-                <ul className="space-y-0.5">
-                  <li>
-                    <button
-                      onClick={() => navigateTo('personal-dashboard', 'ws-calendar')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.MY_WORKSPACE}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('hierarchical-projects')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.PROJECT_MANAGEMENT}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('approval-engine')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.APPROVAL_WORKFLOW}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
-
           {/* GROUP MANAGEMENT Dropdown */}
           <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('group')}>
             <button
@@ -264,6 +257,63 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
             <span>{lang === 'vi' ? 'VN' : 'EN'}</span>
           </button>
 
+          {/* Notifications bell */}
+          {authUser && (
+            <div className="relative flex items-stretch h-full">
+              <button
+                onClick={() => setOpenMenu(openMenu === 'notifications' ? null : 'notifications')}
+                title={lang === 'vi' ? 'Thông báo' : 'Notifications'}
+                className="relative flex items-center justify-center px-2.5 rounded-none border border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-[#990000] hover:text-white hover:bg-neutral-700 transition-colors shrink-0"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#ff3b30] px-1 text-[9px] font-bold leading-none text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {openMenu === 'notifications' && (
+                <div className={`${dropdownClass} w-80 right-0 top-14 text-left`}>
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-100 mb-1">
+                    <span className="font-sans text-xs font-bold uppercase text-neutral-900">
+                      {lang === 'vi' ? 'Thông báo' : 'Notifications'}
+                    </span>
+                    {unreadCount > 0 && (
+                      <button onClick={handleMarkAllRead} className="font-sans text-[10px] font-semibold text-[#990000] hover:underline">
+                        {lang === 'vi' ? 'Đánh dấu đã đọc' : 'Mark all read'}
+                      </button>
+                    )}
+                  </div>
+                  <ul className="max-h-80 overflow-y-auto space-y-0.5">
+                    {notifications.length === 0 && (
+                      <li className="px-3 py-6 text-center font-sans text-[11px] text-neutral-400">
+                        {lang === 'vi' ? 'Chưa có thông báo nào' : 'No notifications yet'}
+                      </li>
+                    )}
+                    {notifications.map((n) => (
+                      <li key={n.id}>
+                        <button
+                          onClick={() => handleOpenNotification(n)}
+                          className={`w-full text-left rounded-none px-3 py-2 text-xs transition-colors hover:bg-neutral-50 ${!n.is_read ? 'bg-red-50/40' : ''}`}
+                        >
+                          <div className="flex items-start gap-1.5">
+                            {!n.is_read && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#990000]" />}
+                            <div className={`min-w-0 flex-1 ${n.is_read ? 'pl-3' : ''}`}>
+                              <p className="font-semibold text-neutral-800 leading-tight">{n.title}</p>
+                              {n.body && <p className="mt-0.5 text-[10px] text-neutral-500 leading-snug">{n.body}</p>}
+                              <p className="mt-0.5 text-[9px] text-neutral-400">{timeAgo(n.created_at, lang)}</p>
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* User profile dropdown trigger */}
           <button
             onClick={() => setOpenMenu(openMenu === 'profile-dropdown' ? null : 'profile-dropdown')}
@@ -344,12 +394,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="absolute inset-x-0 top-14 max-h-[85vh] overflow-y-auto bg-white border-t border-neutral-200 p-4 shadow-lg lg:hidden flex flex-col gap-4 text-neutral-900">
-          <div>
-            <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.WORKSPACE}</div>
-            <button onClick={() => navigateTo('personal-dashboard', 'ws-calendar')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.MY_WORKSPACE}</button>
-            <button onClick={() => navigateTo('hierarchical-projects')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.PROJECT_MANAGEMENT}</button>
-            <button onClick={() => navigateTo('approval-engine')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.APPROVAL_WORKFLOW}</button>
-          </div>
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.GROUP_MANAGEMENT}</div>
             <button onClick={() => navigateTo('placeholder-cl1')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.OP_FINANCE}</button>

@@ -85,8 +85,8 @@ export const NAVIGATION_LOCALIZATION = {
         children: [
           { key: 'profile-bio', label: 'Hồ sơ & Tiểu sử khoa học' },
           { key: 'attendance-log', label: 'Chấm công hàng ngày' },
-          { key: 'form:payment-request', label: 'Quyết toán quỹ nội bộ Viện' },
-          { key: 'my-assets', label: 'Tài sản & Thiết bị đang mượn' }
+          { key: 'my-assets', label: 'Tài sản & Thiết bị đang mượn' },
+          { key: 'admin-content-permissions', label: 'Phân quyền quản trị nội dung', adminOnly: true }
         ]
       },
       {
@@ -438,8 +438,8 @@ export const NAVIGATION_LOCALIZATION = {
         children: [
           { key: 'profile-bio', label: 'Profile & Bio' },
           { key: 'attendance-log', label: 'Daily Attendance' },
-          { key: 'form:payment-request', label: 'ISCM Fund Claims' },
-          { key: 'my-assets', label: 'My Assets Checked Out to Me' }
+          { key: 'my-assets', label: 'My Assets Checked Out to Me' },
+          { key: 'admin-content-permissions', label: 'Content Admin Permissions', adminOnly: true }
         ]
       },
       {

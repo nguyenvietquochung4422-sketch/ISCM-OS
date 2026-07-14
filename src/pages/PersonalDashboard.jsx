@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
   ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X,
-  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo,
+  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck,
 } from 'lucide-react';
 import { researchList } from '../data/researchList.js';
 import { FORM_GROUPS, FORM_BY_KEY, FORM_CATEGORIES, ASSET_TYPES, MY_TASKS, MY_FORMS_SEED, MY_ASSETS } from '../data/formPortal.js';
@@ -16,9 +16,12 @@ import TransactionsPanel from '../components/personal/TransactionsPanel.jsx';
 import MyAssetsPanel from '../components/personal/MyAssetsPanel.jsx';
 import WikiHubPanel from '../components/personal/WikiHubPanel.jsx';
 import ISCMOrganizationalChart from '../components/personal/ISCMOrganizationalChart.jsx';
+import ContentPermissionsPanel from '../components/personal/ContentPermissionsPanel.jsx';
 import { SupportContactsView, DepartmentsView, ColleaguesView } from '../components/personal/ContactsPanel.jsx';
 import { CreateRequestView, MyRequestsView } from '../components/personal/SupportsPanel.jsx';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { supabase, isLive } from '../lib/supabaseClient.js';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
 /** Signed-in demo persona: Director Trịnh Tú Anh */
@@ -835,6 +838,11 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
     },
     'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel /> },
     'my-assets': { title: t.ASSETS_TITLE, icon: MonitorSmartphone, body: <MyAssetsPanel typeFilter={filters.assetType} /> },
+    'admin-content-permissions': {
+      title: lang === 'vi' ? 'PHÂN QUYỀN QUẢN TRỊ NỘI DUNG' : 'CONTENT ADMIN PERMISSIONS',
+      icon: ShieldCheck,
+      body: <ContentPermissionsPanel />,
+    },
     
     // Overview sections
     'cat-forms': {
@@ -1191,6 +1199,8 @@ function getActiveCategory(selected) {
 
 export default function PersonalDashboard({ onNavigate }) {
   const { lang } = useLanguage();
+  const { user: authUser } = useAuth();
+  const [isTopAdmin, setIsTopAdmin] = useState(false);
   const [selected, setSelected] = useState('ws-calendar');
   const [activeCategory, setActiveCategory] = useState('my-workspace-root');
   const [nodeExpanded, setNodeExpanded] = useState({});
@@ -1299,6 +1309,12 @@ export default function PersonalDashboard({ onNavigate }) {
     setActiveCategory(getActiveCategory(selected));
   }, [selected]);
 
+  // Real role check — gates the admin-only "Content Admin Permissions" nav entry
+  useEffect(() => {
+    if (!isLive || !authUser) { setIsTopAdmin(false); return; }
+    supabase.rpc('is_top_admin').then(({ data, error }) => setIsTopAdmin(!error && Boolean(data)));
+  }, [authUser]);
+
   const active = usePaneContent(selected, filters, setSelected, lang, wsData);
 
   const toggleNode = (id) =>
@@ -1309,7 +1325,10 @@ export default function PersonalDashboard({ onNavigate }) {
   // Get active localization structure
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
   const isWorkspace = activeCategory === 'my-workspace-root';
-  const categoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
+  const rawCategoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
+  const categoryNode = rawCategoryNode?.children
+    ? { ...rawCategoryNode, children: rawCategoryNode.children.filter((c) => !c.adminOnly || isTopAdmin) }
+    : rawCategoryNode;
 
   return (
     <div className="w-full font-sans">
