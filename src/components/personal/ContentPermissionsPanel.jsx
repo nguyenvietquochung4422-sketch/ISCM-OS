@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, Search, ShieldCheck } from 'lucide-react';
 import { supabase, isLive } from '../../lib/supabaseClient.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { NAVIGATION_LOCALIZATION } from '../../data/navigationLocalization.js';
 import { createNotification } from '../../lib/notifications.js';
+
+// Personal pages that always belong to the account viewing them — there is
+// no "admin of someone else's profile" to assign, it just syncs with the
+// signed-in account, so these are excluded from the grantable list.
+const SELF_OWNED_KEYS = new Set(['profile-bio']);
 
 /** Flatten the sidebar nav tree into a flat list of manageable content leaves. */
 function flattenContentItems(nodes, out = []) {
@@ -12,7 +17,7 @@ function flattenContentItems(nodes, out = []) {
     if (node.adminOnly) return; // never let this panel govern itself
     if (node.children) {
       flattenContentItems(node.children, out);
-    } else if (node.key) {
+    } else if (node.key && !SELF_OWNED_KEYS.has(node.key)) {
       out.push({ key: node.key, label: node.label });
     }
   });
@@ -27,6 +32,17 @@ export default function ContentPermissionsPanel() {
   const [grants, setGrants] = useState({}); // { [contentKey]: Set(userId) }
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [openKey, setOpenKey] = useState(null);
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (!openKey) return;
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) setOpenKey(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openKey]);
 
   const contentItems = useMemo(
     () => flattenContentItems(NAVIGATION_LOCALIZATION[lang]?.SIDEBAR_TREE || []),
@@ -61,6 +77,20 @@ export default function ContentPermissionsPanel() {
     })();
     return () => { cancelled = true; };
   }, [authorized]);
+
+  const handleToggleWithConfirm = (item, user) => {
+    const isSelected = (grants[item.key] || new Set()).has(user.id);
+    const willGrant = !isSelected;
+    const msg = willGrant
+      ? (lang === 'vi'
+          ? `Bạn có chắc chắn muốn cấp quyền quản trị "${item.label}" cho ${user.full_name}?`
+          : `Grant admin rights over "${item.label}" to ${user.full_name}?`)
+      : (lang === 'vi'
+          ? `Bạn có chắc chắn muốn thu hồi quyền quản trị "${item.label}" của ${user.full_name}?`
+          : `Revoke admin rights over "${item.label}" from ${user.full_name}?`);
+    if (!window.confirm(msg)) return;
+    toggleGrant(item.key, item.label, user.id, willGrant);
+  };
 
   const toggleGrant = async (contentKey, contentLabel, userId, willGrant) => {
     setGrants((prev) => {
@@ -137,32 +167,49 @@ export default function ContentPermissionsPanel() {
         <div className="border border-neutral-200 divide-y divide-neutral-100">
           {filteredItems.map((item) => {
             const selectedIds = grants[item.key] || new Set();
+            const selectedUsers = allUsers.filter((u) => selectedIds.has(u.id));
+            const isOpen = openKey === item.key;
             return (
               <div key={item.key} className="flex flex-col gap-1.5 p-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-1.5 sm:w-64 shrink-0">
                   <ShieldCheck className="h-3.5 w-3.5 text-[#990000] shrink-0" />
                   <span className="text-xs font-semibold text-neutral-800">{item.label}</span>
                 </div>
-                <select
-                  multiple
-                  value={Array.from(selectedIds)}
-                  onChange={(e) => {
-                    const chosen = new Set(Array.from(e.target.selectedOptions).map((o) => o.value));
-                    allUsers.forEach((u) => {
-                      const wasSelected = selectedIds.has(u.id);
-                      const isSelected = chosen.has(u.id);
-                      if (wasSelected !== isSelected) toggleGrant(item.key, item.label, u.id, isSelected);
-                    });
-                  }}
-                  className="w-full flex-1 rounded-none border border-neutral-200 bg-white px-2 py-1 text-xs focus:border-[#990000] focus:outline-none"
-                  size={4}
-                >
-                  {allUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.full_name} — {u.email}
-                    </option>
-                  ))}
-                </select>
+
+                <div className="relative flex-1" ref={isOpen ? panelRef : null}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenKey(isOpen ? null : item.key)}
+                    className="flex w-full items-center justify-between gap-2 rounded-none border border-neutral-200 bg-white px-2.5 py-1.5 text-left text-xs focus:border-[#990000] focus:outline-none"
+                  >
+                    <span className="truncate text-neutral-700">
+                      {selectedUsers.length > 0
+                        ? selectedUsers.map((u) => u.full_name).join(', ')
+                        : <span className="italic text-neutral-400">{lang === 'vi' ? 'Chưa có ai — bấm để chọn' : 'No one yet — click to pick'}</span>}
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isOpen && (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto border border-neutral-200 bg-white shadow-lg">
+                      {allUsers.map((u) => {
+                        const checked = selectedIds.has(u.id);
+                        return (
+                          <label key={u.id} className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-neutral-50">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => handleToggleWithConfirm(item, u)}
+                              className="accent-[#990000]"
+                            />
+                            <span className="min-w-0 flex-1 truncate text-neutral-700">{u.full_name} — {u.email}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <span className="text-[10px] text-neutral-400 shrink-0 sm:w-16 text-right">
                   {selectedIds.size} {lang === 'vi' ? 'người' : 'admin(s)'}
                 </span>
