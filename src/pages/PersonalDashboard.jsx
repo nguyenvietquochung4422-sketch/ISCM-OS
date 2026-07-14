@@ -805,23 +805,26 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
       body: (
         <div className="space-y-4 font-sans text-sm text-neutral-800">
           <p className="leading-relaxed">
-            {lang === 'vi' 
-              ? `Tôi là ${MY_PROFILE.full_name}, Viện trưởng Viện Đô thị Thông minh và Quản lý (ISCM). Tôi chịu trách nhiệm quản lý chung, lập kế hoạch học thuật và các hoạt động nghiên cứu khoa học cốt lõi.`
-              : `I am ${MY_PROFILE.full_name}, Director of the Institute of Smart City and Management (ISCM). I lead the institutional administration, academic planning, and core research operations.`}
-          </p>
-          <p className="text-neutral-500 leading-relaxed">
             {lang === 'vi'
-              ? 'Tôi giám sát khối lượng học thuật giảng viên, duyệt thanh toán cho các dòng ngân quỹ Track 1 và Track 2, đồng thời rà soát nhật ký điểm danh hàng ngày.'
-              : 'I oversee academic workloads, approve financial routing for Track 1 and Track 2 budgets, and monitor daily attendance logs.'}
+              ? `Tôi là ${wsData.myProfile.full_name}, ${wsData.myProfile.system_role || '—'} tại ${wsData.myProfile.base_functional_group || 'ISCM'}.`
+              : `I am ${wsData.myProfile.full_name}, ${wsData.myProfile.system_role || '—'} at ${wsData.myProfile.base_functional_group || 'ISCM'}.`}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
               <span className="block text-xs text-neutral-400 uppercase">{t.BIO_NAME_LABEL}</span>
-              <span className="font-bold text-neutral-800 block mt-1 text-sm">{MY_PROFILE.full_name}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.full_name}</span>
             </div>
             <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
               <span className="block text-xs text-neutral-400 uppercase">{t.BIO_ROLE_LABEL}</span>
-              <span className="font-bold text-neutral-800 block mt-1 text-sm">{MY_PROFILE.system_role}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.system_role || '—'}</span>
+            </div>
+            <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
+              <span className="block text-xs text-neutral-400 uppercase">{lang === 'vi' ? 'Email' : 'Email'}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm truncate">{wsData.myProfile.email || '—'}</span>
+            </div>
+            <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
+              <span className="block text-xs text-neutral-400 uppercase">{lang === 'vi' ? 'Khối chức năng' : 'Functional Group'}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.base_functional_group || '—'}</span>
             </div>
           </div>
           <div className="border border-neutral-200 bg-neutral-50 p-3 flex items-center justify-between rounded-none text-sm">
@@ -1200,6 +1203,7 @@ export default function PersonalDashboard({ onNavigate }) {
   const { lang } = useLanguage();
   const { user: authUser } = useAuth();
   const [isTopAdmin, setIsTopAdmin] = useState(false);
+  const [dbUser, setDbUser] = useState(null);
   const [selected, setSelected] = useState('profile-bio');
   const [activeCategory, setActiveCategory] = useState('my-portal');
   const [nodeExpanded, setNodeExpanded] = useState({});
@@ -1284,7 +1288,8 @@ export default function PersonalDashboard({ onNavigate }) {
     upcoming,
     today,
     fmtDateLabel,
-    TASK_STATUS_BADGE
+    TASK_STATUS_BADGE,
+    myProfile,
   };
 
   useEffect(() => {
@@ -1312,6 +1317,23 @@ export default function PersonalDashboard({ onNavigate }) {
     if (!isLive || !authUser) { setIsTopAdmin(false); return; }
     supabase.rpc('is_top_admin').then(({ data, error }) => setIsTopAdmin(!error && Boolean(data)));
   }, [authUser]);
+
+  // Profile & Bio must reflect whichever account is actually signed in, not
+  // a fixed demo persona — mirrors the same lookup NavBar.jsx does.
+  useEffect(() => {
+    if (!isLive || !authUser) { setDbUser(null); return; }
+    supabase.from('users_profiles').select('*').eq('id', authUser.id).single()
+      .then(({ data }) => { if (data) setDbUser(data); });
+  }, [authUser]);
+
+  const myProfile = dbUser
+    ? {
+        full_name: dbUser.full_name,
+        email: dbUser.email,
+        system_role: dbUser.global_system_role,
+        base_functional_group: dbUser.base_functional_group,
+      }
+    : MY_PROFILE;
 
   const active = usePaneContent(selected, filters, setSelected, lang, wsData);
 
