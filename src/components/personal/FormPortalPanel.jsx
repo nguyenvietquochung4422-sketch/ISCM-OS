@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, Lock, BookOpen, ExternalLink, Check,
-  ShoppingCart, X, ChevronLeft, ChevronRight, Search,
+  ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY } from '../../data/formPortal.js';
 import { isNameCompliant } from '../../data/wikiHub.js';
@@ -9,7 +9,10 @@ import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { LIBRARY_ITEMS, LOAN_DAYS } from '../../data/libraryData.js';
 import { physicalAvailable, createBorrowRequest } from '../../data/libraryStore.js';
-import { supabase } from '../../lib/supabaseClient.js';
+import { submitBorrowRequestRemote, canManageLibrary, fetchItemLocation, upsertItemLocation } from '../../data/libraryAdmin.js';
+import LibraryAdminPanel from './LibraryAdminPanel.jsx';
+import { supabase, isLive } from '../../lib/supabaseClient.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
 
 // Digital items either carry a plain external `url`, or a Supabase Storage
 // `{ bucket, path }` — the latter needs a short-lived signed URL fetched
@@ -376,8 +379,25 @@ function LibraryCard({ item, inCart, onOpenDetail, lang }) {
 // Big detail modal — title/author + a status table (bảng thông tin) plus
 // the Borrow/Digital actions, opened when a card is clicked.
 function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedDigital, onClose, lang }) {
+  const { user: authUser } = useAuth();
   const [resolvingDigital, setResolvingDigital] = useState(false);
   const avail = item.physical ? physicalAvailable(item.id) : null;
+
+  const [location, setLocation] = useState(null);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationDraft, setLocationDraft] = useState('');
+
+  useEffect(() => {
+    if (!isLive || !item.physical) { setLocation(null); return; }
+    fetchItemLocation(item.id).then(setLocation);
+  }, [item.id]);
+
+  const saveLocation = async () => {
+    if (!locationDraft.trim() || !authUser) return;
+    const updated = await upsertItemLocation(item.id, locationDraft.trim(), authUser.id);
+    if (updated) setLocation({ ...updated, updater: { full_name: authUser.user_metadata?.full_name || authUser.email } });
+    setEditingLocation(false);
+  };
 
   const handleViewDigital = async () => {
     setResolvingDigital(true);
@@ -438,6 +458,35 @@ function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedD
             </tbody>
           </table>
 
+          {item.physical && isLive && (
+            <div className="flex items-center gap-1.5 border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-[#990000]" />
+              {editingLocation ? (
+                <div className="flex flex-1 items-center gap-1.5">
+                  <input autoFocus value={locationDraft} onChange={(e) => setLocationDraft(e.target.value)}
+                    placeholder={lang === 'vi' ? 'VD: Phòng CoLab, kệ 3' : 'e.g. CoLab Room, shelf 3'}
+                    className="flex-1 border border-neutral-300 px-2 py-1 font-sans text-[11px] focus:border-[#990000] focus:outline-none" />
+                  <button type="button" onClick={saveLocation} className="border border-emerald-300 bg-emerald-50 p-1 text-emerald-700 hover:bg-emerald-100"><Check className="h-3 w-3" /></button>
+                  <button type="button" onClick={() => setEditingLocation(false)} className="border border-neutral-300 p-1 text-neutral-500"><X className="h-3 w-3" /></button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => { setEditingLocation(true); setLocationDraft(location?.location || ''); }}
+                  className="flex-1 text-left font-sans text-[11px] text-neutral-700 hover:text-[#990000]">
+                  {location ? (
+                    <>
+                      <strong>{location.location}</strong>
+                      <span className="text-neutral-400"> · {lang === 'vi' ? 'cập nhật bởi' : 'updated by'} {location.updater?.full_name || '—'}</span>
+                    </>
+                  ) : (
+                    <span className="italic text-neutral-400">
+                      {lang === 'vi' ? 'Chưa rõ vị trí hiện tại — bấm để cập nhật' : 'Current location unknown — click to set'}
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:flex-row">
             {item.physical && (
               <button type="button" disabled={avail === 0 && !inCart} onClick={() => onToggleCart(item)}
@@ -473,6 +522,9 @@ function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedD
 const LIBRARY_PAGE_SIZE = 15;
 
 function LibraryBlock({ onValid, onData, lang, form }) {
+  const { user: authUser } = useAuth();
+  const [canManage, setCanManage] = useState(false);
+  const [view, setView] = useState('catalog'); // 'catalog' | 'admin'
   const [cart, setCart] = useState([]); // [{ itemId, itemTitle }]
   const [pickupDate, setPickupDate] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -482,6 +534,11 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const [typeFilter, setTypeFilter] = useState('All');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (!isLive || !authUser) { setCanManage(false); return; }
+    canManageLibrary().then(setCanManage);
+  }, [authUser]);
 
   const types = useMemo(() => ['All', ...new Set(LIBRARY_ITEMS.map((i) => i.category))], []);
   const filteredItems = useMemo(() => {
@@ -542,6 +599,27 @@ function LibraryBlock({ onValid, onData, lang, form }) {
 
   return (
     <div className="space-y-3">
+      {canManage && (
+        <div className="flex gap-1.5 border-b border-neutral-200 pb-2">
+          <button type="button" onClick={() => setView('catalog')}
+            className={`border px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              view === 'catalog' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-600 hover:border-neutral-900'
+            }`}>
+            {lang === 'vi' ? 'Danh mục' : 'Catalog'}
+          </button>
+          <button type="button" onClick={() => setView('admin')}
+            className={`border px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              view === 'admin' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-600 hover:border-neutral-900'
+            }`}>
+            {lang === 'vi' ? 'Quản trị thư viện' : 'Library admin'}
+          </button>
+        </div>
+      )}
+
+      {view === 'admin' ? (
+        <LibraryAdminPanel lang={lang} />
+      ) : (
+        <>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
         <input
@@ -646,6 +724,8 @@ function LibraryBlock({ onValid, onData, lang, form }) {
           ? 'Bản điện tử được cấp quyền truy cập ngay khi bấm, không cần vào giỏ. Sách bản cứng: thêm nhiều quyển vào giỏ, điền ngày nhận rồi bấm "Gửi yêu cầu" bên dưới để gửi một lượt; sau khi duyệt sẽ hiện tại Hồ Sơ Của Tôi → Tài sản & Thiết bị đang mượn.'
           : 'Digital items grant access the moment you click them — no cart needed. For physical books: add several to the cart, fill in a pickup date, then click "Submit request" below to send them all at once; once approved they appear under My Portal → My Assets Checked Out to Me.'}
       </p>
+        </>
+      )}
     </div>
   );
 }
@@ -678,6 +758,7 @@ const SPECIAL_BLOCKS = {
 
 export function FormDetail({ formKey, onBack }) {
   const { lang } = useLanguage();
+  const { user: authUser } = useAuth();
   const form = FORM_BY_KEY[formKey];
   const [specialValid, setSpecialValid] = useState(!form?.special);
   const [specialData, setSpecialData] = useState(null);
@@ -740,6 +821,13 @@ export function FormDetail({ formKey, onBack }) {
                   id: entry.id, itemId: item.itemId, itemTitle: item.itemTitle,
                   pickupDate: specialData.pickupDate, dueDate: specialData.dueDate, note: specialData.note,
                 });
+                if (isLive && authUser) {
+                  submitBorrowRequestRemote({
+                    itemId: item.itemId, itemTitle: item.itemTitle,
+                    pickupDate: specialData.pickupDate, dueDate: specialData.dueDate, note: specialData.note,
+                    requesterId: authUser.id,
+                  });
+                }
               });
             } else {
               saveSubmission(form);
