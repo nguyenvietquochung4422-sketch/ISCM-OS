@@ -486,10 +486,12 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const types = useMemo(() => ['All', ...new Set(LIBRARY_ITEMS.map((i) => i.category))], []);
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return LIBRARY_ITEMS.filter((i) =>
-      (typeFilter === 'All' || i.category === typeFilter) &&
-      (!q || i.title.toLowerCase().includes(q) || (i.author || '').toLowerCase().includes(q))
-    );
+    return LIBRARY_ITEMS
+      .filter((i) =>
+        (typeFilter === 'All' || i.category === typeFilter) &&
+        (!q || i.title.toLowerCase().includes(q) || (i.author || '').toLowerCase().includes(q))
+      )
+      .sort((a, b) => a.title.localeCompare(b.title));
   }, [typeFilter, query]);
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / LIBRARY_PAGE_SIZE));
   const pageItems = filteredItems.slice((page - 1) * LIBRARY_PAGE_SIZE, page * LIBRARY_PAGE_SIZE);
