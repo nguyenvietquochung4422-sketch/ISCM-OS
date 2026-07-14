@@ -22,7 +22,7 @@ function timeAgo(iso, lang) {
 export default function NavBar({ active, onNavigate, onOpenAsset }) {
   const { lang, toggle } = useLanguage();
   const { user: authUser, signInWithGoogle, signOut } = useAuth();
-  const [openMenu, setOpenMenu] = useState(null); // 'workspace' | 'group' | 'overview' | 'profile-dropdown' | null
+  const [openMenu, setOpenMenu] = useState(null); // 'group' | 'overview' | 'notifications' | 'profile-dropdown' | null
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeTimer = useRef(null);
   

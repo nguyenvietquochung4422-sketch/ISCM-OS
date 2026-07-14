@@ -1190,7 +1190,6 @@ function getActiveCategory(selected) {
   if (selected.startsWith('contacts-') || selected === 'cat-contacts') return 'contacts-root';
   if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'requests-forms';
   if (['my-tasks', 'my-forms', 'requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
-  if (selected.startsWith('ws-')) return 'my-workspace-root';
   return 'my-portal';
 }
 
@@ -1201,8 +1200,8 @@ export default function PersonalDashboard({ onNavigate }) {
   const { lang } = useLanguage();
   const { user: authUser } = useAuth();
   const [isTopAdmin, setIsTopAdmin] = useState(false);
-  const [selected, setSelected] = useState('ws-calendar');
-  const [activeCategory, setActiveCategory] = useState('my-workspace-root');
+  const [selected, setSelected] = useState('profile-bio');
+  const [activeCategory, setActiveCategory] = useState('my-portal');
   const [nodeExpanded, setNodeExpanded] = useState({});
   const [filters, setFilters] = useState({
     formCategory: 'All', tasksStatus: 'All', formsStatus: 'All', assetType: 'All',
@@ -1296,7 +1295,6 @@ export default function PersonalDashboard({ onNavigate }) {
         else if (e.detail === 'cat-forms') setSelected('cat-forms');
         else if (e.detail === 'cat-wiki') setSelected('cat-wiki');
         else if (e.detail === 'cat-contacts') setSelected('contacts-colleagues');
-        else if (e.detail === 'workspace-calendar') setSelected('ws-calendar');
         else setSelected(e.detail);
       }
     };
@@ -1324,7 +1322,6 @@ export default function PersonalDashboard({ onNavigate }) {
 
   // Get active localization structure
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
-  const isWorkspace = activeCategory === 'my-workspace-root';
   const rawCategoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
   const categoryNode = rawCategoryNode?.children
     ? { ...rawCategoryNode, children: rawCategoryNode.children.filter((c) => !c.adminOnly || isTopAdmin) }
@@ -1332,35 +1329,15 @@ export default function PersonalDashboard({ onNavigate }) {
 
   return (
     <div className="w-full font-sans">
-      
+
       {/* Page Header */}
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
-        <div>
-          <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            {isWorkspace
-              ? (lang === 'vi' ? 'KHÔNG GIAN CỦA TÔI' : 'MY WORKSPACE')
-              : (lang === 'vi' ? 'CỔNG TÁC NGHIỆP CÁ NHÂN' : 'PERSONAL PORTAL & OPERATIONS')
-            }
-          </h1>
-          <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            2026 Operational Network · ISCM-UEH
-          </p>
-        </div>
-        {isWorkspace ? (
-          <button
-            onClick={() => setSelected('profile-bio')}
-            className="btn-secondary text-[10px] py-1 px-2.5 mr-2 font-bold hover:border-[#990000] hover:text-[#990000]"
-          >
-            ← {lang === 'vi' ? 'Hồ sơ của tôi' : 'My Portal'}
-          </button>
-        ) : (
-          <button
-            onClick={() => setSelected('ws-calendar')}
-            className="btn-secondary text-[10px] py-1 px-2.5 mr-2 font-bold hover:border-[#990000] hover:text-[#990000]"
-          >
-            ← {lang === 'vi' ? 'Không gian làm việc' : 'Workspace'}
-          </button>
-        )}
+      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-6 rounded-none">
+        <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
+          {lang === 'vi' ? 'CỔNG TÁC NGHIỆP CÁ NHÂN' : 'PERSONAL PORTAL & OPERATIONS'}
+        </h1>
+        <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
+          2026 Operational Network · ISCM-UEH
+        </p>
       </header>
 
       {/* Master-Detail split screen */}
