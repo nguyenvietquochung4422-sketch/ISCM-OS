@@ -9,6 +9,20 @@ import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { LIBRARY_ITEMS, LOAN_DAYS } from '../../data/libraryData.js';
 import { physicalAvailable, createBorrowRequest } from '../../data/libraryStore.js';
+import { supabase } from '../../lib/supabaseClient.js';
+
+// Digital items either carry a plain external `url`, or a Supabase Storage
+// `{ bucket, path }` — the latter needs a short-lived signed URL fetched
+// on demand since the bucket is private (Google-sign-in-gated members only).
+async function resolveDigitalUrl(digital) {
+  if (digital.url) return digital.url;
+  if (digital.bucket && digital.path) {
+    const { data, error } = await supabase.storage.from(digital.bucket).createSignedUrl(digital.path, 3600);
+    if (error) throw error;
+    return data.signedUrl;
+  }
+  return null;
+}
 
 export { loadSubmissions } from '../../data/formSubmissions.js';
 
@@ -362,7 +376,23 @@ function LibraryCard({ item, inCart, onOpenDetail, lang }) {
 // Big detail modal — title/author + a status table (bảng thông tin) plus
 // the Borrow/Digital actions, opened when a card is clicked.
 function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedDigital, onClose, lang }) {
+  const [resolvingDigital, setResolvingDigital] = useState(false);
   const avail = item.physical ? physicalAvailable(item.id) : null;
+
+  const handleViewDigital = async () => {
+    setResolvingDigital(true);
+    try {
+      const url = await resolveDigitalUrl(item.digital);
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        onOpenDigital(item);
+      }
+    } catch {
+      alert(lang === 'vi' ? 'Không thể mở bản điện tử lúc này. Vui lòng thử lại.' : 'Could not open the digital edition right now. Please try again.');
+    } finally {
+      setResolvingDigital(false);
+    }
+  };
   const rows = [
     [lang === 'vi' ? 'Loại' : 'Type', item.category],
     [lang === 'vi' ? 'Tác giả' : 'Author', item.author || '—'],
@@ -425,11 +455,13 @@ function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedD
               </button>
             )}
             {item.digital && (
-              <a href={item.digital.url} target="_blank" rel="noreferrer" onClick={() => onOpenDigital(item)}
-                className="flex flex-1 items-center justify-center gap-1.5 border border-emerald-300 bg-emerald-50 px-2.5 py-2 font-sans text-xs font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">
+              <button type="button" disabled={resolvingDigital} onClick={handleViewDigital}
+                className="flex flex-1 items-center justify-center gap-1.5 border border-emerald-300 bg-emerald-50 px-2.5 py-2 font-sans text-xs font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60">
                 {openedDigital[item.id] ? <Check className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                {lang === 'vi' ? 'Xem bản điện tử' : 'View digital'}
-              </a>
+                {resolvingDigital
+                  ? (lang === 'vi' ? 'Đang mở...' : 'Opening...')
+                  : (lang === 'vi' ? 'Xem bản điện tử' : 'View digital')}
+              </button>
             )}
           </div>
         </div>
