@@ -35,7 +35,10 @@ export function AuthProvider({ children }) {
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      // window.location.origin alone drops the "/ISCM-OS/" base path this
+      // app is served under (GitHub Pages project site + Vite `base`), which
+      // bounced users to a 404 at the bare domain root after Google auth.
+      options: { redirectTo: window.location.origin + window.location.pathname },
     });
     if (error) {
       console.error('Google sign-in failed:', error);
