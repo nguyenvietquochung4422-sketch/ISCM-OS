@@ -1271,6 +1271,15 @@ export default function PersonalDashboard({ onNavigate }) {
     }
   };
 
+  const myProfile = dbUser
+    ? {
+        full_name: dbUser.full_name,
+        email: dbUser.email,
+        system_role: dbUser.global_system_role,
+        base_functional_group: dbUser.base_functional_group,
+      }
+    : MY_PROFILE;
+
   const wsData = {
     tasks,
     openTasks,
@@ -1325,15 +1334,6 @@ export default function PersonalDashboard({ onNavigate }) {
     supabase.from('users_profiles').select('*').eq('id', authUser.id).single()
       .then(({ data }) => { if (data) setDbUser(data); });
   }, [authUser]);
-
-  const myProfile = dbUser
-    ? {
-        full_name: dbUser.full_name,
-        email: dbUser.email,
-        system_role: dbUser.global_system_role,
-        base_functional_group: dbUser.base_functional_group,
-      }
-    : MY_PROFILE;
 
   const active = usePaneContent(selected, filters, setSelected, lang, wsData);
 
