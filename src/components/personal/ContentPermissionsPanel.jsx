@@ -8,9 +8,15 @@ import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { createNotification } from '../../lib/notifications.js';
 
 // Personal pages that always belong to the account viewing them — there is
-// no "admin of someone else's profile" to assign, it just syncs with the
-// signed-in account, so these are excluded from the grantable list.
-const SELF_OWNED_KEYS = new Set(['profile-bio']);
+// no "admin of someone else's data" to assign here, each is either a
+// self-synced view or a personal inbox/log, so they're excluded entirely.
+const SELF_OWNED_KEYS = new Set(['profile-bio', 'attendance-log', 'my-assets', 'my-tasks', 'my-forms']);
+
+// Content keys that actually gate real edit/moderate behavior in the app
+// today (checked via can_manage_content()). Every other item below is a
+// forward-looking placeholder — granting it is recorded but nothing in the
+// app currently reads that grant to change what that account can do.
+const ENFORCED_KEYS = new Set(['form:order-book']);
 
 /** Flatten the sidebar nav tree into a flat list of manageable content leaves. */
 function flattenContentItems(nodes, out = []) {
@@ -161,6 +167,11 @@ export default function ContentPermissionsPanel() {
           ? 'Chọn tài khoản có quyền quản trị toàn phần (chỉnh sửa, kiểm duyệt) cho từng mục nội dung bên dưới.'
           : 'Pick which accounts get full admin rights (edit, moderate) over each content item below.'}
       </p>
+      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 leading-relaxed">
+        {lang === 'vi'
+          ? 'Các mục có nhãn "Chưa kích hoạt" chưa có chức năng kiểm duyệt thật trong app — quyền vẫn được lưu lại để dùng khi tính năng đó được xây dựng, nhưng hiện tại chưa thay đổi được gì.'
+          : 'Items labeled "Not yet enforced" have no real edit/moderate feature in the app yet — the grant is saved for when that feature is built, but it doesn’t change anything today.'}
+      </p>
 
       <div className="relative max-w-sm">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
@@ -186,6 +197,15 @@ export default function ContentPermissionsPanel() {
                 <div className="flex items-center gap-1.5 sm:w-64 shrink-0">
                   <ShieldCheck className="h-3.5 w-3.5 text-[#990000] shrink-0" />
                   <span className="text-xs font-semibold text-neutral-800">{item.label}</span>
+                  {ENFORCED_KEYS.has(item.key) ? (
+                    <span className="shrink-0 border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                      {lang === 'vi' ? 'Đang áp dụng' : 'Active'}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-neutral-400">
+                      {lang === 'vi' ? 'Chưa kích hoạt' : 'Not yet enforced'}
+                    </span>
+                  )}
                 </div>
 
                 <div className="relative flex-1" ref={isOpen ? panelRef : null}>
