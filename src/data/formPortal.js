@@ -20,8 +20,6 @@ export const FORM_GROUPS = [
       { key: 'recruitment-request', label: 'Recruitment request', cat: 'HR', desc: 'Request recruitment of new CTV/Interns.' },
       { key: 'training-register', label: 'Training register', cat: 'HR', desc: 'Register for internal courses or seminars.', special: 'training' },
       { key: 'ask-anything', label: 'Ask anything', cat: 'HR', desc: 'Send general HR & administrative inquiries.' },
-      { key: 'wfh', label: 'Work from home', cat: 'HR', desc: 'Request remote work allocation.', special: 'wfh' },
-      { key: 'leave', label: 'Leave', cat: 'HR', desc: 'Absence/Leave request.', special: 'leave' },
       { key: 'travel-auth', label: 'Travel authorization', cat: 'HR', desc: 'Request authorization for fieldwork/travel.' },
       { key: 'benefit-hr', label: 'Benefit and HR', cat: 'HR', desc: 'Inquire or register for HR benefits.' },
       { key: 'member-partner-info', label: 'Member & Partner Information Form', cat: 'HR', desc: 'Register or update member info.' },
@@ -86,8 +84,8 @@ export const MY_TASKS = [
 ];
 
 export const MY_FORMS_SEED = [
-  { id: 'f1', form: 'Work from home', group: 'Human Resources & Admin', date: '2026-07-01', status: 'Open' },
-  { id: 'f2', form: 'Leave', group: 'Human Resources & Admin', date: '2026-06-20', status: 'Approved' },
+  { id: 'f1', form: 'Daily Attendance — Work from Home with Permission', group: 'Human Resources & Admin', date: '2026-07-01', status: 'Open' },
+  { id: 'f2', form: 'Daily Attendance — Annual Leave', group: 'Human Resources & Admin', date: '2026-06-20', status: 'Approved' },
   { id: 'f3', form: 'Payment request', group: 'Finance and Accounting', date: '2026-06-15', status: 'Approved' },
   { id: 'f4', form: 'Overtime register', group: 'Human Resources & Admin', date: '2026-06-10', status: 'Rejected' },
 ];

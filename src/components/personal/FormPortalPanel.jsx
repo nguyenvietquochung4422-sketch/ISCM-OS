@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
-  FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, Lock, BookOpen, ExternalLink, Check,
+  FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, BookOpen, ExternalLink, Check,
   ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY } from '../../data/formPortal.js';
@@ -114,65 +114,6 @@ function ValidationNote({ ok, okText, badText }) {
       {ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
       {ok ? okText : badText}
     </p>
-  );
-}
-
-function WfhBlock({ onValid, lang }) {
-  const [day, setDay] = useState(null);
-  return (
-    <div className="space-y-2">
-      <p className="font-sans text-[11px] text-neutral-500">
-        {lang === 'vi' ? 'Chọn ngày remote trong tuần tới:' : 'Select remote day for next week:'}
-      </p>
-      <div className="grid grid-cols-5 gap-1.5">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d) => (
-          <button key={d} type="button" disabled={d === 'Mon'}
-            onClick={() => { setDay(d); onValid(true); }}
-            className={`border p-1.5 text-center font-sans text-[11px] transition-colors rounded-none ${
-              d === 'Mon' ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400'
-              : day === d ? 'border-[#990000] bg-[#990000] text-white'
-              : 'border-neutral-300 hover:border-[#990000] bg-white'
-            }`}>
-            {d}{d === 'Mon' && <Lock className="mx-auto mt-0.5 h-3 w-3 text-neutral-400" />}
-          </button>
-        ))}
-      </div>
-      <p className="border border-amber-200 bg-amber-50 px-2 py-1 font-sans text-[10px] text-amber-800 rounded-none">
-        {lang === 'vi'
-          ? '🔒 Monday Rule: Thứ Hai khóa Onsite — All-hands, academic seminars & core team ops.'
-          : '🔒 Monday Rule: Monday is locked Onsite — All-hands, academic seminars & core team ops.'}
-      </p>
-    </div>
-  );
-}
-
-function LeaveBlock({ onValid, lang }) {
-  const [date, setDate] = useState('');
-  const [type, setType] = useState('Annual Leave');
-  const ok = date ? new Date(date).getTime() - Date.now() >= 24 * 3600 * 1000 : null;
-  return (
-    <div className="space-y-2">
-      <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
-        {lang === 'vi' ? (
-          <>
-            <option value="Annual Leave">Nghỉ phép năm</option>
-            <option value="Absence with Permission">Vắng mặt có lý do</option>
-            <option value="Late with Permission">Đi trễ có lý do</option>
-          </>
-        ) : (
-          <>
-            <option value="Annual Leave">Annual Leave</option>
-            <option value="Absence with Permission">Absence with Permission</option>
-            <option value="Late with Permission">Late with Permission</option>
-          </>
-        )}
-      </select>
-      <input type="date" value={date} className={inputClass}
-        onChange={(e) => { setDate(e.target.value); onValid(new Date(e.target.value).getTime() - Date.now() >= 24 * 3600 * 1000); }} />
-      <ValidationNote ok={ok}
-        okText={lang === 'vi' ? 'Đạt quy tắc Smart Office: khai báo trước ≥ 24 giờ.' : 'Compliant with Smart Office rules: declared ≥ 24 hours prior.'}
-        badText={lang === 'vi' ? 'Vi phạm quy tắc 24 giờ — ngày nghỉ phải cách hiện tại tối thiểu 24 giờ.' : 'Violates 24h Prior Rule — leave day must be at least 24 hours in advance.'} />
-    </div>
   );
 }
 
@@ -749,7 +690,7 @@ function ResignationBlock({ onValid, lang }) {
 }
 
 const SPECIAL_BLOCKS = {
-  wfh: WfhBlock, leave: LeaveBlock, overtime: OvertimeBlock, naming: NamingBlock,
+  overtime: OvertimeBlock, naming: NamingBlock,
   handover: HandoverBlock, payment: PaymentBlock, training: TrainingBlock,
   labEquip: LabEquipBlock, resignation: ResignationBlock, library: LibraryBlock,
 };

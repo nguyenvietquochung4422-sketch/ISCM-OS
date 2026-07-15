@@ -12,15 +12,37 @@ export const ATTENDANCE_DEADLINES = {
 };
 
 // The 8 status keywords defined on the workbook's "Description" sheet
+// (bilingual text below is the exact wording from the ISCM keyword reference sheet)
 export const ATTENDANCE_LEGEND = [
-  { key: 'annual_leave', label: 'Annual Leave (12 days)', vi: 'Nghỉ phép năm', desc: 'Planned leave registered ≥ 6 months ahead, approved by ISCM Director.' },
-  { key: 'absence_permit', label: 'Absence with Permission', vi: 'Nghỉ có phép', desc: 'Unplanned absence (illness, family emergency) approved in advance.' },
-  { key: 'absence_no_permit', label: 'Absence without Permission', vi: 'Nghỉ không phép', desc: 'Absent from work without prior approval.' },
-  { key: 'wfh', label: 'Work from Home with Permission', vi: 'Làm việc tại nhà', desc: 'Remote work approved in advance by ISCM Director.' },
-  { key: 'outside_fullday', label: 'Work Outside Fullday with Permission', vi: 'Công tác cả ngày', desc: 'Off-site full day (meetings, fieldwork) with approval.' },
-  { key: 'outside_halfday', label: 'Work Outside Halfday with Permission', vi: 'Công tác nửa ngày', desc: 'Off-site half day with approval.' },
-  { key: 'late_permit', label: 'Late with Permission', vi: 'Trễ có phép', desc: 'Late arrival with prior notice and approval.' },
-  { key: 'late_no_permit', label: 'Late without Permission', vi: 'Trễ không phép', desc: 'Late arrival without prior notice or valid reason.' },
+  { key: 'annual_leave', label: 'Annual Leave (12 days)', vi: 'Nghỉ phép năm', requestable: true, leadTime: '6mo',
+    desc: 'Planned leave days taken in advance for personal purposes such as travel, rest, or family activities. Must be registered and approved beforehand by ISCM Director.',
+    descVi: 'Nghỉ phép có kế hoạch trước, dùng cho mục đích cá nhân như du lịch, nghỉ ngơi hoặc tham gia hoạt động gia đình. Cần đăng ký trước (ít nhất 6 tháng) và được phê duyệt theo chế độ nghỉ phép năm. Trường hợp nghỉ phép dài hạn, trong thời gian nghỉ không làm các việc của UEH/ISCM, làm đơn xin phép UEH theo quy định.' },
+  { key: 'absence_permit', label: 'Absence with Permission', vi: 'Nghỉ có phép', requestable: true, leadTime: '24h',
+    desc: 'Unplanned or short-notice absence due to unexpected situations, with prior notification and approval from ISCM Director. Common reasons include sudden illness, family emergencies, or urgent personal matters.',
+    descVi: 'Nghỉ không có kế hoạch trước do các tình huống đột xuất, nhưng đã xin phép và được lãnh đạo Viện chấp thuận. Thường bao gồm nghỉ ốm, việc gia đình gấp hoặc các việc cá nhân khẩn cấp, thời gian ngắn.' },
+  { key: 'absence_no_permit', label: 'Absence without Permission', vi: 'Nghỉ không phép', requestable: false,
+    desc: 'Absent from work without prior approval.', descVi: 'Vắng mặt không xin phép.' },
+  { key: 'wfh', label: 'Work from Home with Permission', vi: 'Làm việc tại nhà', requestable: true, leadTime: '24h',
+    desc: 'Working remotely with prior approval from ISCM Director.', descVi: 'Làm việc tại nhà có xin phép và được lãnh đạo Viện chấp thuận.' },
+  { key: 'outside_fullday', label: 'Work Outside Fullday with Permission', vi: 'Công tác cả ngày', requestable: true, leadTime: '24h',
+    desc: 'Working off-site fullday (e.g., meetings, fieldwork) with approval.', descVi: 'Làm việc ngoài văn phòng cả ngày (ví dụ: họp, công tác...) và được lãnh đạo Viện chấp thuận.' },
+  { key: 'outside_halfday', label: 'Work Outside Halfday with Permission', vi: 'Công tác nửa ngày', requestable: true, leadTime: '24h',
+    desc: 'Working off-site halfday (e.g., meetings, fieldwork) with approval.', descVi: 'Làm việc ngoài văn phòng nửa ngày (ví dụ: họp, công tác...) và được lãnh đạo Viện chấp thuận.' },
+  { key: 'late_permit', label: 'Late with Permission', vi: 'Trễ có phép', requestable: true, leadTime: '24h',
+    desc: 'Late arrival with prior notice and approval.', descVi: 'Đi làm trễ có xin phép và được chấp thuận trước.' },
+  { key: 'late_no_permit', label: 'Late without Permission', vi: 'Trễ không phép', requestable: false,
+    desc: 'Late arrival without prior notice or valid reason.', descVi: 'Đi làm trễ không xin phép.' },
+];
+
+// Two additional record types the workbook also governs — not per-day statuses
+// a member selects, but scopes of what "Daily Attendance" as a whole tracks.
+export const ATTENDANCE_RECORD_TYPES = [
+  { key: 'event_participation', label: 'ISCM event participation record',
+    desc: 'A record of mandatory ISCM events that all members are required to attend. Absences must be approved in advance by ISCM leadership.',
+    descVi: 'Ghi nhận các hoạt động bắt buộc của ISCM mà tất cả thành viên phải tham gia. Nếu vắng mặt, cần xin phép trước với lãnh đạo Viện.' },
+  { key: 'daily_attendance', label: 'Daily attendance record',
+    desc: 'A daily record of working attendance during official working hours at ISCM.',
+    descVi: 'Ghi nhận thời gian làm việc hằng ngày trong giờ hành chính tại ISCM.' },
 ];
 
 // Header roster, "2026_Daily attendance record" sheet, row 2

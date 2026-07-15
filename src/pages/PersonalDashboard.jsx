@@ -839,7 +839,7 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
         </div>
       ),
     },
-    'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel /> },
+    'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel lang={lang} /> },
     'my-assets': { title: t.ASSETS_TITLE, icon: MonitorSmartphone, body: <MyAssetsPanel typeFilter={filters.assetType} /> },
     'admin-content-permissions': {
       title: lang === 'vi' ? 'PHÂN QUYỀN QUẢN TRỊ NỘI DUNG' : 'CONTENT ADMIN PERMISSIONS',
