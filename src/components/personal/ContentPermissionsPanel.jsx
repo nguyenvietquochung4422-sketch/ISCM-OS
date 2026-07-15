@@ -10,13 +10,15 @@ import { createNotification } from '../../lib/notifications.js';
 // Personal pages that always belong to the account viewing them — there is
 // no "admin of someone else's data" to assign here, each is either a
 // self-synced view or a personal inbox/log, so they're excluded entirely.
-const SELF_OWNED_KEYS = new Set(['profile-bio', 'attendance-log', 'my-assets', 'my-tasks', 'my-forms']);
+// (attendance-log is NOT here — it also holds WFH/leave/absence requests
+// from everyone else that need an approver, so it's a real permission.)
+const SELF_OWNED_KEYS = new Set(['profile-bio', 'my-assets', 'my-tasks', 'my-forms']);
 
 // Content keys that actually gate real edit/moderate behavior in the app
 // today (checked via can_manage_content()). Every other item below is a
 // forward-looking placeholder — granting it is recorded but nothing in the
 // app currently reads that grant to change what that account can do.
-const ENFORCED_KEYS = new Set(['form:order-book']);
+const ENFORCED_KEYS = new Set(['form:order-book', 'attendance-log']);
 
 /** Flatten the sidebar nav tree into a flat list of manageable content leaves. */
 function flattenContentItems(nodes, out = []) {

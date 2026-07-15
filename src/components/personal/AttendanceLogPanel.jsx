@@ -1,10 +1,15 @@
-import { useState } from 'react';
-import { Clock3, AlertCircle, CalendarPlus, FileSpreadsheet, Lock, Send, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Clock3, AlertCircle, CalendarPlus, FileSpreadsheet, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
 import {
   ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, INSTITUTE_YTD_TOTALS, MY_YTD_ATTENDANCE,
   RECENT_LOG_SAMPLE, STAFF_ROSTER,
 } from '../../data/attendanceData.js';
 import { saveSubmission } from '../../data/formSubmissions.js';
+import { isLive } from '../../lib/supabaseClient.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import {
+  canManageAttendance, submitAttendanceRequestRemote, fetchAllAttendanceRequests, decideAttendanceRequestRemote,
+} from '../../data/attendanceAdmin.js';
 
 /* Daily Attendance Log — integrates iscm daily attendance checklist.xlsx */
 
@@ -16,6 +21,7 @@ const inputClass = 'w-full rounded-none border border-neutral-300 bg-white px-2.
 // that used to be separate Form Portal entries — consolidated into one
 // place since they're all just entries in the same daily attendance record.
 function AttendanceRequestForm({ lang }) {
+  const { user: authUser } = useAuth();
   const [type, setType] = useState(REQUESTABLE_TYPES[0].key);
   const [day, setDay] = useState(null); // WFH-only weekday picker
   const [date, setDate] = useState('');
@@ -33,6 +39,12 @@ function AttendanceRequestForm({ lang }) {
       { label: 'Daily Attendance', group: 'Human Resources & Admin' },
       { form: `Daily Attendance — ${current.label}`, note: isWfh ? `Remote day: ${day}` : note }
     );
+    if (isLive && authUser) {
+      submitAttendanceRequestRemote({
+        statusKey: type, statusLabel: current.label, date: isWfh ? null : date,
+        note: isWfh ? `Remote day: ${day}` : note, requesterId: authUser.id,
+      });
+    }
     setSubmitted(true);
     setDate(''); setDay(null); setNote('');
     setTimeout(() => setSubmitted(false), 3000);
@@ -108,10 +120,81 @@ function AttendanceRequestForm({ lang }) {
   );
 }
 
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('vi-VN');
+}
+
+// Visible only to admins/permitted accounts — the approval side of the
+// requests submitted above, for everyone's WFH/leave/absence/late requests,
+// not just the signed-in account's own.
+function AttendanceAdminSection({ lang }) {
+  const [canManage, setCanManage] = useState(false);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    canManageAttendance().then((ok) => {
+      setCanManage(ok);
+      if (ok) fetchAllAttendanceRequests().then((r) => { setRequests(r); setLoading(false); });
+      else setLoading(false);
+    });
+  }, []);
+
+  if (!canManage) return null;
+
+  const pending = requests.filter((r) => r.status === 'Open');
+
+  const handleDecide = async (r, status) => {
+    setRequests((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
+    await decideAttendanceRequestRemote(r, status);
+  };
+
+  return (
+    <div className="space-y-2.5 rounded-lg border border-gray-200 bg-white p-3.5">
+      <p className="flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
+        <ShieldCheck className="h-3.5 w-3.5 text-iscm-crimson" />
+        {lang === 'vi' ? 'Duyệt yêu cầu chấm công' : 'Attendance requests to approve'}
+        {pending.length > 0 && (
+          <span className="rounded-full bg-iscm-crimson px-1.5 py-0.5 text-[9px] font-bold text-white">{pending.length}</span>
+        )}
+      </p>
+      {loading ? (
+        <p className="font-ibm text-[11px] text-gray-400">{lang === 'vi' ? 'Đang tải...' : 'Loading...'}</p>
+      ) : pending.length === 0 ? (
+        <p className="font-ibm text-[11px] text-gray-400">{lang === 'vi' ? 'Không có yêu cầu chờ duyệt.' : 'No pending requests.'}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {pending.map((r) => (
+            <li key={r.id} className="flex flex-col gap-1.5 border border-gray-100 bg-iscm-surface/60 p-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-ibm text-xs font-semibold text-iscm-charcoal">{r.status_label}</p>
+                <p className="font-ibm text-[10px] text-gray-500">
+                  {r.requester?.full_name || r.requester_id} · {fmtDate(r.request_date)}
+                </p>
+                {r.note && <p className="font-ibm text-[10px] italic text-gray-400">{r.note}</p>}
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                <button onClick={() => handleDecide(r, 'Approved')} className="flex items-center gap-1 border border-emerald-300 bg-emerald-50 px-2 py-1 font-ibm text-[10px] font-bold uppercase text-emerald-700 hover:bg-emerald-100">
+                  <Check className="h-3 w-3" /> {lang === 'vi' ? 'Duyệt' : 'Approve'}
+                </button>
+                <button onClick={() => handleDecide(r, 'Rejected')} className="flex items-center gap-1 border border-red-300 bg-red-50 px-2 py-1 font-ibm text-[10px] font-bold uppercase text-red-700 hover:bg-red-100">
+                  <X className="h-3 w-3" /> {lang === 'vi' ? 'Từ chối' : 'Reject'}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function AttendanceLogPanel({ lang = 'vi' }) {
   return (
     <div className="space-y-5">
       <AttendanceRequestForm lang={lang} />
+      <AttendanceAdminSection lang={lang} />
 
       {/* Deadline banner */}
       <div className="grid grid-cols-3 gap-3">
