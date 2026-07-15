@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import { LanguageProvider } from './i18n/LanguageContext.jsx';
 import { AuthProvider } from './auth/AuthContext.jsx';
 import AuthGate from './auth/AuthGate.jsx';
@@ -55,6 +56,7 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary>
     <AuthProvider>
     <LanguageProvider>
     <AuthGate>
@@ -99,5 +101,6 @@ export default function App() {
     </AuthGate>
     </LanguageProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
