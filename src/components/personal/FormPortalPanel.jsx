@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import {
   FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, BookOpen, ExternalLink, Check,
-  ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin,
+  ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin, ArrowRight,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY } from '../../data/formPortal.js';
 import { isNameCompliant } from '../../data/wikiHub.js';
@@ -475,11 +475,23 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const [typeFilter, setTypeFilter] = useState('All');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartStep, setCartStep] = useState('review'); // 'review' | 'details'
+  const cartRef = useRef(null);
 
   useEffect(() => {
     if (!isLive || !authUser) { setCanManage(false); return; }
     canManageLibrary().then(setCanManage);
   }, [authUser]);
+
+  useEffect(() => {
+    if (!cartOpen) return;
+    const handleClickOutside = (e) => {
+      if (cartRef.current && !cartRef.current.contains(e.target)) setCartOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [cartOpen]);
 
   const types = useMemo(() => ['All', ...new Set(LIBRARY_ITEMS.map((i) => i.category))], []);
   const filteredItems = useMemo(() => {
@@ -583,6 +595,88 @@ function LibraryBlock({ onValid, onData, lang, form }) {
         <span className="ml-auto font-sans text-[10px] text-neutral-400">
           {lang === 'vi' ? `${filteredItems.length} đầu sách/tài liệu` : `${filteredItems.length} titles`}
         </span>
+
+        <div className="relative" ref={cartRef}>
+          <button type="button"
+            onClick={() => { setCartOpen((o) => !o); if (!cartOpen) setCartStep(pickupDate && dueDate ? 'details' : 'review'); }}
+            className={`relative flex items-center gap-1.5 border px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              cartOpen ? 'border-[#990000] bg-[#990000] text-white' : 'border-neutral-300 text-neutral-600 hover:border-[#990000]'
+            }`}>
+            <ShoppingCart className="h-3.5 w-3.5" />
+            {lang === 'vi' ? 'Giỏ mượn' : 'Cart'}
+            {cart.length > 0 && (
+              <span className={`inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold ${
+                cartOpen ? 'bg-white text-[#990000]' : 'bg-[#990000] text-white'
+              }`}>
+                {cart.length}
+              </span>
+            )}
+          </button>
+
+          {cartOpen && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-80 border border-neutral-200 bg-white p-3 text-left normal-case shadow-lg">
+              {cart.length === 0 ? (
+                <p className="font-sans text-[11px] text-neutral-400">
+                  {lang === 'vi' ? 'Giỏ mượn đang trống — bấm vào sách để thêm.' : 'Cart is empty — click a book to add it.'}
+                </p>
+              ) : cartStep === 'review' ? (
+                <div className="space-y-2">
+                  <p className="font-sans text-[10px] font-bold uppercase tracking-wide text-[#990000]">
+                    {lang === 'vi' ? `Giỏ mượn sách (${cart.length})` : `Borrow cart (${cart.length})`}
+                  </p>
+                  <ul className="max-h-48 space-y-1 overflow-y-auto">
+                    {cart.map((c) => (
+                      <li key={c.itemId} className="flex items-center justify-between gap-2 border border-neutral-200 bg-neutral-50 px-2 py-1">
+                        <span className="truncate font-sans text-[11px] text-neutral-800">{c.itemTitle}</span>
+                        <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 text-neutral-400 hover:text-[#990000]">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" onClick={() => setCartStep('details')}
+                    className="flex w-full items-center justify-center gap-1.5 bg-[#990000] px-3 py-1.5 font-sans text-xs font-bold uppercase tracking-wide text-white hover:bg-[#7a0010]">
+                    {lang === 'vi' ? 'Xác nhận' : 'Confirm'} <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button type="button" onClick={() => setCartStep('review')}
+                    className="flex items-center gap-1 font-sans text-[10px] text-neutral-500 hover:text-[#990000]">
+                    <ArrowLeft className="h-3 w-3" /> {lang === 'vi' ? 'Quay lại giỏ' : 'Back to cart'}
+                  </button>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label className="block font-sans text-[10px] text-neutral-500">
+                      {lang === 'vi' ? 'Ngày nhận sách' : 'Pickup date'}
+                      <input type="date" min={minPickup} value={pickupDate}
+                        onChange={(e) => handlePickupDate(e.target.value)}
+                        className={`${inputClass} mt-0.5`} />
+                    </label>
+                    <label className="block font-sans text-[10px] text-neutral-500">
+                      {lang === 'vi' ? 'Ngày sẽ trả' : 'Return date'}
+                      <input type="date" min={pickupDate || minPickup} value={dueDate}
+                        onChange={(e) => handleDueDate(e.target.value)}
+                        className={`${inputClass} mt-0.5`} />
+                    </label>
+                  </div>
+                  <label className="block font-sans text-[10px] text-neutral-500">
+                    {lang === 'vi' ? 'Ghi chú giao nhận (tùy chọn)' : 'Pickup/return note (optional)'}
+                    <textarea rows={2} value={note} onChange={(e) => handleNote(e.target.value)}
+                      placeholder={lang === 'vi' ? 'VD: nhận tại quầy CoLab, buổi chiều...' : 'e.g. pick up at CoLab desk, afternoon...'}
+                      className={`${inputClass} mt-0.5`} />
+                  </label>
+                  <button type="button" onClick={() => setCartOpen(false)}
+                    disabled={!pickupDate || !dueDate}
+                    className={`flex w-full items-center justify-center gap-1.5 px-3 py-1.5 font-sans text-xs font-bold uppercase tracking-wide text-white transition-colors ${
+                      pickupDate && dueDate ? 'bg-[#990000] hover:bg-[#7a0010]' : 'cursor-not-allowed bg-neutral-300'
+                    }`}>
+                    <Check className="h-3.5 w-3.5" /> {lang === 'vi' ? 'Xong' : 'Done'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
@@ -619,51 +713,10 @@ function LibraryBlock({ onValid, onData, lang, form }) {
           openedDigital={openedDigital} onClose={() => setDetailItem(null)} lang={lang} />
       )}
 
-      {cart.length > 0 && (
-        <div className="space-y-2 border border-[#990000]/30 bg-[#990000]/5 p-2.5">
-          <p className="flex items-center gap-1.5 font-sans text-[10px] font-bold uppercase tracking-wide text-[#990000]">
-            <ShoppingCart className="h-3.5 w-3.5" />
-            {lang === 'vi' ? `Giỏ mượn sách (${cart.length})` : `Borrow cart (${cart.length})`}
-          </p>
-          <ul className="space-y-1">
-            {cart.map((c) => (
-              <li key={c.itemId} className="flex items-center justify-between gap-2 border border-neutral-200 bg-white px-2 py-1">
-                <span className="truncate font-sans text-[11px] text-neutral-800">{c.itemTitle}</span>
-                <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 text-neutral-400 hover:text-[#990000]">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block font-sans text-[10px] text-neutral-500">
-              {lang === 'vi' ? 'Ngày nhận sách' : 'Pickup date'}
-              <input type="date" min={minPickup} value={pickupDate}
-                onChange={(e) => handlePickupDate(e.target.value)}
-                className={`${inputClass} mt-0.5`} />
-            </label>
-            <label className="block font-sans text-[10px] text-neutral-500">
-              {lang === 'vi' ? 'Ngày sẽ trả' : 'Return date'}
-              <input type="date" min={pickupDate || minPickup} value={dueDate}
-                onChange={(e) => handleDueDate(e.target.value)}
-                className={`${inputClass} mt-0.5`} />
-            </label>
-          </div>
-
-          <label className="block font-sans text-[10px] text-neutral-500">
-            {lang === 'vi' ? 'Ghi chú giao nhận (tùy chọn)' : 'Pickup/return note (optional)'}
-            <textarea rows={2} value={note} onChange={(e) => handleNote(e.target.value)}
-              placeholder={lang === 'vi' ? 'VD: nhận tại quầy CoLab, buổi chiều...' : 'e.g. pick up at CoLab desk, afternoon...'}
-              className={`${inputClass} mt-0.5`} />
-          </label>
-        </div>
-      )}
-
       <p className="font-sans text-[10px] text-neutral-400">
         {lang === 'vi'
-          ? 'Bản điện tử được cấp quyền truy cập ngay khi bấm, không cần vào giỏ. Sách bản cứng: thêm nhiều quyển vào giỏ, điền ngày nhận rồi bấm "Gửi yêu cầu" bên dưới để gửi một lượt; sau khi duyệt sẽ hiện tại Hồ Sơ Của Tôi → Tài sản & Thiết bị đang mượn.'
-          : 'Digital items grant access the moment you click them — no cart needed. For physical books: add several to the cart, fill in a pickup date, then click "Submit request" below to send them all at once; once approved they appear under My Portal → My Assets Checked Out to Me.'}
+          ? 'Bản điện tử được cấp quyền truy cập ngay khi bấm, không cần vào giỏ. Sách bản cứng: thêm vào giỏ, bấm icon "Giỏ mượn" ở trên để xem lại/xoá bớt và điền ngày nhận, rồi bấm "Gửi yêu cầu" bên dưới để gửi một lượt; sau khi duyệt sẽ hiện tại Hồ Sơ Của Tôi → Tài sản & Thiết bị đang mượn.'
+          : 'Digital items grant access the moment you click them — no cart needed. For physical books: add them to the cart, click the "Cart" icon above to review/remove items and fill in a pickup date, then click "Submit request" below to send them all at once; once approved they appear under My Portal → My Assets Checked Out to Me.'}
       </p>
         </>
       )}
