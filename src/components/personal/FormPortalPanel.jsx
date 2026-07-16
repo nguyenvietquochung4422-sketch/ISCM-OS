@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, BookOpen, ExternalLink, Check,
   ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin, ArrowRight,
@@ -477,21 +477,11 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const [page, setPage] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartStep, setCartStep] = useState('review'); // 'review' | 'details'
-  const cartRef = useRef(null);
 
   useEffect(() => {
     if (!isLive || !authUser) { setCanManage(false); return; }
     canManageLibrary().then(setCanManage);
   }, [authUser]);
-
-  useEffect(() => {
-    if (!cartOpen) return;
-    const handleClickOutside = (e) => {
-      if (cartRef.current && !cartRef.current.contains(e.target)) setCartOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [cartOpen]);
 
   const types = useMemo(() => ['All', ...new Set(LIBRARY_ITEMS.map((i) => i.category))], []);
   const filteredItems = useMemo(() => {
@@ -596,51 +586,67 @@ function LibraryBlock({ onValid, onData, lang, form }) {
           {lang === 'vi' ? `${filteredItems.length} đầu sách/tài liệu` : `${filteredItems.length} titles`}
         </span>
 
-        <div className="relative" ref={cartRef}>
-          <button type="button"
-            onClick={() => { setCartOpen((o) => !o); if (!cartOpen) setCartStep(pickupDate && dueDate ? 'details' : 'review'); }}
-            className={`relative flex items-center gap-1.5 border px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              cartOpen ? 'border-[#990000] bg-[#990000] text-white' : 'border-neutral-300 text-neutral-600 hover:border-[#990000]'
-            }`}>
-            <ShoppingCart className="h-3.5 w-3.5" />
-            {lang === 'vi' ? 'Giỏ mượn' : 'Cart'}
-            {cart.length > 0 && (
-              <span className={`inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold ${
-                cartOpen ? 'bg-white text-[#990000]' : 'bg-[#990000] text-white'
-              }`}>
-                {cart.length}
-              </span>
-            )}
-          </button>
+        <button type="button"
+          onClick={() => { setCartOpen(true); setCartStep(pickupDate && dueDate ? 'details' : 'review'); }}
+          className="relative flex items-center gap-1.5 border border-neutral-300 px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide text-neutral-600 transition-colors hover:border-[#990000]">
+          <ShoppingCart className="h-3.5 w-3.5" />
+          {lang === 'vi' ? 'Giỏ mượn' : 'Cart'}
+          {cart.length > 0 && (
+            <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#990000] px-1 text-[9px] font-bold text-white">
+              {cart.length}
+            </span>
+          )}
+        </button>
 
-          {cartOpen && (
-            <div className="absolute right-0 top-full z-30 mt-1 w-80 border border-neutral-200 bg-white p-3 text-left normal-case shadow-lg">
+        {cartOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCartOpen(false)}>
+            <div onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md border border-neutral-200 bg-white p-4 text-left normal-case shadow-2xl">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="flex items-center gap-1.5 font-sans text-xs font-bold uppercase tracking-wide text-[#990000]">
+                  <ShoppingCart className="h-4 w-4" />
+                  {lang === 'vi' ? `Giỏ mượn sách (${cart.length})` : `Borrow cart (${cart.length})`}
+                </p>
+                <button type="button" onClick={() => setCartOpen(false)} className="text-neutral-400 hover:text-[#990000]">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
               {cart.length === 0 ? (
-                <p className="font-sans text-[11px] text-neutral-400">
+                <p className="py-6 text-center font-sans text-xs text-neutral-400">
                   {lang === 'vi' ? 'Giỏ mượn đang trống — bấm vào sách để thêm.' : 'Cart is empty — click a book to add it.'}
                 </p>
               ) : cartStep === 'review' ? (
-                <div className="space-y-2">
-                  <p className="font-sans text-[10px] font-bold uppercase tracking-wide text-[#990000]">
-                    {lang === 'vi' ? `Giỏ mượn sách (${cart.length})` : `Borrow cart (${cart.length})`}
-                  </p>
-                  <ul className="max-h-48 space-y-1 overflow-y-auto">
-                    {cart.map((c) => (
-                      <li key={c.itemId} className="flex items-center justify-between gap-2 border border-neutral-200 bg-neutral-50 px-2 py-1">
-                        <span className="truncate font-sans text-[11px] text-neutral-800">{c.itemTitle}</span>
-                        <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 text-neutral-400 hover:text-[#990000]">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </li>
-                    ))}
+                <div className="space-y-3">
+                  <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                    {cart.map((c) => {
+                      const full = LIBRARY_ITEMS.find((i) => i.id === c.itemId);
+                      return (
+                        <li key={c.itemId} className="flex items-center gap-3 border border-neutral-200 bg-neutral-50 p-2">
+                          <CoverArt item={full || { title: c.itemTitle }} className="!h-16 !w-12 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-sans text-xs font-semibold text-neutral-800">{c.itemTitle}</p>
+                            {full?.author && <p className="truncate font-sans text-[10px] text-neutral-400">{full.author}</p>}
+                            {full?.category && (
+                              <span className="mt-1 inline-block border border-neutral-200 bg-white px-1.5 py-0.5 font-sans text-[9px] font-bold uppercase text-neutral-500">
+                                {full.category}
+                              </span>
+                            )}
+                          </div>
+                          <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 text-neutral-400 hover:text-[#990000]">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                   <button type="button" onClick={() => setCartStep('details')}
-                    className="flex w-full items-center justify-center gap-1.5 bg-[#990000] px-3 py-1.5 font-sans text-xs font-bold uppercase tracking-wide text-white hover:bg-[#7a0010]">
+                    className="flex w-full items-center justify-center gap-1.5 bg-[#990000] px-3 py-2.5 font-sans text-xs font-bold uppercase tracking-wide text-white hover:bg-[#7a0010]">
                     {lang === 'vi' ? 'Xác nhận' : 'Confirm'} <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <button type="button" onClick={() => setCartStep('review')}
                     className="flex items-center gap-1 font-sans text-[10px] text-neutral-500 hover:text-[#990000]">
                     <ArrowLeft className="h-3 w-3" /> {lang === 'vi' ? 'Quay lại giỏ' : 'Back to cart'}
@@ -667,7 +673,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                   </label>
                   <button type="button" onClick={() => setCartOpen(false)}
                     disabled={!pickupDate || !dueDate}
-                    className={`flex w-full items-center justify-center gap-1.5 px-3 py-1.5 font-sans text-xs font-bold uppercase tracking-wide text-white transition-colors ${
+                    className={`flex w-full items-center justify-center gap-1.5 px-3 py-2.5 font-sans text-xs font-bold uppercase tracking-wide text-white transition-colors ${
                       pickupDate && dueDate ? 'bg-[#990000] hover:bg-[#7a0010]' : 'cursor-not-allowed bg-neutral-300'
                     }`}>
                     <Check className="h-3.5 w-3.5" /> {lang === 'vi' ? 'Xong' : 'Done'}
@@ -675,8 +681,8 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
