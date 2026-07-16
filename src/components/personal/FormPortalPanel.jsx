@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   FileText, ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Send, BookOpen, ExternalLink, Check,
-  ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin, ArrowRight,
+  ShoppingCart, X, ChevronLeft, ChevronRight, Search, MapPin, ArrowRight, Minus, Plus,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY } from '../../data/formPortal.js';
 import { isNameCompliant } from '../../data/wikiHub.js';
@@ -286,8 +286,8 @@ function CoverArt({ item, className = '' }) {
     );
   }
   return (
-    <div className={`flex aspect-[2/3] w-full shrink-0 items-center justify-center bg-gradient-to-br p-2 ${coverGradient(item.title)} ${className}`}>
-      <span className="text-center font-barlow text-[11px] font-black uppercase leading-tight text-white drop-shadow">
+    <div className={`flex aspect-[2/3] w-full shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br p-1.5 ${coverGradient(item.title)} ${className}`}>
+      <span className="line-clamp-4 text-center font-barlow text-[9px] font-black uppercase leading-tight text-white drop-shadow">
         {item.title}
       </span>
     </div>
@@ -507,7 +507,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const toggleCart = (item) => {
     setCart((prev) => {
       const exists = prev.some((c) => c.itemId === item.id);
-      const next = exists ? prev.filter((c) => c.itemId !== item.id) : [...prev, { itemId: item.id, itemTitle: item.title }];
+      const next = exists ? prev.filter((c) => c.itemId !== item.id) : [...prev, { itemId: item.id, itemTitle: item.title, qty: 1 }];
       emit(next, pickupDate, dueDate, note);
       return next;
     });
@@ -516,6 +516,14 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const removeFromCart = (itemId) => {
     setCart((prev) => {
       const next = prev.filter((c) => c.itemId !== itemId);
+      emit(next, pickupDate, dueDate, note);
+      return next;
+    });
+  };
+
+  const updateCartQty = (itemId, qty) => {
+    setCart((prev) => {
+      const next = prev.map((c) => (c.itemId === itemId ? { ...c, qty } : c));
       emit(next, pickupDate, dueDate, note);
       return next;
     });
@@ -539,6 +547,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   };
 
   const minPickup = new Date().toISOString().slice(0, 10);
+  const cartQtyTotal = cart.reduce((sum, c) => sum + (c.qty || 1), 0);
 
   return (
     <div className="space-y-3">
@@ -593,7 +602,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
           {lang === 'vi' ? 'Giỏ mượn' : 'Cart'}
           {cart.length > 0 && (
             <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#990000] px-1 text-[9px] font-bold text-white">
-              {cart.length}
+              {cartQtyTotal}
             </span>
           )}
         </button>
@@ -605,7 +614,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
               <div className="mb-3 flex items-center justify-between">
                 <p className="flex items-center gap-1.5 font-sans text-xs font-bold uppercase tracking-wide text-[#990000]">
                   <ShoppingCart className="h-4 w-4" />
-                  {lang === 'vi' ? `Giỏ mượn sách (${cart.length})` : `Borrow cart (${cart.length})`}
+                  {lang === 'vi' ? `Giỏ mượn sách (${cartQtyTotal})` : `Borrow cart (${cartQtyTotal})`}
                 </p>
                 <button type="button" onClick={() => setCartOpen(false)} className="text-neutral-400 hover:text-[#990000]">
                   <X className="h-4 w-4" />
@@ -621,6 +630,8 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                   <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
                     {cart.map((c) => {
                       const full = LIBRARY_ITEMS.find((i) => i.id === c.itemId);
+                      const maxQty = Math.max(1, physicalAvailable(c.itemId) ?? 1);
+                      const qty = c.qty || 1;
                       return (
                         <li key={c.itemId} className="flex items-center gap-3 border border-neutral-200 bg-neutral-50 p-2">
                           <CoverArt item={full || { title: c.itemTitle }} className="!h-16 !w-12 shrink-0" />
@@ -632,8 +643,23 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                                 {full.category}
                               </span>
                             )}
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <span className="font-sans text-[9px] uppercase text-neutral-400">
+                                {lang === 'vi' ? 'Số lượng' : 'Qty'}
+                              </span>
+                              <button type="button" disabled={qty <= 1} onClick={() => updateCartQty(c.itemId, qty - 1)}
+                                className="flex h-5 w-5 items-center justify-center border border-neutral-300 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-4 text-center font-sans text-[11px] font-bold text-neutral-800">{qty}</span>
+                              <button type="button" disabled={qty >= maxQty} onClick={() => updateCartQty(c.itemId, qty + 1)}
+                                className="flex h-5 w-5 items-center justify-center border border-neutral-300 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
+                                <Plus className="h-3 w-3" />
+                              </button>
+                              <span className="font-sans text-[9px] text-neutral-400">/ {maxQty} {lang === 'vi' ? 'còn lại' : 'available'}</span>
+                            </div>
                           </div>
-                          <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 text-neutral-400 hover:text-[#990000]">
+                          <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 self-start text-neutral-400 hover:text-[#990000]">
                             <X className="h-4 w-4" />
                           </button>
                         </li>
@@ -816,17 +842,20 @@ export function FormDetail({ formKey, onBack }) {
           onClick={() => {
             if (form.special === 'library' && specialData?.cart?.length) {
               specialData.cart.forEach((item) => {
-                const entry = saveSubmission(form, { form: `${form.label} — ${item.itemTitle}` });
-                createBorrowRequest({
-                  id: entry.id, itemId: item.itemId, itemTitle: item.itemTitle,
-                  pickupDate: specialData.pickupDate, dueDate: specialData.dueDate, note: specialData.note,
-                });
-                if (isLive && authUser) {
-                  submitBorrowRequestRemote({
-                    itemId: item.itemId, itemTitle: item.itemTitle,
+                const qty = item.qty || 1;
+                for (let i = 0; i < qty; i++) {
+                  const entry = saveSubmission(form, { form: `${form.label} — ${item.itemTitle}` });
+                  createBorrowRequest({
+                    id: entry.id, itemId: item.itemId, itemTitle: item.itemTitle,
                     pickupDate: specialData.pickupDate, dueDate: specialData.dueDate, note: specialData.note,
-                    requesterId: authUser.id,
                   });
+                  if (isLive && authUser) {
+                    submitBorrowRequestRemote({
+                      itemId: item.itemId, itemTitle: item.itemTitle,
+                      pickupDate: specialData.pickupDate, dueDate: specialData.dueDate, note: specialData.note,
+                      requesterId: authUser.id,
+                    });
+                  }
                 }
               });
             } else {
@@ -838,7 +867,10 @@ export function FormDetail({ formKey, onBack }) {
         >
           <Send className="h-3.5 w-3.5" />
           {form.special === 'library' && specialData?.cart?.length
-            ? (lang === 'vi' ? `Gửi yêu cầu mượn (${specialData.cart.length} quyển)` : `Submit borrow request (${specialData.cart.length} items)`)
+            ? (() => {
+                const totalQty = specialData.cart.reduce((sum, c) => sum + (c.qty || 1), 0);
+                return lang === 'vi' ? `Gửi yêu cầu mượn (${totalQty} quyển)` : `Submit borrow request (${totalQty} items)`;
+              })()
             : (lang === 'vi' ? 'Gửi yêu cầu' : 'Submit request')}
         </button>
         {!specialValid && (

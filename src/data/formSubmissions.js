@@ -5,14 +5,16 @@
  * component -> component import.
  */
 const STORE_KEY = 'iscm_my_forms_submissions';
+let submissionSeq = 0;
 
 export function loadSubmissions() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch { return []; }
 }
 
 export function saveSubmission(form, extra = {}) {
+  submissionSeq += 1;
   const entry = {
-    id: `sub-${Date.now()}`,
+    id: `sub-${Date.now()}-${submissionSeq}`,
     form: form.label,
     group: form.group,
     date: new Date().toISOString().slice(0, 10),
