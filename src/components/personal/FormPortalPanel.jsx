@@ -319,10 +319,16 @@ function LibraryCard({ item, inCart, onOpenDetail, lang }) {
 
 // Big detail modal — title/author + a status table (bảng thông tin) plus
 // the Borrow/Digital actions, opened when a card is clicked.
-function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedDigital, onClose, lang }) {
+function LibraryDetailModal({ item, inCart, cartQty, onToggleCart, onUpdateQty, onOpenDigital, openedDigital, onClose, lang }) {
   const { user: authUser } = useAuth();
   const [resolvingDigital, setResolvingDigital] = useState(false);
   const avail = item.physical ? physicalAvailable(item.id) : null;
+  const [qty, setQty] = useState(cartQty || 1);
+
+  const handleQtyChange = (nextQty) => {
+    setQty(nextQty);
+    if (inCart) onUpdateQty(item.id, nextQty);
+  };
 
   const [location, setLocation] = useState(null);
   const [editingLocation, setEditingLocation] = useState(false);
@@ -428,9 +434,29 @@ function LibraryDetailModal({ item, inCart, onToggleCart, onOpenDigital, openedD
             </div>
           )}
 
+          {item.physical && (avail > 0 || inCart) && (
+            <div className="flex items-center gap-2 border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+              <span className="font-sans text-[10px] font-bold uppercase text-neutral-500">
+                {lang === 'vi' ? 'Số lượng' : 'Qty'}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button type="button" disabled={qty <= 1} onClick={() => handleQtyChange(qty - 1)}
+                  className="flex h-6 w-6 items-center justify-center border border-neutral-300 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <span className="w-5 text-center font-sans text-xs font-bold text-neutral-800">{qty}</span>
+                <button type="button" disabled={qty >= avail} onClick={() => handleQtyChange(qty + 1)}
+                  className="flex h-6 w-6 items-center justify-center border border-neutral-300 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <span className="font-sans text-[10px] text-neutral-400">/ {avail} {lang === 'vi' ? 'còn lại' : 'available'}</span>
+            </div>
+          )}
+
           <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:flex-row">
             {item.physical && (
-              <button type="button" disabled={avail === 0 && !inCart} onClick={() => onToggleCart(item)}
+              <button type="button" disabled={avail === 0 && !inCart} onClick={() => onToggleCart(item, qty)}
                 className={`flex flex-1 items-center justify-center gap-1.5 border px-2.5 py-2 font-sans text-xs font-bold uppercase tracking-wide transition-colors ${
                   avail === 0 && !inCart ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400'
                   : inCart ? 'border-[#990000] bg-[#990000] text-white'
@@ -504,10 +530,10 @@ function LibraryBlock({ onValid, onData, lang, form }) {
     onData(nextCart.length > 0 ? { cart: nextCart, pickupDate: nextPickup, dueDate: nextDue, note: nextNote } : null);
   };
 
-  const toggleCart = (item) => {
+  const toggleCart = (item, qty = 1) => {
     setCart((prev) => {
       const exists = prev.some((c) => c.itemId === item.id);
-      const next = exists ? prev.filter((c) => c.itemId !== item.id) : [...prev, { itemId: item.id, itemTitle: item.title, qty: 1 }];
+      const next = exists ? prev.filter((c) => c.itemId !== item.id) : [...prev, { itemId: item.id, itemTitle: item.title, qty }];
       emit(next, pickupDate, dueDate, note);
       return next;
     });
@@ -745,8 +771,9 @@ function LibraryBlock({ onValid, onData, lang, form }) {
       )}
 
       {detailItem && (
-        <LibraryDetailModal item={detailItem} inCart={cart.some((c) => c.itemId === detailItem.id)}
-          onToggleCart={toggleCart} onOpenDigital={handleOpenDigital}
+        <LibraryDetailModal key={detailItem.id} item={detailItem} inCart={cart.some((c) => c.itemId === detailItem.id)}
+          cartQty={cart.find((c) => c.itemId === detailItem.id)?.qty}
+          onToggleCart={toggleCart} onUpdateQty={updateCartQty} onOpenDigital={handleOpenDigital}
           openedDigital={openedDigital} onClose={() => setDetailItem(null)} lang={lang} />
       )}
 
