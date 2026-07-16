@@ -610,7 +610,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
         {cartOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCartOpen(false)}>
             <div onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md border border-neutral-200 bg-white p-4 text-left normal-case shadow-2xl">
+              className="w-full max-w-lg border border-neutral-200 bg-white p-4 text-left normal-case shadow-2xl">
               <div className="mb-3 flex items-center justify-between">
                 <p className="flex items-center gap-1.5 font-sans text-xs font-bold uppercase tracking-wide text-[#990000]">
                   <ShoppingCart className="h-4 w-4" />
@@ -633,20 +633,22 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                       const maxQty = Math.max(1, physicalAvailable(c.itemId) ?? 1);
                       const qty = c.qty || 1;
                       return (
-                        <li key={c.itemId} className="flex items-center gap-3 border border-neutral-200 bg-neutral-50 p-2">
+                        <li key={c.itemId} className="relative flex items-start gap-3 border border-neutral-200 bg-neutral-50 p-2 pr-6">
                           <CoverArt item={full || { title: c.itemTitle }} className="!h-16 !w-12 shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-sans text-xs font-semibold text-neutral-800">{c.itemTitle}</p>
-                            {full?.author && <p className="truncate font-sans text-[10px] text-neutral-400">{full.author}</p>}
+                            <p className="font-sans text-xs font-semibold leading-snug text-neutral-800">{c.itemTitle}</p>
+                            {full?.author && <p className="mt-0.5 font-sans text-[10px] text-neutral-400">{full.author}</p>}
                             {full?.category && (
                               <span className="mt-1 inline-block border border-neutral-200 bg-white px-1.5 py-0.5 font-sans text-[9px] font-bold uppercase text-neutral-500">
                                 {full.category}
                               </span>
                             )}
-                            <div className="mt-1.5 flex items-center gap-1.5">
-                              <span className="font-sans text-[9px] uppercase text-neutral-400">
-                                {lang === 'vi' ? 'Số lượng' : 'Qty'}
-                              </span>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-center gap-1 border-l border-neutral-200 pl-3">
+                            <span className="font-sans text-[9px] uppercase text-neutral-400">
+                              {lang === 'vi' ? 'SL' : 'Qty'}
+                            </span>
+                            <div className="flex items-center gap-1">
                               <button type="button" disabled={qty <= 1} onClick={() => updateCartQty(c.itemId, qty - 1)}
                                 className="flex h-5 w-5 items-center justify-center border border-neutral-300 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
                                 <Minus className="h-3 w-3" />
@@ -656,10 +658,13 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                                 className="flex h-5 w-5 items-center justify-center border border-neutral-300 text-neutral-600 hover:border-[#990000] disabled:cursor-not-allowed disabled:opacity-30">
                                 <Plus className="h-3 w-3" />
                               </button>
-                              <span className="font-sans text-[9px] text-neutral-400">/ {maxQty} {lang === 'vi' ? 'còn lại' : 'available'}</span>
                             </div>
+                            <span className="whitespace-nowrap font-sans text-[9px] text-neutral-400">
+                              / {maxQty} {lang === 'vi' ? 'còn' : 'left'}
+                            </span>
                           </div>
-                          <button type="button" onClick={() => removeFromCart(c.itemId)} className="shrink-0 self-start text-neutral-400 hover:text-[#990000]">
+                          <button type="button" onClick={() => removeFromCart(c.itemId)}
+                            className="absolute right-1.5 top-1.5 shrink-0 text-neutral-400 hover:text-[#990000]">
                             <X className="h-4 w-4" />
                           </button>
                         </li>
