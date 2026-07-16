@@ -497,7 +497,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const handleTypeFilter = (t) => { setTypeFilter(t); setPage(1); };
   const handleQuery = (v) => { setQuery(v); setPage(1); };
 
-  const emit = (nextCart, nextPickup, nextNote) => {
+  const emit = (nextCart, nextPickup, nextDue, nextNote) => {
     onValid(nextCart.length > 0 && Boolean(nextPickup) && Boolean(nextDue));
     onData(nextCart.length > 0 ? { cart: nextCart, pickupDate: nextPickup, dueDate: nextDue, note: nextNote } : null);
   };
