@@ -20,10 +20,18 @@ const SELF_OWNED_KEYS = new Set(['profile-bio', 'my-assets', 'my-tasks', 'my-for
 // app currently reads that grant to change what that account can do.
 const ENFORCED_KEYS = new Set(['form:order-book', 'attendance-log']);
 
+// Whole branches that are pure reference/read-only content — Wiki Hub docs
+// and the Contacts directory aren't submitted or edited through the app by
+// anyone, and ISCM Core is just a set of view-only dashboards. None of them
+// have (or need) a request/approval workflow, so they're skipped entirely
+// rather than listed as "not yet enforced" placeholders.
+const EXCLUDED_BRANCH_IDS = new Set(['wiki-hub-root', 'contacts-root', 'iscm-core-root']);
+
 /** Flatten the sidebar nav tree into a flat list of manageable content leaves. */
 function flattenContentItems(nodes, out = []) {
   nodes.forEach((node) => {
     if (node.adminOnly) return; // never let this panel govern itself
+    if (node.id && EXCLUDED_BRANCH_IDS.has(node.id)) return; // whole read-only branch
     if (node.children) {
       flattenContentItems(node.children, out);
     } else if (node.key && !SELF_OWNED_KEYS.has(node.key)) {
