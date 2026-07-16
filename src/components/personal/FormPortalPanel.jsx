@@ -697,6 +697,12 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                       );
                     })}
                   </ul>
+                  <div className="flex items-center justify-between border-t border-neutral-200 pt-2 font-sans text-xs">
+                    <span className="font-bold uppercase tracking-wide text-neutral-500">
+                      {lang === 'vi' ? 'Tổng số sách mượn' : 'Total books'}
+                    </span>
+                    <span className="font-bold text-[#990000]">{cartQtyTotal}</span>
+                  </div>
                   <button type="button" onClick={() => setCartStep('details')}
                     className="flex w-full items-center justify-center gap-1.5 bg-[#990000] px-3 py-2.5 font-sans text-xs font-bold uppercase tracking-wide text-white hover:bg-[#7a0010]">
                     {lang === 'vi' ? 'Xác nhận' : 'Confirm'} <ArrowRight className="h-3.5 w-3.5" />
