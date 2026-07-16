@@ -596,7 +596,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
         </span>
 
         <button type="button"
-          onClick={() => { setCartOpen(true); setCartStep(pickupDate && dueDate ? 'details' : 'review'); }}
+          onClick={() => { setCartOpen(true); setCartStep('review'); }}
           className="relative flex items-center gap-1.5 border border-neutral-300 px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide text-neutral-600 transition-colors hover:border-[#990000]">
           <ShoppingCart className="h-3.5 w-3.5" />
           {lang === 'vi' ? 'Giỏ mượn' : 'Cart'}
