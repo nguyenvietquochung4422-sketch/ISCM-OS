@@ -670,7 +670,7 @@ function LibraryBlock({ onValid, onData, lang, form }) {
                               </span>
                             )}
                           </div>
-                          <div className="flex shrink-0 flex-col items-center gap-1 border-l border-neutral-200 pl-3">
+                          <div className="flex w-16 shrink-0 flex-col items-center gap-1 border-l border-neutral-200 pl-3">
                             <span className="font-sans text-[9px] uppercase text-neutral-400">
                               {lang === 'vi' ? 'SL' : 'Qty'}
                             </span>
