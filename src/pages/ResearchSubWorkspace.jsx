@@ -373,7 +373,7 @@ export default function ResearchSubWorkspace() {
       'research-list': {
         title: lang === 'vi' ? 'Danh sách đề tài NCKH' : 'RESEARCH LIST — 2026 ISCM RESEARCH ACTIVITIES',
         updated: lang === 'vi' ? 'Đồng bộ trực tiếp từ Supabase' : 'SCIENTIFIC RESEARCH OPERATIONS · SYNCED WITH SUPABASE',
-        author: 'Hoài (Head of Research)',
+        author: lang === 'vi' ? 'TS. Phạm Nguyễn Hoài (Trưởng bộ phận Nghiên cứu Khoa học)' : 'Hoai Nguyen Pham, PhD (Head of Research)',
         icon: Table2,
         body: (
           <ResearchListTable
@@ -486,7 +486,7 @@ export default function ResearchSubWorkspace() {
             {lang === 'vi' ? 'KHÔNG GIAN NGHIÊN CỨU KHOA HỌC' : 'Scientific Research Sub-Workspace'}
           </h1>
           <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}: <span className="font-semibold text-[#8b0000] font-barlow">Hoài</span>
+            {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}: <span className="font-semibold text-[#8b0000] font-barlow">{lang === 'vi' ? 'TS. Phạm Nguyễn Hoài' : 'Hoai Nguyen Pham, PhD'}</span>
           </p>
         </div>
       </header>

@@ -180,6 +180,41 @@ export default function ResearchListTable({
     return `${parentCode}.${maxNum + 1}`;
   };
 
+  // ── Code convention for tasks grouped under a named sub-program/lab ──
+  // Existing data (e.g. RU1.CE1, RU1.SEELL1, RU1.SML1-7) shows every
+  // Research Unit can hold two kinds of direct children:
+  //   1. Plain running numbers with no grouping   -> RU8.1, RU8.2, RU8.3
+  //   2. Tasks that belong to a named sub-program/lab within the unit,
+  //      coded as RU{unit}.{PREFIX}{seq}, where PREFIX is derived from the
+  //      lab/program name (whole words that are already an acronym, like
+  //      "SEE" or "CE", are kept as-is; every other word contributes just
+  //      its first letter) and {seq} increments per (unit, PREFIX) pair:
+  //        "Smart Mobility Lab" -> S + M + L        -> SML  (RU1.SML1, .SML2, ...)
+  //        "SEE Living Lab"     -> SEE + L + L        -> SEELL (RU1.SEELL1, ...)
+  //        "CE-Rail@UEH"        -> CE (already short) -> CE   (RU1.CE1, ...)
+  // Use nextPrefixedChildCode(parentCode, labName) whenever a new task
+  // belongs to one of these named labs/programs instead of a bare number.
+  const deriveCodePrefix = (labName) => {
+    const words = labName.trim().split(/[\s_-]+/).filter(Boolean);
+    return words
+      .map((w) => (/^[A-Z]{2,}$/.test(w) ? w : w[0].toUpperCase()))
+      .join('')
+      .toUpperCase();
+  };
+
+  const nextPrefixedChildCode = (parentCode, labName) => {
+    const prefix = deriveCodePrefix(labName);
+    let maxNum = 0;
+    allRowsResolved.forEach((r) => {
+      const code = (r.code || '').trim();
+      const expected = `${parentCode}.${prefix}`;
+      if (!code.startsWith(expected)) return;
+      const n = parseInt(code.slice(expected.length), 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    });
+    return `${parentCode}.${prefix}${maxNum + 1}`;
+  };
+
   const handleAddTask = (targetUnitOverride) => {
     const targetUnit = targetUnitOverride || addUnitTarget || researchUnits[0];
     if (!targetUnit) {
@@ -189,7 +224,19 @@ export default function ResearchListTable({
     inlineRowSeq += 1;
     const id = `new-task-${Date.now()}-${inlineRowSeq}`;
     const mainFolder = findMainFolder(targetUnit);
-    const code = mainFolder ? nextChildCode((mainFolder.code || '').trim()) : '';
+    const parentCode = mainFolder ? (mainFolder.code || '').trim() : '';
+    const labName = parentCode
+      ? window.prompt(
+          lang === 'vi'
+            ? 'Tên chương trình/lab con để nhóm mã (vd: "Smart Mobility Lab") — để trống nếu chỉ cần số thứ tự thường:'
+            : 'Named sub-program/lab to group the code under (e.g. "Smart Mobility Lab") — leave blank for a plain running number:'
+        )
+      : null;
+    const code = !parentCode
+      ? ''
+      : (labName && labName.trim())
+        ? nextPrefixedChildCode(parentCode, labName.trim())
+        : nextChildCode(parentCode);
     const newRow = {
       id,
       code,
