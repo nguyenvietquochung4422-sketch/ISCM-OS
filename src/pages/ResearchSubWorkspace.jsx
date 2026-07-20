@@ -56,7 +56,14 @@ const ALL_SDGS = [
 ];
 
 const STATUS_OPTIONS = ['In progress', 'Completed', 'Cancel', 'Not start', 'Failed'];
-const TASK_TYPES = ['IRL', 'Research', 'Paper', 'Training', 'New initiative'];
+
+// Only a Research Unit's Main Folder is one of these three labs — every
+// other (child) task uses the regular task-type list below instead.
+const MAIN_FOLDER_TASK_TYPES = [
+  { value: 'IRL', label: 'International Research Lab (IRL)' },
+  { value: 'PL', label: 'Policy Lab (PL)' },
+  { value: 'TIL', label: 'Technology & Innovation Lab (TIL)' },
+];
 
 const PILLARS = [
   { key: 'framework_transition', label: 'Framework Transition' },
@@ -74,15 +81,13 @@ export default function ResearchSubWorkspace() {
   const [rows, setRows] = useState(null);
   const [researchUnits, setResearchUnits] = useState(RESEARCH_UNITS);
   const [taskTypes, setTaskTypes] = useState([
-    'IRL', 
-    'Research', 
-    'Paper', 
-    'Training', 
-    'New initiative', 
-    'Student research', 
-    'Fund Raising', 
-    'Project', 
-    'PL', 
+    'Research',
+    'Paper',
+    'Training',
+    'New initiative',
+    'Student research',
+    'Fund Raising',
+    'Project',
     'Event'
   ]);
   const [source, setSource] = useState('local');
@@ -315,6 +320,13 @@ export default function ResearchSubWorkspace() {
     if (draftRow && selectedTask.id === draftRow.id) return draftRow;
     return allRowsResolved.find((r) => r.id === selectedTask.id) || null;
   }, [selectedTask, allRowsResolved, draftRow]);
+
+  // Main Folder rows are limited to the 3 lab-designation task types
+  // (IRL/PL/TIL); every other (child) task picks from the regular list.
+  const isMainFolderSelected = currentSelectedTask
+    ? (currentSelectedTask.task_name || '').toLowerCase().includes('main folder')
+      || /^RU\s*\d+$/.test((currentSelectedTask.code || '').trim())
+    : false;
 
   // Always land back on the Metadata tab when a different task is opened
   useEffect(() => {
@@ -796,10 +808,18 @@ export default function ResearchSubWorkspace() {
                       }}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
-                      {taskTypes.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                      <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm loại...' : 'Add Type...'}</option>
+                      {isMainFolderSelected ? (
+                        MAIN_FOLDER_TASK_TYPES.map(({ value, label }) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))
+                      ) : (
+                        <>
+                          {taskTypes.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                          <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm loại...' : 'Add Type...'}</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>

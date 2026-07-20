@@ -41,6 +41,7 @@ const TASK_TYPE_CLASSES = {
   'Fund Raising': 'border-yellow-200 text-yellow-700 bg-yellow-50',
   'Project': 'border-teal-200 text-teal-700 bg-teal-50',
   'PL': 'border-cyan-200 text-cyan-700 bg-cyan-50',
+  'TIL': 'border-violet-200 text-violet-700 bg-violet-50',
   'Event': 'border-rose-200 text-rose-700 bg-rose-50',
 };
 
