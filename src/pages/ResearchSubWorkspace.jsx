@@ -55,8 +55,6 @@ const ALL_SDGS = [
   { id: 'SDG17', label: '17. Partnerships for the Goals', color: '#19486a' }
 ];
 
-const STATUS_OPTIONS = ['In progress', 'Completed', 'Cancel', 'Not start', 'Failed'];
-
 // Only a Research Unit's Main Folder is one of these three labs — every
 // other (child) task uses the regular task-type list below instead.
 const MAIN_FOLDER_TASK_TYPES = [
@@ -89,6 +87,9 @@ export default function ResearchSubWorkspace() {
     'Fund Raising',
     'Project',
     'Event'
+  ]);
+  const [statusOptions, setStatusOptions] = useState([
+    'In progress', 'Completed', 'Cancel', 'Not start', 'Failed'
   ]);
   const [source, setSource] = useState('local');
   const [store, setStore] = useState(loadStore);
@@ -534,6 +535,8 @@ export default function ResearchSubWorkspace() {
             researchUnits={researchUnits}
             setResearchUnits={setResearchUnits}
             taskTypes={taskTypes}
+            statusOptions={statusOptions}
+            setStatusOptions={setStatusOptions}
           />
         ),
       },
@@ -587,7 +590,7 @@ export default function ResearchSubWorkspace() {
         )
       }
     };
-  }, [lang, allRowsResolved, selectedTask, store, source, researchUnits, taskTypes]);
+  }, [lang, allRowsResolved, selectedTask, store, source, researchUnits, taskTypes, statusOptions]);
 
   const activeDoc = DOCUMENT_CONTENTS[selectedNode] || DOCUMENT_CONTENTS['research-list'];
   const DocIcon = activeDoc.icon || FileText;
@@ -881,13 +884,28 @@ export default function ResearchSubWorkspace() {
                     <label className="text-[10px] font-bold text-neutral-400 uppercase">Status</label>
                     <select
                       value={currentSelectedTask.status || ''}
-                      onChange={(e) => setDrawerCell('status', e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__add_new__') {
+                          const newStatus = prompt(lang === 'vi' ? 'Nhập trạng thái mới:' : 'Enter new Status name:');
+                          if (newStatus && newStatus.trim()) {
+                            const trimmed = newStatus.trim();
+                            if (!statusOptions.includes(trimmed)) {
+                              setStatusOptions(prev => [...prev, trimmed]);
+                            }
+                            setDrawerCell('status', trimmed);
+                          }
+                        } else {
+                          setDrawerCell('status', val);
+                        }
+                      }}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
                       <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
-                      {STATUS_OPTIONS.map((s) => (
+                      {statusOptions.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
+                      <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm trạng thái...' : 'Add Status...'}</option>
                     </select>
                   </div>
                 </div>

@@ -17,8 +17,6 @@ const resolveMemberNameAndTitle = (nameStr) => {
   return clean;
 };
 
-const STATUS_OPTIONS = ['In progress', 'Completed', 'Cancel', 'Not start', 'Failed'];
-
 const STATUS_CLASSES = {
   'In progress': 'bg-blue-50 text-blue-700 border-blue-200',
   'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -106,7 +104,9 @@ export default function ResearchListTable({
   onCreateDraft,
   researchUnits = [],
   setResearchUnits,
-  taskTypes = []
+  taskTypes = [],
+  statusOptions = [],
+  setStatusOptions
 }) {
   const { lang } = useLanguage();
   const [query, setQuery] = useState('');
@@ -513,7 +513,7 @@ export default function ResearchListTable({
           className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
         >
           <option value="all">All Statuses</option>
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
@@ -641,7 +641,21 @@ export default function ResearchListTable({
                       <td className="px-3 py-3 overflow-hidden" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={row.status || ''}
-                          onChange={(e) => setCell(row.id, 'status', e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '__add_new__') {
+                              const newStatus = prompt(lang === 'vi' ? 'Nhập trạng thái mới:' : 'Enter new Status name:');
+                              if (newStatus && newStatus.trim()) {
+                                const trimmed = newStatus.trim();
+                                if (!statusOptions.includes(trimmed)) {
+                                  setStatusOptions((prev) => [...prev, trimmed]);
+                                }
+                                setCell(row.id, 'status', trimmed);
+                              }
+                            } else {
+                              setCell(row.id, 'status', val);
+                            }
+                          }}
                           className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
                             row.status
                               ? (STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50')
@@ -649,10 +663,13 @@ export default function ResearchListTable({
                           }`}
                         >
                           <option value="">—</option>
-                          {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
-                          {STATUS_OPTIONS.map((s) => (
+                          {!STATUS_CLASSES[row.status] && row.status && !statusOptions.includes(row.status) && (
+                            <option value={row.status}>{row.status}</option>
+                          )}
+                          {statusOptions.map((s) => (
                             <option key={s} value={s}>{s}</option>
                           ))}
+                          <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm trạng thái...' : 'Add Status...'}</option>
                         </select>
                       </td>
 
