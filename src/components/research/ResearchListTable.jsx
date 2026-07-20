@@ -560,20 +560,20 @@ export default function ResearchListTable({
 
       {/* 2. Grid Table */}
       <div className="min-h-0 flex-1 overflow-auto border border-neutral-200 bg-white shadow-sm">
-        <table className="w-full border-collapse text-left" style={{ minWidth: '1100px' }}>
+        <table className="w-full table-fixed border-collapse text-left">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-900 text-white font-barlow text-[10px] font-bold uppercase tracking-wider">
-              <th className="px-4 py-3 min-w-[120px]">Code</th>
-              <th className="px-4 py-3 min-w-[320px]">Task Name</th>
-              <th className="px-4 py-3 min-w-[120px] whitespace-nowrap">Task Type</th>
-              <th className="px-4 py-3 min-w-[150px]">Coordinator / Manager</th>
-              <th className="px-4 py-3 min-w-[110px]">Members</th>
-              <th className="px-4 py-3 min-w-[130px]">Status</th>
-              <th className="px-4 py-3 min-w-[100px]">Timeline</th>
+              <th className="px-3 py-3 w-[9%]">Code</th>
+              <th className="px-3 py-3 w-[24%]">Task Name</th>
+              <th className="px-3 py-3 w-[10%]">Task Type</th>
+              <th className="px-3 py-3 w-[14%]">Coordinator / Manager</th>
+              <th className="px-3 py-3 w-[10%]">Members</th>
+              <th className="px-3 py-3 w-[13%]">Status</th>
+              <th className="px-3 py-3 w-[9%]">Timeline</th>
               {customColumns.map((col) => (
-                <th key={col.key} className="px-4 py-3 min-w-[130px]" />
+                <th key={col.key} className="px-3 py-3" />
               ))}
-              <th className="w-10 bg-neutral-900" />
+              <th className="w-8 bg-neutral-900" />
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 text-xs font-ibm">
@@ -608,7 +608,7 @@ export default function ResearchListTable({
                       }`}
                     >
                       {/* CODE */}
-                      <td className="px-4 py-3 font-semibold min-w-[120px] max-w-[120px]">
+                      <td className="px-3 py-3 font-semibold overflow-hidden">
                         <div className="flex items-center gap-1.5">
                           {hasChildren ? (
                             <button
@@ -638,7 +638,7 @@ export default function ResearchListTable({
                       </td>
 
                       {/* TASK NAME with progressive indentation + tree guide lines */}
-                      <td className="relative px-4 py-3 font-medium min-w-[320px]" style={{ paddingLeft: `${Math.max(16, level * 20)}px` }}>
+                      <td className="relative px-3 py-3 font-medium" style={{ paddingLeft: `${Math.max(12, level * 20)}px` }}>
                         {Array.from({ length: level }).map((_, i) => (
                           <span key={i} className="absolute bottom-0 top-0 border-l border-neutral-200" style={{ left: `${16 + i * 20}px` }} />
                         ))}
@@ -650,10 +650,10 @@ export default function ResearchListTable({
                         </button>
                       </td>
 
-                      {/* TASK TYPE (Strict No-Wrap Constraint) */}
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      {/* TASK TYPE */}
+                      <td className="px-3 py-3 overflow-hidden">
                         {row.task_type && (
-                          <span className={`inline-block border px-2 py-0.5 text-[9px] font-semibold rounded-none tracking-wider uppercase ${
+                          <span className={`inline-block max-w-full truncate border px-2 py-0.5 text-[9px] font-semibold rounded-none tracking-wider uppercase ${
                             TASK_TYPE_CLASSES[row.task_type] || 'border-neutral-200 text-neutral-600 bg-neutral-50'
                           }`}>
                             {row.task_type}
@@ -662,9 +662,9 @@ export default function ResearchListTable({
                       </td>
 
                       {/* COORDINATOR */}
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         {row.coordinator_manager ? (
-                          <span className="text-[11px] font-semibold text-neutral-700 whitespace-nowrap">
+                          <span className="text-[11px] font-semibold text-neutral-700">
                             {resolveMemberNameAndTitle(row.coordinator_manager)}
                           </span>
                         ) : (
