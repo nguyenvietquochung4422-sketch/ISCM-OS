@@ -371,13 +371,13 @@ export default function ResearchListTable({
           if (code && code.includes('.')) {
             const parts = code.split('.');
             const parentCode = parts.slice(0, -1).join('.');
-            if (codeToId[parentCode]) {
-              parentId = codeToId[parentCode];
-              level = parts.length - 1;
-            } else {
-              parentId = mainFolder.id;
-              level = 1;
-            }
+            // Indentation always matches the code's own depth (e.g. RU8.4.1
+            // is a level-2 grandchild), even if an intermediate row like
+            // RU8.4 was never created — it just falls back to attaching
+            // under the main folder instead of visually flattening to
+            // level 1 next to true direct children like RU8.1/RU8.2.
+            parentId = codeToId[parentCode] || mainFolder.id;
+            level = parts.length - 1;
           } else {
             parentId = mainFolder.id;
             level = 1;
@@ -396,11 +396,14 @@ export default function ResearchListTable({
       // Traverse pre-order to preserve tree layout and sorting
       const sortedGroupRows = [];
       const traverse = (node, level) => {
-        node.resolvedLevel = level;
+        // Never indent shallower than the code itself implies (see the
+        // fallback-attachment case above) — only ever deepen from the
+        // tree-walk depth, never shallow it back out.
+        node.resolvedLevel = Math.max(level, node.resolvedLevel || 0);
         sortedGroupRows.push(node);
         const children = childrenMap[node.id] || [];
         children.sort((a, b) => compareCodes(a.code, b.code));
-        children.forEach(child => traverse(child, level + 1));
+        children.forEach(child => traverse(child, node.resolvedLevel + 1));
       };
 
       const roots = groupRows
