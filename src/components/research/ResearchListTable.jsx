@@ -41,6 +41,7 @@ const TASK_TYPE_CLASSES = {
   'PL': 'border-cyan-200 text-cyan-700 bg-cyan-50',
   'TIL': 'border-violet-200 text-violet-700 bg-violet-50',
   'Event': 'border-rose-200 text-rose-700 bg-rose-50',
+  'Individual': 'border-sky-200 text-sky-700 bg-sky-50',
 };
 
 let inlineRowSeq = 0;

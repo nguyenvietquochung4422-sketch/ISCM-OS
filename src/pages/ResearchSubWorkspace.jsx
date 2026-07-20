@@ -61,6 +61,8 @@ const MAIN_FOLDER_TASK_TYPES = [
   { value: 'IRL', label: 'International Research Lab (IRL)' },
   { value: 'PL', label: 'Policy Lab (PL)' },
   { value: 'TIL', label: 'Technology & Innovation Lab (TIL)' },
+  { value: 'Individual', label: 'Individual' },
+  { value: 'Fund Raising', label: 'Fund Raising' },
 ];
 
 const PILLARS = [
