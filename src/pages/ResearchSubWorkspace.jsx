@@ -97,6 +97,10 @@ export default function ResearchSubWorkspace() {
   // pressed — clicking "+ Add task"/"+ New Unit" no longer commits
   // anything by itself.
   const [draftRow, setDraftRow] = useState(null);
+  // Edits made inside the drawer for an EXISTING (already-saved) row live
+  // here, not in `store`, until Save is pressed — closing the drawer any
+  // other way (X, backdrop, Delete-on-draft) discards them untouched.
+  const [pendingEdits, setPendingEdits] = useState({});
   const [drawerTab, setDrawerTab] = useState('metadata'); // 'metadata' | 'members' | 'documents' | 'tags'
 
   // File Upload states
@@ -177,10 +181,24 @@ export default function ResearchSubWorkspace() {
   };
 
   // Closing the drawer (header X, backdrop click, Close/Delete-on-draft)
-  // always discards any unsaved draft.
+  // always discards any unsaved draft AND any unsaved edits to an existing row.
   const closeDrawer = () => {
     setDraftRow(null);
+    setPendingEdits({});
     setSelectedTask(null);
+  };
+
+  // Every field edited inside the drawer (Metadata/Members/Documents/
+  // Classification tabs) goes through here instead of `setCell` directly,
+  // so it stays local until Save commits it — a draft row buffers into
+  // `draftRow` (already not in the store), an existing row buffers into
+  // `pendingEdits` instead of writing `store.cellEdits` immediately.
+  const setDrawerCell = (key, value) => {
+    if (draftRow) {
+      setDraftRow((prev) => ({ ...prev, [key]: value }));
+    } else {
+      setPendingEdits((prev) => ({ ...prev, [key]: value }));
+    }
   };
 
   // A code like RU8.4.1 requires RU8.4 to already exist as a real row —
@@ -200,7 +218,8 @@ export default function ResearchSubWorkspace() {
     return null;
   };
 
-  // Validates, confirms, and (for a draft) commits the new row to the store.
+  // Validates, confirms, and commits either the new draft row or the
+  // buffered edits to an existing row into the store.
   const saveTask = () => {
     const err = validateTaskCode(currentSelectedTask);
     if (err) { alert(err); return; }
@@ -210,8 +229,15 @@ export default function ResearchSubWorkspace() {
     if (!ok) return;
     if (draftRow) {
       setStore((prev) => ({ ...prev, extraRows: [...prev.extraRows, draftRow] }));
+    } else if (Object.keys(pendingEdits).length > 0) {
+      const rowId = currentSelectedTask.id;
+      setStore((prev) => ({
+        ...prev,
+        cellEdits: { ...prev.cellEdits, [rowId]: { ...prev.cellEdits[rowId], ...pendingEdits } },
+      }));
     }
     setDraftRow(null);
+    setPendingEdits({});
     setSelectedTask(null);
   };
 
@@ -314,12 +340,15 @@ export default function ResearchSubWorkspace() {
     return clean;
   };
 
-  // Find currently active selected task in resolved rows
+  // Find currently active selected task in resolved rows, with any
+  // not-yet-saved drawer edits layered on top so the drawer reflects them
+  // immediately without touching the store.
   const currentSelectedTask = useMemo(() => {
     if (!selectedTask) return null;
     if (draftRow && selectedTask.id === draftRow.id) return draftRow;
-    return allRowsResolved.find((r) => r.id === selectedTask.id) || null;
-  }, [selectedTask, allRowsResolved, draftRow]);
+    const base = allRowsResolved.find((r) => r.id === selectedTask.id) || null;
+    return base ? { ...base, ...pendingEdits } : null;
+  }, [selectedTask, allRowsResolved, draftRow, pendingEdits]);
 
   // Main Folder rows are limited to the 3 lab-designation task types
   // (IRL/PL/TIL); every other (child) task picks from the regular list.
@@ -328,9 +357,11 @@ export default function ResearchSubWorkspace() {
       || /^RU\s*\d+$/.test((currentSelectedTask.code || '').trim())
     : false;
 
-  // Always land back on the Metadata tab when a different task is opened
+  // Always land back on the Metadata tab and drop any leftover unsaved
+  // buffer when a different task is opened (or the drawer closes).
   useEffect(() => {
     setDrawerTab('metadata');
+    setPendingEdits({});
   }, [selectedTask?.id]);
 
   // Roster / Outside Members partition and handlers
@@ -354,13 +385,13 @@ export default function ResearchSubWorkspace() {
   const handleRosterChange = (nextRoster) => {
     if (!currentSelectedTask) return;
     const merged = [...nextRoster, ...outsideMembers].join(', ');
-    setCell(currentSelectedTask.id, 'members', merged);
+    setDrawerCell('members', merged);
   };
 
   const handleOutsideChange = (nextOutside) => {
     if (!currentSelectedTask) return;
     const merged = [...rosterMembers, ...nextOutside].join(', ');
-    setCell(currentSelectedTask.id, 'members', merged);
+    setDrawerCell('members', merged);
   };
 
   // Roster Members multi-select component
@@ -585,7 +616,7 @@ export default function ResearchSubWorkspace() {
           if (prev >= 100) {
             clearInterval(interval);
             setUploading(false);
-            setCell(currentSelectedTask.id, 'report_plan_link', filename);
+            setDrawerCell('report_plan_link', filename);
             return 100;
           }
           return prev + 25;
@@ -744,7 +775,7 @@ export default function ResearchSubWorkspace() {
                     <input
                       type="text"
                       value={currentSelectedTask.code || ''}
-                      onChange={(e) => setCell(currentSelectedTask.id, 'code', e.target.value)}
+                      onChange={(e) => setDrawerCell('code', e.target.value)}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
                     />
                   </div>
@@ -753,7 +784,7 @@ export default function ResearchSubWorkspace() {
                     <input
                       type="text"
                       value={currentSelectedTask.task_name || ''}
-                      onChange={(e) => setCell(currentSelectedTask.id, 'task_name', e.target.value)}
+                      onChange={(e) => setDrawerCell('task_name', e.target.value)}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
                     />
                   </div>
@@ -773,10 +804,10 @@ export default function ResearchSubWorkspace() {
                             if (!researchUnits.includes(trimmed)) {
                               setResearchUnits(prev => [...prev, trimmed]);
                             }
-                            setCell(currentSelectedTask.id, 'research_unit', trimmed);
+                            setDrawerCell('research_unit', trimmed);
                           }
                         } else {
-                          setCell(currentSelectedTask.id, 'research_unit', val);
+                          setDrawerCell('research_unit', val);
                         }
                       }}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
@@ -800,10 +831,10 @@ export default function ResearchSubWorkspace() {
                             if (!taskTypes.includes(trimmed)) {
                               setTaskTypes(prev => [...prev, trimmed]);
                             }
-                            setCell(currentSelectedTask.id, 'task_type', trimmed);
+                            setDrawerCell('task_type', trimmed);
                           }
                         } else {
-                          setCell(currentSelectedTask.id, 'task_type', val);
+                          setDrawerCell('task_type', val);
                         }
                       }}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
@@ -831,7 +862,7 @@ export default function ResearchSubWorkspace() {
                     <label className="text-[10px] font-bold text-neutral-400 uppercase">Coordinator / Manager</label>
                     <select
                       value={resolveMemberFullName(currentSelectedTask.coordinator_manager) || ''}
-                      onChange={(e) => setCell(currentSelectedTask.id, 'coordinator_manager', e.target.value)}
+                      onChange={(e) => setDrawerCell('coordinator_manager', e.target.value)}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
                       <option value="">Select Coordinator...</option>
@@ -850,7 +881,7 @@ export default function ResearchSubWorkspace() {
                     <label className="text-[10px] font-bold text-neutral-400 uppercase">Status</label>
                     <select
                       value={currentSelectedTask.status || ''}
-                      onChange={(e) => setCell(currentSelectedTask.id, 'status', e.target.value)}
+                      onChange={(e) => setDrawerCell('status', e.target.value)}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
                       <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
@@ -867,7 +898,7 @@ export default function ResearchSubWorkspace() {
                     <input
                       type="text"
                       value={currentSelectedTask.start_year || ''}
-                      onChange={(e) => setCell(currentSelectedTask.id, 'start_year', e.target.value)}
+                      onChange={(e) => setDrawerCell('start_year', e.target.value)}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
                     />
                   </div>
@@ -876,7 +907,7 @@ export default function ResearchSubWorkspace() {
                     <input
                       type="text"
                       value={currentSelectedTask.end_year || ''}
-                      onChange={(e) => setCell(currentSelectedTask.id, 'end_year', e.target.value)}
+                      onChange={(e) => setDrawerCell('end_year', e.target.value)}
                       placeholder="--"
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
                     />
@@ -939,7 +970,7 @@ export default function ResearchSubWorkspace() {
                         <Paperclip className="h-4 w-4 text-neutral-400 shrink-0" />
                         <span className="truncate">{currentSelectedTask.report_plan_link}</span>
                         <button
-                          onClick={() => setCell(currentSelectedTask.id, 'report_plan_link', '')}
+                          onClick={() => setDrawerCell('report_plan_link', '')}
                           className="ml-auto text-neutral-400 hover:text-neutral-600"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -986,7 +1017,7 @@ export default function ResearchSubWorkspace() {
                   <input
                     type="text"
                     value={currentSelectedTask.report_plan_link || ''}
-                    onChange={(e) => setCell(currentSelectedTask.id, 'report_plan_link', e.target.value)}
+                    onChange={(e) => setDrawerCell('report_plan_link', e.target.value)}
                     placeholder="https://docs.google.com/document/..."
                     className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
                   />
@@ -1015,7 +1046,7 @@ export default function ResearchSubWorkspace() {
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => {
-                            setCell(currentSelectedTask.id, key, isChecked ? 'Không' : label);
+                            setDrawerCell(key, isChecked ? 'Không' : label);
                           }}
                           className="h-4 w-4 accent-[#8b0000]"
                         />
@@ -1051,7 +1082,7 @@ export default function ResearchSubWorkspace() {
                           } else {
                             nextList = [...list, sdg.id];
                           }
-                          setCell(currentSelectedTask.id, 'sdgs', nextList.join(', '));
+                          setDrawerCell('sdgs', nextList.join(', '));
                         }}
                         className={`flex items-center gap-2 p-1.5 text-[10px] font-bold text-left uppercase transition-all duration-200 border ${
                           isSelected
