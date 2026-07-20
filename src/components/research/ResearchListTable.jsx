@@ -426,7 +426,7 @@ export default function ResearchListTable({
   }, [filteredRows, expandedRows, query, unit, taskType, status]);
 
   // Render avatar stack
-  const renderAvatarGroup = (membersStr) => {
+  const renderAvatarGroup = (membersStr, memberRoles) => {
     if (!membersStr) return <span className="text-neutral-300 font-sans text-[11px]">—</span>;
     const list = membersStr.split(',').map(m => m.trim()).filter(Boolean);
     const displayed = list.slice(0, 3);
@@ -461,8 +461,11 @@ export default function ResearchListTable({
           <ul className="space-y-0.5">
             {list.map((name, i) => (
               <li key={i} className="flex items-center gap-1.5 text-white/90">
-                <span className="h-1 w-1 rounded-full bg-[#8b0000]" />
-                {resolveMemberNameAndTitle(name)}
+                <span className="h-1 w-1 rounded-full bg-[#8b0000] shrink-0" />
+                <span className="truncate">{resolveMemberNameAndTitle(name)}</span>
+                {memberRoles?.[name] && (
+                  <span className="ml-auto shrink-0 text-white/40 text-[9px]">{memberRoles[name]}</span>
+                )}
               </li>
             ))}
           </ul>
@@ -632,7 +635,7 @@ export default function ResearchListTable({
 
                       {/* MEMBERS — hidden on RU main folder rows, only shown on child tasks */}
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        {level > 0 && renderAvatarGroup(row.members)}
+                        {level > 0 && renderAvatarGroup(row.members, row.member_roles)}
                       </td>
 
                       {/* STATUS — read-only badge, same as Task Type; no

@@ -65,6 +65,22 @@ const MAIN_FOLDER_TASK_TYPES = [
   { value: 'Fund Raising', label: 'Fund Raising' },
 ];
 
+// Role a member holds on a given task/unit — purely a tag for management
+// clarity, independent of whether they're an ISCM Roster or Outside member.
+const MEMBER_ROLES = [
+  'Head',
+  'Co-Head',
+  'Manager',
+  'Coordinator',
+  'International Scholar / International Member',
+  'Core Faculty / Key Member',
+  'Secretary',
+  'PhD Student / Postdoc',
+  'Collaborator',
+  'Individual Lead / Author',
+  'Member',
+];
+
 const PILLARS = [
   { key: 'framework_transition', label: 'Framework Transition' },
   { key: 'glocal_design', label: 'Glocal Design' },
@@ -1034,6 +1050,41 @@ export default function ResearchSubWorkspace() {
                     value={outsideMembers}
                     onChange={handleOutsideChange}
                   />
+                </div>
+
+                {/* Member Roles — tags each currently-selected member (Roster
+                    or Outside) with their role on this task, for easier
+                    management; independent of the Roster/Outside grouping above. */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">
+                    {lang === 'vi' ? 'Vai trò thành viên' : 'Member Roles'}
+                  </label>
+                  {[...rosterMembers, ...outsideMembers].length === 0 ? (
+                    <p className="text-[11px] text-neutral-400 italic mt-1">
+                      {lang === 'vi' ? 'Chưa có thành viên nào để gán vai trò.' : 'No members yet to assign a role to.'}
+                    </p>
+                  ) : (
+                    <div className="mt-1 border border-neutral-200 divide-y divide-neutral-100">
+                      {[...rosterMembers, ...outsideMembers].map((name) => (
+                        <div key={name} className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                          <span className="text-xs font-semibold text-neutral-700 truncate">{name}</span>
+                          <select
+                            value={currentSelectedTask.member_roles?.[name] || ''}
+                            onChange={(e) => setDrawerCell('member_roles', {
+                              ...(currentSelectedTask.member_roles || {}),
+                              [name]: e.target.value,
+                            })}
+                            className="border border-neutral-200 bg-white px-2 py-1 text-[10px] text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none shrink-0"
+                          >
+                            <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
+                            {MEMBER_ROLES.map((role) => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               )}
