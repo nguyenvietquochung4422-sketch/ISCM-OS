@@ -115,6 +115,7 @@ export default function ResearchListTable({
   const [taskType, setTaskType] = useState('all');
   const [status, setStatus] = useState('all');
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [openStatusRowId, setOpenStatusRowId] = useState(null);
   const [addUnitTarget, setAddUnitTarget] = useState('');
 
   // Keep the "add task into" target in sync with the active unit filter / available units
@@ -636,42 +637,78 @@ export default function ResearchListTable({
                         {level > 0 && renderAvatarGroup(row.members)}
                       </td>
 
-                      {/* STATUS — always a live dropdown; unset renders as a
-                          near-invisible "—" instead of a loud NONE badge,
-                          so it stays clickable/settable straight from the table. */}
-                      <td className="px-3 py-3 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          value={row.status || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === '__add_new__') {
-                              const newStatus = prompt(lang === 'vi' ? 'Nhập trạng thái mới:' : 'Enter new Status name:');
-                              if (newStatus && newStatus.trim()) {
-                                const trimmed = newStatus.trim();
-                                if (!statusOptions.includes(trimmed)) {
-                                  setStatusOptions((prev) => [...prev, trimmed]);
-                                }
-                                setCell(row.id, 'status', trimmed);
-                              }
-                            } else {
-                              setCell(row.id, 'status', val);
-                            }
-                          }}
-                          className={`max-w-full appearance-none cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
+                      {/* STATUS — custom dropdown (not a native <select>, so
+                          the browser's own listbox never pops up); unset
+                          renders as a near-invisible "—" instead of a loud
+                          NONE badge, so it stays clickable/settable straight
+                          from the table. */}
+                      <td className="relative px-3 py-3 overflow-visible" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenStatusRowId((prev) => (prev === row.id ? null : row.id))}
+                          className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
                             row.status
                               ? (STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50')
                               : 'border-transparent bg-transparent text-neutral-300 hover:border-neutral-200 hover:bg-neutral-50'
                           }`}
                         >
-                          <option value="">—</option>
-                          {!STATUS_CLASSES[row.status] && row.status && !statusOptions.includes(row.status) && (
-                            <option value={row.status}>{row.status}</option>
-                          )}
-                          {statusOptions.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                          <option value="__add_new__" className="text-[#8b0000] font-bold">+ {lang === 'vi' ? 'Thêm trạng thái...' : 'Add Status...'}</option>
-                        </select>
+                          {row.status || '—'}
+                        </button>
+
+                        {openStatusRowId === row.id && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setOpenStatusRowId(null)} />
+                            <div className="absolute left-0 top-full z-40 mt-1 w-40 border border-neutral-200 bg-white shadow-lg py-1">
+                              <button
+                                type="button"
+                                onClick={() => { setCell(row.id, 'status', ''); setOpenStatusRowId(null); }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400 hover:bg-neutral-50"
+                              >
+                                —
+                              </button>
+                              {!STATUS_CLASSES[row.status] && row.status && !statusOptions.includes(row.status) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenStatusRowId(null)}
+                                  className="w-full text-left px-3 py-1.5"
+                                >
+                                  <span className="inline-block border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider border-neutral-200 text-neutral-600 bg-neutral-50">
+                                    {row.status}
+                                  </span>
+                                </button>
+                              )}
+                              {statusOptions.map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => { setCell(row.id, 'status', s); setOpenStatusRowId(null); }}
+                                  className="w-full text-left px-3 py-1.5 hover:bg-neutral-50"
+                                >
+                                  <span className={`inline-block border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${STATUS_CLASSES[s] || 'border-neutral-200 text-neutral-600 bg-neutral-50'}`}>
+                                    {s}
+                                  </span>
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenStatusRowId(null);
+                                  const newStatus = prompt(lang === 'vi' ? 'Nhập trạng thái mới:' : 'Enter new Status name:');
+                                  if (newStatus && newStatus.trim()) {
+                                    const trimmed = newStatus.trim();
+                                    if (!statusOptions.includes(trimmed)) {
+                                      setStatusOptions((prev) => [...prev, trimmed]);
+                                    }
+                                    setCell(row.id, 'status', trimmed);
+                                  }
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#8b0000] hover:bg-neutral-50 border-t border-neutral-100 mt-1"
+                              >
+                                + {lang === 'vi' ? 'Thêm trạng thái...' : 'Add Status...'}
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </td>
 
                       {/* TIMELINE */}
