@@ -88,6 +88,10 @@ export default function ResearchSubWorkspace() {
   const [source, setSource] = useState('local');
   const [store, setStore] = useState(loadStore);
   const [selectedTask, setSelectedTask] = useState(null);
+  // A newly-added task/unit stays here (not in `store`) until Save is
+  // pressed — clicking "+ Add task"/"+ New Unit" no longer commits
+  // anything by itself.
+  const [draftRow, setDraftRow] = useState(null);
   const [drawerTab, setDrawerTab] = useState('metadata'); // 'metadata' | 'members' | 'documents' | 'tags'
 
   // File Upload states
@@ -144,6 +148,13 @@ export default function ResearchSubWorkspace() {
   }, [allRows, store.cellEdits]);
 
   const setCell = (rowId, key, value) => {
+    // A draft (not-yet-saved) row lives only in local state — edit it
+    // directly instead of writing cellEdits for a row that isn't in the
+    // store yet.
+    if (draftRow && rowId === draftRow.id) {
+      setDraftRow((prev) => ({ ...prev, [key]: value }));
+      return;
+    }
     setStore((prev) => ({
       ...prev,
       cellEdits: {
@@ -153,9 +164,60 @@ export default function ResearchSubWorkspace() {
     }));
   };
 
+  // A new task/unit is only ever handed to us as a draft — nothing is
+  // written to the store until Save is pressed.
+  const createDraft = (newRow) => {
+    setDraftRow({ ...newRow, isDraft: true });
+    setSelectedTask(newRow);
+  };
+
+  // Closing the drawer (header X, backdrop click, Close/Delete-on-draft)
+  // always discards any unsaved draft.
+  const closeDrawer = () => {
+    setDraftRow(null);
+    setSelectedTask(null);
+  };
+
+  // A code like RU8.4.1 requires RU8.4 to already exist as a real row —
+  // otherwise it's an orphaned WBS segment with no real parent to nest
+  // under. Returns an error string to report, or null if the code is fine.
+  const validateTaskCode = (row) => {
+    const code = (row.code || '').trim();
+    if (!code || !code.includes('.')) return null;
+    const parts = code.split('.');
+    const parentCode = parts.slice(0, -1).join('.');
+    const parentExists = allRowsResolved.some((r) => r.id !== row.id && (r.code || '').trim() === parentCode);
+    if (!parentExists) {
+      return lang === 'vi'
+        ? `Không thể lưu: mã cha "${parentCode}" chưa tồn tại. Hãy tạo "${parentCode}" trước khi dùng mã "${code}".`
+        : `Cannot save: parent code "${parentCode}" doesn't exist yet. Create "${parentCode}" first before using code "${code}".`;
+    }
+    return null;
+  };
+
+  // Validates, confirms, and (for a draft) commits the new row to the store.
+  const saveTask = () => {
+    const err = validateTaskCode(currentSelectedTask);
+    if (err) { alert(err); return; }
+    const ok = window.confirm(
+      lang === 'vi' ? 'Bạn có chắc chắn muốn lưu thay đổi?' : 'Are you sure you want to save your changes?'
+    );
+    if (!ok) return;
+    if (draftRow) {
+      setStore((prev) => ({ ...prev, extraRows: [...prev.extraRows, draftRow] }));
+    }
+    setDraftRow(null);
+    setSelectedTask(null);
+  };
+
   // Deletes a row (always confirms; the message also warns about any
-  // WBS-code descendants that would be deleted along with it).
+  // WBS-code descendants that would be deleted along with it). Deleting an
+  // unsaved draft is just discarding it — nothing exists to remove yet.
   const deleteTask = (row) => {
+    if (draftRow && row?.id === draftRow.id) {
+      closeDrawer();
+      return;
+    }
     const code = (row.code || '').trim();
     const descendantIds = code
       ? allRowsResolved.filter((r) => (r.code || '').trim().startsWith(code + '.')).map((r) => r.id)
@@ -250,8 +312,9 @@ export default function ResearchSubWorkspace() {
   // Find currently active selected task in resolved rows
   const currentSelectedTask = useMemo(() => {
     if (!selectedTask) return null;
+    if (draftRow && selectedTask.id === draftRow.id) return draftRow;
     return allRowsResolved.find((r) => r.id === selectedTask.id) || null;
-  }, [selectedTask, allRowsResolved]);
+  }, [selectedTask, allRowsResolved, draftRow]);
 
   // Always land back on the Metadata tab when a different task is opened
   useEffect(() => {
@@ -423,7 +486,7 @@ export default function ResearchSubWorkspace() {
             selectedTask={selectedTask}
             setSelectedTask={setSelectedTask}
             store={store}
-            setStore={setStore}
+            onCreateDraft={createDraft}
             source={source}
             researchUnits={researchUnits}
             setResearchUnits={setResearchUnits}
@@ -605,7 +668,7 @@ export default function ResearchSubWorkspace() {
           {/* Backdrop Overlay */}
           <div
             className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-all duration-300"
-            onClick={() => setSelectedTask(null)}
+            onClick={closeDrawer}
           />
 
           {/* Slide Drawer (35vw) */}
@@ -622,7 +685,7 @@ export default function ResearchSubWorkspace() {
                 </h2>
               </div>
               <button
-                onClick={() => setSelectedTask(null)}
+                onClick={closeDrawer}
                 className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white hover:text-white transition-all shrink-0"
               >
                 <X className="h-4 w-4" />
@@ -999,12 +1062,7 @@ export default function ResearchSubWorkspace() {
                 {lang === 'vi' ? 'Xoá' : 'Delete'}
               </button>
               <button
-                onClick={() => {
-                  const ok = window.confirm(
-                    lang === 'vi' ? 'Bạn có chắc chắn muốn lưu thay đổi?' : 'Are you sure you want to save your changes?'
-                  );
-                  if (ok) setSelectedTask(null);
-                }}
+                onClick={saveTask}
                 className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
               >
                 {lang === 'vi' ? 'Lưu' : 'Save'}

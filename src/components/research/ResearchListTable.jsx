@@ -31,18 +31,6 @@ const STATUS_CLASSES = {
   'Review': 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
-const STATUS_DOT_CLASSES = {
-  'In progress': 'bg-blue-500',
-  'Completed': 'bg-emerald-500',
-  'Done': 'bg-emerald-500',
-  'Funded': 'bg-emerald-500',
-  'Cancel': 'bg-red-500',
-  'Failed': 'bg-red-500',
-  'Not start': 'bg-gray-400',
-  'On hold': 'bg-gray-400',
-  'Review': 'bg-amber-500',
-};
-
 const TASK_TYPE_CLASSES = {
   'Paper': 'border-purple-200 text-purple-700 bg-purple-50',
   'Training': 'border-gray-200 text-gray-700 bg-gray-50',
@@ -114,7 +102,7 @@ export default function ResearchListTable({
   selectedTask,
   setSelectedTask,
   store,
-  setStore,
+  onCreateDraft,
   researchUnits = [],
   setResearchUnits,
   taskTypes = []
@@ -231,11 +219,7 @@ export default function ResearchListTable({
       urban_system: 'Không',
       sdgs: '',
     };
-    setStore((prev) => ({
-      ...prev,
-      extraRows: [...prev.extraRows, newRow]
-    }));
-    setSelectedTask(newRow);
+    onCreateDraft(newRow);
   };
 
   const handleAddUnit = () => {
@@ -265,12 +249,8 @@ export default function ResearchListTable({
       report_plan_link: '',
       sdgs: '',
     };
-    setStore((prev) => ({
-      ...prev,
-      extraRows: [...prev.extraRows, newRow]
-    }));
     setUnit(trimmed);
-    setSelectedTask(newRow);
+    onCreateDraft(newRow);
   };
 
   // Filter rows first (matching search and hierarchy parents)
@@ -413,17 +393,15 @@ export default function ResearchListTable({
       roots.sort((a, b) => compareCodes(a.code, b.code));
       roots.forEach(root => traverse(root, 0));
 
-      // Filter visible rows in this group based on expanded state
+      // Filter visible rows in this group based on expanded state — only the
+      // top-level Research Unit folder is collapsible; once it's expanded,
+      // every task and sub-task beneath it shows in full (no per-task
+      // chevrons to open individually).
       const isFiltered = query.trim() !== '' || unit !== 'all' || taskType !== 'all' || status !== 'all';
       const visibleGroupRows = sortedGroupRows.filter(row => {
         if (isFiltered) return true;
-        let pId = row.resolvedParentId;
-        while (pId) {
-          if (!expandedRows.has(pId)) return false;
-          const parentRow = resolvedRowsMap[pId];
-          pId = parentRow ? parentRow.resolvedParentId : null;
-        }
-        return true;
+        if (row.resolvedLevel === 0) return true;
+        return mainFolder ? expandedRows.has(mainFolder.id) : true;
       });
 
       // Only offer "+ Add task" once the group's root folder(s) are actually
@@ -589,7 +567,7 @@ export default function ResearchListTable({
                       {/* CODE */}
                       <td className="px-3 py-3 font-semibold overflow-hidden">
                         <div className="flex items-center gap-1.5">
-                          {hasChildren ? (
+                          {hasChildren && level === 0 ? (
                             <button
                               onClick={(e) => toggleRow(row.id, e)}
                               className="h-4 w-4 inline-flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors rounded-sm shrink-0"
@@ -657,21 +635,20 @@ export default function ResearchListTable({
                       </td>
 
                       {/* STATUS — hidden on RU main folder rows, only shown on child tasks */}
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3 py-3 overflow-hidden" onClick={(e) => e.stopPropagation()}>
                         {level > 0 && (
-                          <div className="inline-flex items-center gap-1.5 rounded-none px-1 py-1 hover:bg-neutral-50 transition-colors">
-                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT_CLASSES[row.status] || 'bg-gray-400'}`} />
-                            <select
-                              value={row.status || ''}
-                              onChange={(e) => setCell(row.id, 'status', e.target.value)}
-                              className="cursor-pointer border-none bg-transparent text-[11px] font-bold text-neutral-700 focus:outline-none"
-                            >
-                              {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
-                              {STATUS_OPTIONS.map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <select
+                            value={row.status || ''}
+                            onChange={(e) => setCell(row.id, 'status', e.target.value)}
+                            className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
+                              STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50'
+                            }`}
+                          >
+                            {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
                         )}
                       </td>
 
