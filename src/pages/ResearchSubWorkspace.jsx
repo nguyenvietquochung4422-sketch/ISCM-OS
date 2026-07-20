@@ -808,6 +808,7 @@ export default function ResearchSubWorkspace() {
                       }}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
+                      <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
                       {isMainFolderSelected ? (
                         MAIN_FOLDER_TASK_TYPES.map(({ value, label }) => (
                           <option key={value} value={value}>{label}</option>
@@ -852,6 +853,7 @@ export default function ResearchSubWorkspace() {
                       onChange={(e) => setCell(currentSelectedTask.id, 'status', e.target.value)}
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
+                      <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
                       {STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
