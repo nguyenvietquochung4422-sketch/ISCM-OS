@@ -423,10 +423,19 @@ export default function ResearchListTable({
         return true;
       });
 
+      // Only offer "+ Add task" once the group's root folder(s) are actually
+      // expanded — showing it while collapsed invites adding blind, without
+      // seeing what's already there. Groups with no expandable root (flat,
+      // no folder/children) always show it since there's nothing to expand.
+      const hasCollapsedRoot = roots.some(
+        (r) => (childrenMap[r.id]?.length > 0) && !expandedRows.has(r.id)
+      );
+
       if (visibleGroupRows.length > 0) {
         result.push({
           groupName,
-          rows: visibleGroupRows
+          rows: visibleGroupRows,
+          hasCollapsedRoot,
         });
       }
     });
@@ -684,18 +693,20 @@ export default function ResearchListTable({
                   );
                 })}
 
-                {/* Inline "+ Add task" row, contextual to this group */}
-                <tr
-                  onClick={() => handleAddTask(group.rows[0]?.research_unit)}
-                  className="cursor-pointer group/addrow hover:bg-neutral-50/60 transition-colors border-b border-neutral-100"
-                >
-                  <td colSpan={7 + customColumns.length} className="px-4 py-2">
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 group-hover/addrow:text-[#8b0000] transition-colors">
-                      <Plus className="h-3 w-3" />
-                      {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
-                    </span>
-                  </td>
-                </tr>
+                {/* Inline "+ Add task" row — only once the group's folder is expanded */}
+                {!group.hasCollapsedRoot && (
+                  <tr
+                    onClick={() => handleAddTask(group.rows[0]?.research_unit)}
+                    className="cursor-pointer group/addrow hover:bg-neutral-50/60 transition-colors border-b border-neutral-100"
+                  >
+                    <td colSpan={7 + customColumns.length} className="px-4 py-2">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 group-hover/addrow:text-[#8b0000] transition-colors">
+                        <Plus className="h-3 w-3" />
+                        {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
+                      </span>
+                    </td>
+                  </tr>
+                )}
               </Fragment>
             ))}
 
