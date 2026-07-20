@@ -31,6 +31,18 @@ const STATUS_CLASSES = {
   'Review': 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
+const STATUS_DOT_CLASSES = {
+  'In progress': 'bg-blue-500',
+  'Completed': 'bg-emerald-500',
+  'Done': 'bg-emerald-500',
+  'Funded': 'bg-emerald-500',
+  'Cancel': 'bg-red-500',
+  'Failed': 'bg-red-500',
+  'Not start': 'bg-gray-400',
+  'On hold': 'bg-gray-400',
+  'Review': 'bg-amber-500',
+};
+
 const TASK_TYPE_CLASSES = {
   'Paper': 'border-purple-200 text-purple-700 bg-purple-50',
   'Training': 'border-gray-200 text-gray-700 bg-gray-50',
@@ -616,7 +628,7 @@ export default function ResearchListTable({
                           )}
 
                           {row.code ? (
-                            <span className="text-[10px] font-mono bg-neutral-100 text-neutral-600 px-1 py-0.5 rounded-sm">
+                            <span className="text-[10px] font-mono text-neutral-500">
                               {row.code}
                             </span>
                           ) : (
@@ -652,7 +664,7 @@ export default function ResearchListTable({
                       {/* COORDINATOR */}
                       <td className="px-4 py-3">
                         {row.coordinator_manager ? (
-                          <span className="inline-flex items-center bg-neutral-50 text-neutral-700 px-2 py-0.5 text-[10px] font-bold border border-neutral-200 whitespace-nowrap">
+                          <span className="text-[11px] font-semibold text-neutral-700 whitespace-nowrap">
                             {resolveMemberNameAndTitle(row.coordinator_manager)}
                           </span>
                         ) : (
@@ -668,18 +680,19 @@ export default function ResearchListTable({
                       {/* STATUS — hidden on RU main folder rows, only shown on child tasks */}
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         {level > 0 && (
-                          <select
-                            value={row.status || ''}
-                            onChange={(e) => setCell(row.id, 'status', e.target.value)}
-                            className={`cursor-pointer rounded-none border px-2 py-1 text-[11px] font-bold focus:outline-none transition-all duration-200 ${
-                              STATUS_CLASSES[row.status] || 'bg-gray-100 text-gray-600 border-gray-200'
-                            }`}
-                          >
-                            {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
-                            {STATUS_OPTIONS.map((s) => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
+                          <div className="inline-flex items-center gap-1.5 rounded-none px-1 py-1 hover:bg-neutral-50 transition-colors">
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT_CLASSES[row.status] || 'bg-gray-400'}`} />
+                            <select
+                              value={row.status || ''}
+                              onChange={(e) => setCell(row.id, 'status', e.target.value)}
+                              className="cursor-pointer border-none bg-transparent text-[11px] font-bold text-neutral-700 focus:outline-none"
+                            >
+                              {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
+                              {STATUS_OPTIONS.map((s) => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          </div>
                         )}
                       </td>
 
