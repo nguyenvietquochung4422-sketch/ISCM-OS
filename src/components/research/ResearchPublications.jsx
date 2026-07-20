@@ -27,6 +27,20 @@ const mapLiveRow = (row) => ({
   details: { framework: false, glocal: false, human: false, tech: false, urban: false },
 });
 
+// The live `publications` table has no citation column, so every
+// Supabase-sourced row starts with citation: '' — falls back to a
+// best-effort APA-style string built from the fields we do have
+// (Authors (Year). Title. Journal.) until someone edits it manually.
+const buildAutoCitation = (item) => {
+  const parts = [];
+  if (item.authors) parts.push(item.authors.trim());
+  if (item.year) parts.push(`(${item.year})`);
+  const lead = parts.join(' ').trim();
+  const segments = [lead, item.title?.trim(), item.journal_conference?.trim()].filter(Boolean);
+  if (segments.length === 0) return '';
+  return segments.join('. ').replace(/\.\.$/, '.') + (segments[segments.length - 1].endsWith('.') ? '' : '.');
+};
+
 // Derives the editable indexing_cols (ISI/Scopus/ESCI badges) from the raw
 // `indexing` tag array — shared by both the static dataset and any future
 // richer live rows that populate `indexing`.
@@ -441,14 +455,21 @@ export default function ResearchPublications({ lang }) {
                             {/* APA Citation */}
                             <div className="flex flex-col md:flex-row md:items-center gap-4 pt-3 border-t border-neutral-100">
                               <div className="flex-1 space-y-1">
-                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">APA Citation (Directly editable)</span>
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
+                                  APA Citation (Directly editable)
+                                  {!item.citation && (
+                                    <span className="ml-1.5 normal-case font-medium text-neutral-300">
+                                      — {lang === 'vi' ? 'tự động tạo, chỉnh để chốt' : 'auto-generated, edit to finalize'}
+                                    </span>
+                                  )}
+                                </span>
                                 <div
                                   contentEditable
                                   suppressContentEditableWarning
                                   onBlur={(e) => updatePublicationField(item.id, 'citation', e.target.innerText)}
                                   className="w-full bg-transparent focus:bg-white text-[11px] text-neutral-800 italic focus:outline-none transition-all p-1.5 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50"
                                 >
-                                  {item.citation}
+                                  {item.citation || buildAutoCitation(item)}
                                 </div>
                               </div>
 
@@ -456,7 +477,7 @@ export default function ResearchPublications({ lang }) {
                                 {/* Copy Citation Button */}
                                 <button
                                   type="button"
-                                  onClick={() => handleCopyCitation(item.id, item.citation)}
+                                  onClick={() => handleCopyCitation(item.id, item.citation || buildAutoCitation(item))}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-200 hover:border-[#8b0000] hover:text-[#8b0000] bg-white transition-colors text-neutral-700 font-sans"
                                 >
                                   {copiedId === item.id ? (
