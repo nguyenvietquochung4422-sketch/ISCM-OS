@@ -153,7 +153,8 @@ export default function ResearchSubWorkspace() {
     }));
   };
 
-  // Deletes a row (and, after confirmation, any of its WBS-code descendants).
+  // Deletes a row (always confirms; the message also warns about any
+  // WBS-code descendants that would be deleted along with it).
   const deleteTask = (row) => {
     const code = (row.code || '').trim();
     const descendantIds = code
@@ -161,14 +162,16 @@ export default function ResearchSubWorkspace() {
       : [];
     const idsToDelete = [row.id, ...descendantIds];
 
-    if (descendantIds.length > 0) {
-      const ok = window.confirm(
-        lang === 'vi'
-          ? `Xoá "${row.task_name}" sẽ xoá luôn ${descendantIds.length} mục con bên trong. Tiếp tục?`
-          : `Deleting "${row.task_name}" will also delete ${descendantIds.length} item(s) inside it. Continue?`
-      );
-      if (!ok) return;
-    }
+    const ok = window.confirm(
+      descendantIds.length > 0
+        ? (lang === 'vi'
+            ? `Bạn có chắc chắn muốn xoá "${row.task_name}"? Thao tác này sẽ xoá luôn ${descendantIds.length} mục con bên trong.`
+            : `Are you sure you want to delete "${row.task_name}"? This will also delete ${descendantIds.length} item(s) inside it.`)
+        : (lang === 'vi'
+            ? `Bạn có chắc chắn muốn xoá "${row.task_name}"?`
+            : `Are you sure you want to delete "${row.task_name}"?`)
+    );
+    if (!ok) return;
 
     setStore((prev) => {
       const extraIds = new Set(prev.extraRows.filter((r) => idsToDelete.includes(r.id)).map((r) => r.id));
@@ -995,20 +998,17 @@ export default function ResearchSubWorkspace() {
               >
                 {lang === 'vi' ? 'Xoá' : 'Delete'}
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedTask(null)}
-                  className="border border-neutral-300 text-neutral-700 hover:border-neutral-900 font-bold uppercase tracking-wider px-4 py-2 text-xs transition-colors rounded-none"
-                >
-                  {lang === 'vi' ? 'Đóng' : 'Close'}
-                </button>
-                <button
-                  onClick={() => setSelectedTask(null)}
-                  className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
-                >
-                  {lang === 'vi' ? 'Lưu' : 'Save'}
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  const ok = window.confirm(
+                    lang === 'vi' ? 'Bạn có chắc chắn muốn lưu thay đổi?' : 'Are you sure you want to save your changes?'
+                  );
+                  if (ok) setSelectedTask(null);
+                }}
+                className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
+              >
+                {lang === 'vi' ? 'Lưu' : 'Save'}
+              </button>
             </div>
 
           </div>
