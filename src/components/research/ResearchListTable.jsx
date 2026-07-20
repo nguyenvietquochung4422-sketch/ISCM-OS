@@ -656,7 +656,7 @@ export default function ResearchListTable({
                               setCell(row.id, 'status', val);
                             }
                           }}
-                          className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
+                          className={`max-w-full appearance-none cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
                             row.status
                               ? (STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50')
                               : 'border-transparent bg-transparent text-neutral-300 hover:border-neutral-200 hover:bg-neutral-50'
