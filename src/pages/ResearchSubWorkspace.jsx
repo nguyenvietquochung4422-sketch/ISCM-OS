@@ -88,6 +88,7 @@ export default function ResearchSubWorkspace() {
   const [source, setSource] = useState('local');
   const [store, setStore] = useState(loadStore);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [drawerTab, setDrawerTab] = useState('metadata'); // 'metadata' | 'members' | 'documents' | 'tags'
 
   // File Upload states
   const [uploading, setUploading] = useState(false);
@@ -216,6 +217,11 @@ export default function ResearchSubWorkspace() {
     if (!selectedTask) return null;
     return allRowsResolved.find((r) => r.id === selectedTask.id) || null;
   }, [selectedTask, allRowsResolved]);
+
+  // Always land back on the Metadata tab when a different task is opened
+  useEffect(() => {
+    setDrawerTab('metadata');
+  }, [selectedTask?.id]);
 
   // Roster / Outside Members partition and handlers
   const { rosterMembers, outsideMembers } = useMemo(() => {
@@ -588,10 +594,34 @@ export default function ResearchSubWorkspace() {
               </button>
             </div>
 
+            {/* Drawer Tabs */}
+            <div className="flex border-b border-neutral-100 bg-white px-2">
+              {[
+                { key: 'metadata', label: lang === 'vi' ? 'Thông tin' : 'Metadata', icon: Briefcase },
+                { key: 'members', label: lang === 'vi' ? 'Thành viên' : 'Members', icon: Users },
+                { key: 'documents', label: lang === 'vi' ? 'Tài liệu' : 'Documents', icon: FileText },
+                { key: 'tags', label: lang === 'vi' ? 'Phân loại' : 'Classification', icon: CheckSquare },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setDrawerTab(t.key)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide border-b-2 transition-colors ${
+                    drawerTab === t.key
+                      ? 'border-[#8b0000] text-[#8b0000]'
+                      : 'border-transparent text-neutral-400 hover:text-neutral-600'
+                  }`}
+                >
+                  <t.icon className="h-3.5 w-3.5" />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {/* Drawer Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              
-              {/* Section 1: Core Metadata */}
+
+              {/* Tab: Metadata */}
+              {drawerTab === 'metadata' && (
               <div className="space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
                   <Briefcase className="h-3.5 w-3.5 text-[#8b0000]" />
@@ -732,6 +762,16 @@ export default function ResearchSubWorkspace() {
                     />
                   </div>
                 </div>
+              </div>
+              )}
+
+              {/* Tab: Members */}
+              {drawerTab === 'members' && (
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-[#8b0000]" />
+                  {lang === 'vi' ? 'Thành viên tham gia' : 'Members'}
+                </h3>
 
                 {/* Members (ISCM Roster) */}
                 <div className="space-y-1">
@@ -751,8 +791,10 @@ export default function ResearchSubWorkspace() {
                   />
                 </div>
               </div>
+              )}
 
-              {/* Section 2: Minute Report or Plan */}
+              {/* Tab: Documents */}
+              {drawerTab === 'documents' && (
               <div className="space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5 text-[#8b0000]" />
@@ -830,8 +872,11 @@ export default function ResearchSubWorkspace() {
                   />
                 </div>
               </div>
+              )}
 
-              {/* Section 3: Framework Transition Pillars */}
+              {/* Tab: Classification (Framework Pillars + SDGs) */}
+              {drawerTab === 'tags' && (
+              <>
               <div className="space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
                   <CheckSquare className="h-3.5 w-3.5 text-[#8b0000]" />
@@ -905,6 +950,8 @@ export default function ResearchSubWorkspace() {
                   })}
                 </div>
               </div>
+              </>
+              )}
 
             </div>
 

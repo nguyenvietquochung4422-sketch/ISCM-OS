@@ -552,9 +552,7 @@ export default function ResearchListTable({
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-900 text-white font-barlow text-[10px] font-bold uppercase tracking-wider">
               <th className="px-4 py-3 min-w-[120px]">Code</th>
-              <th className="px-4 py-3 min-w-[280px]">Task Name</th>
-              {/* strict no-wrap header */}
-              <th className="px-4 py-3 min-w-[160px] whitespace-nowrap">Research Unit</th>
+              <th className="px-4 py-3 min-w-[320px]">Task Name</th>
               <th className="px-4 py-3 min-w-[120px] whitespace-nowrap">Task Type</th>
               <th className="px-4 py-3 min-w-[150px]">Coordinator / Manager</th>
               <th className="px-4 py-3 min-w-[110px]">Members</th>
@@ -571,7 +569,7 @@ export default function ResearchListTable({
               <Fragment key={group.groupName}>
                 {/* Unified Section Header Row aligned in table */}
                 <tr className="bg-neutral-100/80 border-y border-neutral-200 select-none">
-                  <td colSpan={8 + customColumns.length + 1} className="px-4 py-2.5 font-bold font-barlow text-[#8b0000] uppercase tracking-wide text-[11px]">
+                  <td colSpan={7 + customColumns.length + 1} className="px-4 py-2.5 font-bold font-barlow text-[#8b0000] uppercase tracking-wide text-[11px]">
                     {group.groupName}
                   </td>
                 </tr>
@@ -627,19 +625,17 @@ export default function ResearchListTable({
                         </div>
                       </td>
 
-                      {/* TASK NAME with progressive indentation */}
-                      <td className="px-4 py-3 font-medium min-w-[280px]" style={{ paddingLeft: `${Math.max(16, level * 20)}px` }}>
+                      {/* TASK NAME with progressive indentation + tree guide lines */}
+                      <td className="relative px-4 py-3 font-medium min-w-[320px]" style={{ paddingLeft: `${Math.max(16, level * 20)}px` }}>
+                        {Array.from({ length: level }).map((_, i) => (
+                          <span key={i} className="absolute bottom-0 top-0 border-l border-neutral-200" style={{ left: `${16 + i * 20}px` }} />
+                        ))}
                         <button
                           onClick={() => setSelectedTask(row)}
-                          className="text-left font-sans text-xs font-semibold text-slate-700 group-hover:text-[#8b0000] hover:underline transition-colors whitespace-normal break-words"
+                          className="relative text-left font-sans text-xs font-semibold text-slate-700 group-hover:text-[#8b0000] hover:underline transition-colors whitespace-normal break-words"
                         >
                           {row.task_name || 'Untitled Task'}
                         </button>
-                      </td>
-
-                      {/* RESEARCH UNIT (Strict No-Wrap Constraint) */}
-                      <td className="px-4 py-3 text-neutral-500 font-medium whitespace-nowrap truncate max-w-[180px]">
-                        {row.research_unit}
                       </td>
 
                       {/* TASK TYPE (Strict No-Wrap Constraint) */}
@@ -726,7 +722,7 @@ export default function ResearchListTable({
                   onClick={() => handleAddTask(group.rows[0]?.research_unit)}
                   className="cursor-pointer group/addrow hover:bg-neutral-50/60 transition-colors border-b border-neutral-100"
                 >
-                  <td colSpan={8 + customColumns.length + 1} className="px-4 py-2">
+                  <td colSpan={7 + customColumns.length + 1} className="px-4 py-2">
                     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 group-hover/addrow:text-[#8b0000] transition-colors">
                       <Plus className="h-3 w-3" />
                       {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
@@ -738,7 +734,7 @@ export default function ResearchListTable({
 
             {groupedAndSortedData.length === 0 && (
               <tr>
-                <td colSpan={8 + customColumns.length + 1} className="py-12 text-center text-neutral-400 font-medium">
+                <td colSpan={7 + customColumns.length + 1} className="py-12 text-center text-neutral-400 font-medium">
                   No research activities match the selected filters.
                 </td>
               </tr>
@@ -749,7 +745,7 @@ export default function ResearchListTable({
               onClick={handleAddUnit}
               className="cursor-pointer group/addunit hover:bg-neutral-100 transition-colors bg-neutral-50/60"
             >
-              <td colSpan={8 + customColumns.length + 1} className="px-4 py-2.5">
+              <td colSpan={7 + customColumns.length + 1} className="px-4 py-2.5">
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold font-ibm text-neutral-500 group-hover/addunit:text-[#8b0000] transition-colors uppercase tracking-wide">
                   <FolderPlus className="h-3.5 w-3.5" />
                   {lang === 'vi' ? 'Tạo Đơn vị nghiên cứu mới' : 'New Research Unit'}
