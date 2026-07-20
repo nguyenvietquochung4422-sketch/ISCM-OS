@@ -37,6 +37,17 @@ export function getShortNamesForMember(member) {
   return [...new Set(names.map(n => n.toLowerCase().trim()))];
 }
 
+// Member Roles (Head/Co-Head/Manager/...) are tagged per-task in the
+// Research List drawer, keyed by the exact name string as it appears in
+// `row.members` — resolve which of those name segments is this member to
+// look up their role on that specific task.
+export function getMemberRoleForTask(row, member) {
+  if (!row.member_roles || !row.members) return null;
+  const names = row.members.split(',').map(m => m.trim()).filter(Boolean);
+  const matchedName = names.find(name => isMemberMatch(member, name));
+  return matchedName ? (row.member_roles[matchedName] || null) : null;
+}
+
 export function isMemberMatch(member, targetStr) {
   if (!targetStr) return false;
   const target = targetStr.toLowerCase();
@@ -262,17 +273,21 @@ export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {
                 </span>
                 {wl.memberTasks.length > 0 ? (
                   <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-0.5">
-                    {wl.memberTasks.map(task => (
-                      <button
-                        key={task.id}
-                        onClick={() => setSelectedTask(task)}
-                        className="inline-flex items-center gap-1 bg-[#8b0000]/5 hover:bg-[#8b0000]/10 border border-[#8b0000]/10 hover:border-[#8b0000]/30 text-[#8b0000] px-2 py-0.5 text-[9px] font-semibold text-left transition-all rounded-none truncate max-w-full group/tag"
-                      >
-                        {task.code && <span className="font-mono text-[8px] bg-[#8b0000]/10 px-1 py-0.2">{task.code}</span>}
-                        <span className="truncate">{task.task_name}</span>
-                        <ArrowUpRight className="h-2.5 w-2.5 opacity-0 group-hover/tag:opacity-100 shrink-0" />
-                      </button>
-                    ))}
+                    {wl.memberTasks.map(task => {
+                      const role = getMemberRoleForTask(task, wl.member);
+                      return (
+                        <button
+                          key={task.id}
+                          onClick={() => setSelectedTask(task)}
+                          className="inline-flex items-center gap-1 bg-[#8b0000]/5 hover:bg-[#8b0000]/10 border border-[#8b0000]/10 hover:border-[#8b0000]/30 text-[#8b0000] px-2 py-0.5 text-[9px] font-semibold text-left transition-all rounded-none truncate max-w-full group/tag"
+                        >
+                          {task.code && <span className="font-mono text-[8px] bg-[#8b0000]/10 px-1 py-0.2">{task.code}</span>}
+                          <span className="truncate">{task.task_name}</span>
+                          {role && <span className="shrink-0 text-[#8b0000]/50 font-normal normal-case">· {role}</span>}
+                          <ArrowUpRight className="h-2.5 w-2.5 opacity-0 group-hover/tag:opacity-100 shrink-0" />
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <span className="text-[10px] text-neutral-400 italic">No active engagements.</span>
@@ -287,17 +302,21 @@ export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {
                 </span>
                 {wl.doneTasks.length > 0 ? (
                   <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-0.5">
-                    {wl.doneTasks.map(task => (
-                      <button
-                        key={task.id}
-                        onClick={() => setSelectedTask(task)}
-                        className="inline-flex items-center gap-1 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 hover:border-neutral-300 text-neutral-500 px-2 py-0.5 text-[9px] font-semibold text-left transition-all rounded-none truncate max-w-full group/tag"
-                      >
-                        {task.code && <span className="font-mono text-[8px] bg-neutral-200/70 px-1 py-0.2">{task.code}</span>}
-                        <span className="truncate">{task.task_name}</span>
-                        <ArrowUpRight className="h-2.5 w-2.5 opacity-0 group-hover/tag:opacity-100 shrink-0" />
-                      </button>
-                    ))}
+                    {wl.doneTasks.map(task => {
+                      const role = getMemberRoleForTask(task, wl.member);
+                      return (
+                        <button
+                          key={task.id}
+                          onClick={() => setSelectedTask(task)}
+                          className="inline-flex items-center gap-1 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 hover:border-neutral-300 text-neutral-500 px-2 py-0.5 text-[9px] font-semibold text-left transition-all rounded-none truncate max-w-full group/tag"
+                        >
+                          {task.code && <span className="font-mono text-[8px] bg-neutral-200/70 px-1 py-0.2">{task.code}</span>}
+                          <span className="truncate">{task.task_name}</span>
+                          {role && <span className="shrink-0 text-neutral-400 font-normal normal-case">· {role}</span>}
+                          <ArrowUpRight className="h-2.5 w-2.5 opacity-0 group-hover/tag:opacity-100 shrink-0" />
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <span className="text-[10px] text-neutral-400 italic">No completed tasks yet.</span>
