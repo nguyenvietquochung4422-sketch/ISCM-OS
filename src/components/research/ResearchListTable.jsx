@@ -635,23 +635,25 @@ export default function ResearchListTable({
                         {level > 0 && renderAvatarGroup(row.members)}
                       </td>
 
-                      {/* STATUS — blank when unset */}
+                      {/* STATUS — always a live dropdown; unset renders as a
+                          near-invisible "—" instead of a loud NONE badge,
+                          so it stays clickable/settable straight from the table. */}
                       <td className="px-3 py-3 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        {row.status && (
-                          <select
-                            value={row.status}
-                            onChange={(e) => setCell(row.id, 'status', e.target.value)}
-                            className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
-                              STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50'
-                            }`}
-                          >
-                            <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
-                            {!STATUS_CLASSES[row.status] && <option value={row.status}>{row.status}</option>}
-                            {STATUS_OPTIONS.map((s) => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                        )}
+                        <select
+                          value={row.status || ''}
+                          onChange={(e) => setCell(row.id, 'status', e.target.value)}
+                          className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
+                            row.status
+                              ? (STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50')
+                              : 'border-transparent bg-transparent text-neutral-300 hover:border-neutral-200 hover:bg-neutral-50'
+                          }`}
+                        >
+                          <option value="">—</option>
+                          {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
                       </td>
 
                       {/* TIMELINE */}
