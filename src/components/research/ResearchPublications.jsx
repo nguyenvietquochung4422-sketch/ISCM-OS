@@ -294,7 +294,7 @@ export default function ResearchPublications({ lang }) {
     <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
       
       {/* 1. Header Toolbar */}
-      <div className="flex flex-wrap items-center gap-2.5 bg-neutral-50 p-2.5 border border-neutral-200/60 shadow-sm shrink-0">
+      <div className="flex flex-wrap items-center gap-2.5 bg-neutral-50 p-2.5 border border-neutral-200/60 shrink-0">
         {/* Search */}
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
@@ -326,7 +326,7 @@ export default function ResearchPublications({ lang }) {
       </div>
 
       {/* 2. Data Table Grid (Scrollable horizontally) */}
-      <div className="flex-1 overflow-auto border border-neutral-200">
+      <div className="min-h-0 flex-1 overflow-auto border border-neutral-200 bg-white shadow-sm">
         <table 
           className="table-fixed text-left border-collapse" 
           style={{ width: tableWidth }}
