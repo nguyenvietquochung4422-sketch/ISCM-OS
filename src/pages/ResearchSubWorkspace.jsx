@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Folder, FolderOpen, FileText, ChevronRight, ChevronDown,
   Search, BookOpen, AlertCircle, Info, Landmark, HelpCircle, Download, GraduationCap,
-  Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X, ArrowRight
+  Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { supabase, isLive } from '../lib/supabaseClient.js';
@@ -609,7 +609,7 @@ export default function ResearchSubWorkspace() {
     e.preventDefault();
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e, onDone) => {
     e.preventDefault();
     const files = e.dataTransfer.files;
     if (files.length > 0 && currentSelectedTask) {
@@ -621,13 +621,88 @@ export default function ResearchSubWorkspace() {
           if (prev >= 100) {
             clearInterval(interval);
             setUploading(false);
-            setDrawerCell('report_plan_link', filename);
+            onDone(filename);
             return 100;
           }
           return prev + 25;
         });
       }, 150);
     }
+  };
+
+  // One attached item row shown inside the Minute Report / Documents lists.
+  const DocRow = ({ name, addedAt, href, isLink, onRemove }) => (
+    isLink ? (
+      <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-blue-50/60 border border-blue-100 w-full">
+        <a href={href} target="_blank" rel="noreferrer" className="flex items-center gap-2 min-w-0 flex-1 text-blue-700 hover:underline">
+          <Link className="h-4 w-4 shrink-0" />
+          <span className="truncate">{name}</span>
+        </a>
+        <button onClick={onRemove} className="text-neutral-400 hover:text-neutral-600 shrink-0">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    ) : (
+      <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-neutral-700 bg-neutral-50 border border-neutral-200 w-full">
+        <Paperclip className="h-4 w-4 text-neutral-400 shrink-0" />
+        <span className="truncate flex-1">{name}</span>
+        {addedAt && <span className="text-[10px] font-normal text-neutral-400 shrink-0">{addedAt}</span>}
+        <button onClick={onRemove} className="text-neutral-400 hover:text-neutral-600 shrink-0">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    )
+  );
+
+  // Drag & Drop zone + URL field to add one new item to a Minute Report /
+  // Documents list; onAdd receives just the filename/URL string.
+  const AddDocRow = ({ dragLabel, urlLabel, onAdd }) => {
+    const [urlValue, setUrlValue] = useState('');
+    const commitUrl = () => {
+      if (!urlValue.trim()) return;
+      onAdd(urlValue.trim());
+      setUrlValue('');
+    };
+    return (
+      <div className="space-y-2">
+        <div
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, onAdd)}
+          className="border-2 border-dashed border-neutral-200 bg-neutral-50/50 hover:bg-neutral-50 p-4 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer rounded-none group"
+        >
+          {uploading ? (
+            <div className="w-full space-y-1.5 text-center">
+              <div className="text-[11px] font-bold text-neutral-600">{lang === 'vi' ? 'Đang tải lên...' : 'Uploading...'}</div>
+              <div className="w-full bg-neutral-200 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-[#8b0000] h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <>
+              <UploadCloud className="h-6 w-6 text-neutral-300 group-hover:text-neutral-400 transition-colors" />
+              <div className="text-[11px] text-neutral-600 font-medium">{dragLabel}</div>
+            </>
+          )}
+        </div>
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            placeholder={urlLabel}
+            className="flex-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none"
+            onKeyDown={(e) => { if (e.key === 'Enter') commitUrl(); }}
+          />
+          <button
+            type="button"
+            onClick={commitUrl}
+            className="bg-neutral-900 hover:bg-[#8b0000] text-white px-3 py-1.5 text-[10px] font-bold uppercase shrink-0 transition-colors"
+          >
+            {lang === 'vi' ? 'Thêm' : 'Add'}
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -964,82 +1039,101 @@ export default function ResearchSubWorkspace() {
               </div>
               )}
 
-              {/* Tab: Documents */}
+              {/* Tab: Documents — split into a Minute Report section (meeting
+                  notes, each entry timestamped) and a general Documents
+                  section, each its own independently addable/removable list. */}
               {drawerTab === 'documents' && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-[#8b0000]" />
-                  Minute Report or Plan
-                </h3>
+              <div className="space-y-6">
 
-                {currentSelectedTask.report_plan_link ? (
-                  <div className="flex flex-col gap-2">
-                    {currentSelectedTask.report_plan_link.startsWith('http') || currentSelectedTask.report_plan_link.toLowerCase().includes('doc') || currentSelectedTask.report_plan_link === 'Link' ? (
-                      <a
+                {/* Section: Minute Report */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-[#8b0000]" />
+                      {lang === 'vi' ? 'Biên bản họp' : 'Minute Report'}
+                    </h3>
+                    <a
+                      href={`${import.meta.env.BASE_URL}documents/ISCM-Meeting-Minutes-Template.docx`}
+                      download
+                      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-[#8b0000] hover:underline shrink-0"
+                    >
+                      <Download className="h-3 w-3" />
+                      {lang === 'vi' ? 'Tải mẫu' : 'Download Template'}
+                    </a>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {currentSelectedTask.report_plan_link && (
+                      <DocRow
+                        name={currentSelectedTask.report_plan_link}
+                        isLink={
+                          currentSelectedTask.report_plan_link.startsWith('http')
+                          || currentSelectedTask.report_plan_link.toLowerCase().includes('doc')
+                          || currentSelectedTask.report_plan_link === 'Link'
+                        }
                         href={currentSelectedTask.report_plan_link === 'Link' ? 'https://docs.google.com' : currentSelectedTask.report_plan_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50/60 border border-blue-100 hover:bg-blue-50 transition-colors w-full"
-                      >
-                        <Link className="h-4 w-4 shrink-0" />
-                        <span>View Minute Report</span>
-                        <ArrowRight className="h-3 w-3 ml-auto text-blue-400" />
-                      </a>
-                    ) : (
-                      <div className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-neutral-700 bg-neutral-50 border border-neutral-200 w-full">
-                        <Paperclip className="h-4 w-4 text-neutral-400 shrink-0" />
-                        <span className="truncate">{currentSelectedTask.report_plan_link}</span>
-                        <button
-                          onClick={() => setDrawerCell('report_plan_link', '')}
-                          className="ml-auto text-neutral-400 hover:text-neutral-600"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                        onRemove={() => setDrawerCell('report_plan_link', '')}
+                      />
+                    )}
+                    {(currentSelectedTask.minute_reports || []).map((item) => (
+                      <DocRow
+                        key={item.id}
+                        name={item.name}
+                        addedAt={item.addedAt}
+                        isLink={item.name.startsWith('http')}
+                        href={item.name}
+                        onRemove={() => setDrawerCell('minute_reports', (currentSelectedTask.minute_reports || []).filter((i) => i.id !== item.id))}
+                      />
+                    ))}
+                    {!currentSelectedTask.report_plan_link && (currentSelectedTask.minute_reports || []).length === 0 && (
+                      <p className="text-[11px] text-neutral-400 italic">
+                        {lang === 'vi' ? 'Chưa có biên bản nào.' : 'No minute reports yet.'}
+                      </p>
                     )}
                   </div>
-                ) : (
-                  <p className="text-[11px] text-neutral-400 italic">No document attached.</p>
-                )}
 
-                {/* Simulated Drag & Drop Zone */}
-                <div
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  className="border-2 border-dashed border-neutral-200 bg-neutral-50/50 hover:bg-neutral-50 p-6 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer rounded-none group"
-                >
-                  {uploading ? (
-                    <div className="w-full space-y-2 text-center">
-                      <div className="text-xs font-bold text-neutral-600">Uploading Document...</div>
-                      <div className="w-full bg-neutral-200 h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-[#8b0000] h-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                      <div className="text-[10px] text-neutral-400 font-mono">{uploadProgress}%</div>
-                    </div>
-                  ) : (
-                    <>
-                      <UploadCloud className="h-8 w-8 text-neutral-300 group-hover:text-neutral-400 transition-colors" />
-                      <div className="text-xs text-neutral-600 font-medium">
-                        Drag & Drop document files here
-                      </div>
-                      <div className="text-[10px] text-neutral-400">
-                        Supports PDF, Word, and Excel files
-                      </div>
-                    </>
-                  )}
+                  <AddDocRow
+                    dragLabel={lang === 'vi' ? 'Kéo thả file biên bản vào đây' : 'Drag & Drop minute report files here'}
+                    urlLabel={lang === 'vi' ? 'Hoặc chèn URL biên bản' : 'Or Insert Minute Report URL'}
+                    onAdd={(name) => setDrawerCell('minute_reports', [
+                      ...(currentSelectedTask.minute_reports || []),
+                      { id: `mr-${Date.now()}`, name, addedAt: new Date().toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US') },
+                    ])}
+                  />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Or Insert Document URL</label>
-                  <input
-                    type="text"
-                    value={currentSelectedTask.report_plan_link || ''}
-                    onChange={(e) => setDrawerCell('report_plan_link', e.target.value)}
-                    placeholder="https://docs.google.com/document/..."
-                    className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                {/* Section: Documents */}
+                <div className="space-y-3 pt-4 border-t border-neutral-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 flex items-center gap-1.5">
+                    <Paperclip className="h-3.5 w-3.5 text-[#8b0000]" />
+                    {lang === 'vi' ? 'Tài liệu' : 'Documents'}
+                  </h3>
+
+                  <div className="space-y-1.5">
+                    {(currentSelectedTask.documents || []).map((item) => (
+                      <DocRow
+                        key={item.id}
+                        name={item.name}
+                        addedAt={item.addedAt}
+                        isLink={item.name.startsWith('http')}
+                        href={item.name}
+                        onRemove={() => setDrawerCell('documents', (currentSelectedTask.documents || []).filter((i) => i.id !== item.id))}
+                      />
+                    ))}
+                    {(currentSelectedTask.documents || []).length === 0 && (
+                      <p className="text-[11px] text-neutral-400 italic">
+                        {lang === 'vi' ? 'Chưa có tài liệu nào.' : 'No documents yet.'}
+                      </p>
+                    )}
+                  </div>
+
+                  <AddDocRow
+                    dragLabel={lang === 'vi' ? 'Kéo thả tài liệu vào đây' : 'Drag & Drop document files here'}
+                    urlLabel={lang === 'vi' ? 'Hoặc chèn URL tài liệu' : 'Or Insert Document URL'}
+                    onAdd={(name) => setDrawerCell('documents', [
+                      ...(currentSelectedTask.documents || []),
+                      { id: `doc-${Date.now()}`, name, addedAt: new Date().toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US') },
+                    ])}
                   />
                 </div>
               </div>
