@@ -153,6 +153,38 @@ export default function ResearchSubWorkspace() {
     }));
   };
 
+  // Deletes a row (and, after confirmation, any of its WBS-code descendants).
+  const deleteTask = (row) => {
+    const code = (row.code || '').trim();
+    const descendantIds = code
+      ? allRowsResolved.filter((r) => (r.code || '').trim().startsWith(code + '.')).map((r) => r.id)
+      : [];
+    const idsToDelete = [row.id, ...descendantIds];
+
+    if (descendantIds.length > 0) {
+      const ok = window.confirm(
+        lang === 'vi'
+          ? `Xoá "${row.task_name}" sẽ xoá luôn ${descendantIds.length} mục con bên trong. Tiếp tục?`
+          : `Deleting "${row.task_name}" will also delete ${descendantIds.length} item(s) inside it. Continue?`
+      );
+      if (!ok) return;
+    }
+
+    setStore((prev) => {
+      const extraIds = new Set(prev.extraRows.filter((r) => idsToDelete.includes(r.id)).map((r) => r.id));
+      const idsForDeletedList = idsToDelete.filter((id) => !extraIds.has(id));
+      return {
+        ...prev,
+        extraRows: prev.extraRows.filter((r) => !idsToDelete.includes(r.id)),
+        deletedRowIds: Array.from(new Set([...(prev.deletedRowIds || []), ...idsForDeletedList])),
+      };
+    });
+
+    if (idsToDelete.includes(selectedTask?.id)) {
+      setSelectedTask(null);
+    }
+  };
+
   // Helper to normalize and resolve names for matching
   const getShortNamesForMember = (member) => {
     const names = [];
@@ -956,13 +988,27 @@ export default function ResearchSubWorkspace() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-neutral-100 bg-neutral-50 text-right">
+            <div className="flex items-center justify-between gap-2 p-4 border-t border-neutral-100 bg-neutral-50">
               <button
-                onClick={() => setSelectedTask(null)}
-                className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
+                onClick={() => deleteTask(currentSelectedTask)}
+                className="border border-neutral-300 text-neutral-500 hover:border-[#8b0000] hover:text-[#8b0000] font-bold uppercase tracking-wider px-4 py-2 text-xs transition-colors rounded-none"
               >
-                Save & Close
+                {lang === 'vi' ? 'Xoá' : 'Delete'}
               </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="border border-neutral-300 text-neutral-700 hover:border-neutral-900 font-bold uppercase tracking-wider px-4 py-2 text-xs transition-colors rounded-none"
+                >
+                  {lang === 'vi' ? 'Đóng' : 'Close'}
+                </button>
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
+                >
+                  {lang === 'vi' ? 'Lưu' : 'Save'}
+                </button>
+              </div>
             </div>
 
           </div>

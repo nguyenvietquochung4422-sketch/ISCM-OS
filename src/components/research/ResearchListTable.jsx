@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, Fragment } from 'react';
 import {
-  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus, Trash2
+  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus
 } from 'lucide-react';
 import { RESEARCH_UNITS } from '../../data/researchList.js';
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
@@ -273,38 +273,6 @@ export default function ResearchListTable({
     setSelectedTask(newRow);
   };
 
-  const removeRow = (row, e) => {
-    e.stopPropagation();
-    const code = (row.code || '').trim();
-    const descendantIds = code
-      ? allRowsResolved.filter((r) => (r.code || '').trim().startsWith(code + '.')).map((r) => r.id)
-      : [];
-    const idsToDelete = [row.id, ...descendantIds];
-
-    if (descendantIds.length > 0) {
-      const ok = window.confirm(
-        lang === 'vi'
-          ? `Xoá "${row.task_name}" sẽ xoá luôn ${descendantIds.length} mục con bên trong. Tiếp tục?`
-          : `Deleting "${row.task_name}" will also delete ${descendantIds.length} item(s) inside it. Continue?`
-      );
-      if (!ok) return;
-    }
-
-    setStore((prev) => {
-      const extraIds = new Set(prev.extraRows.filter((r) => idsToDelete.includes(r.id)).map((r) => r.id));
-      const idsForDeletedList = idsToDelete.filter((id) => !extraIds.has(id));
-      return {
-        ...prev,
-        extraRows: prev.extraRows.filter((r) => !idsToDelete.includes(r.id)),
-        deletedRowIds: Array.from(new Set([...(prev.deletedRowIds || []), ...idsForDeletedList])),
-      };
-    });
-
-    if (idsToDelete.includes(selectedTask?.id)) {
-      setSelectedTask(null);
-    }
-  };
-
   // Filter rows first (matching search and hierarchy parents)
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -573,7 +541,6 @@ export default function ResearchListTable({
               {customColumns.map((col) => (
                 <th key={col.key} className="px-3 py-3" />
               ))}
-              <th className="w-8 bg-neutral-900" />
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 text-xs font-ibm">
@@ -581,7 +548,7 @@ export default function ResearchListTable({
               <Fragment key={group.groupName}>
                 {/* Unified Section Header Row aligned in table */}
                 <tr className="bg-neutral-100/80 border-y border-neutral-200 select-none">
-                  <td colSpan={7 + customColumns.length + 1} className="px-4 py-2.5 font-bold font-barlow text-[#8b0000] uppercase tracking-wide text-[11px]">
+                  <td colSpan={7 + customColumns.length} className="px-4 py-2.5 font-bold font-barlow text-[#8b0000] uppercase tracking-wide text-[11px]">
                     {group.groupName}
                   </td>
                 </tr>
@@ -713,19 +680,6 @@ export default function ResearchListTable({
                           />
                         </td>
                       ))}
-
-                      {/* DELETE */}
-                      <td className="px-2 py-3 text-center">
-                        <button
-                          onClick={(e) => removeRow(row, e)}
-                          title={level === 0
-                            ? (lang === 'vi' ? 'Xoá Đơn vị này' : 'Delete this Unit')
-                            : (lang === 'vi' ? 'Xoá tác vụ này' : 'Delete this task')}
-                          className="text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-[#8b0000] transition-all"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
@@ -735,7 +689,7 @@ export default function ResearchListTable({
                   onClick={() => handleAddTask(group.rows[0]?.research_unit)}
                   className="cursor-pointer group/addrow hover:bg-neutral-50/60 transition-colors border-b border-neutral-100"
                 >
-                  <td colSpan={7 + customColumns.length + 1} className="px-4 py-2">
+                  <td colSpan={7 + customColumns.length} className="px-4 py-2">
                     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 group-hover/addrow:text-[#8b0000] transition-colors">
                       <Plus className="h-3 w-3" />
                       {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
@@ -747,7 +701,7 @@ export default function ResearchListTable({
 
             {groupedAndSortedData.length === 0 && (
               <tr>
-                <td colSpan={7 + customColumns.length + 1} className="py-12 text-center text-neutral-400 font-medium">
+                <td colSpan={7 + customColumns.length} className="py-12 text-center text-neutral-400 font-medium">
                   No research activities match the selected filters.
                 </td>
               </tr>
@@ -758,7 +712,7 @@ export default function ResearchListTable({
               onClick={handleAddUnit}
               className="cursor-pointer group/addunit hover:bg-neutral-100 transition-colors bg-neutral-50/60"
             >
-              <td colSpan={7 + customColumns.length + 1} className="px-4 py-2.5">
+              <td colSpan={7 + customColumns.length} className="px-4 py-2.5">
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold font-ibm text-neutral-500 group-hover/addunit:text-[#8b0000] transition-colors uppercase tracking-wide">
                   <FolderPlus className="h-3.5 w-3.5" />
                   {lang === 'vi' ? 'Tạo Đơn vị nghiên cứu mới' : 'New Research Unit'}
