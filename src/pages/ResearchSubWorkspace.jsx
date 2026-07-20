@@ -538,7 +538,6 @@ export default function ResearchSubWorkspace() {
             setResearchUnits={setResearchUnits}
             taskTypes={taskTypes}
             statusOptions={statusOptions}
-            setStatusOptions={setStatusOptions}
           />
         ),
       },
