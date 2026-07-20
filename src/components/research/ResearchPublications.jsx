@@ -64,72 +64,24 @@ export default function ResearchPublications({ lang }) {
   const [copiedId, setCopiedId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
-  // Initialize columns order & sizes state (using pixel widths for resizing)
-  const [columnOrder, setColumnOrder] = useState([
-    { key: 'stt', label: 'STT', width: 50, align: 'text-center' },
-    { key: 'year', label: 'Pub. Year', width: 75, align: 'text-center' },
-    { key: 'title', label: 'Publication Title', width: 340, align: 'text-left' },
-    { key: 'authors', label: 'Authors', width: 220, align: 'text-left' },
-    { key: 'journal', label: 'Journal / Publisher', width: 220, align: 'text-left' },
-    { key: 'ssci', label: 'ISI (SSCI)', width: 80, align: 'text-center' },
-    { key: 'scie', label: 'ISI (SCIE)', width: 80, align: 'text-center' },
-    { key: 'ahci', label: 'ISI (A&HCI)', width: 80, align: 'text-center' },
-    { key: 'scopus', label: 'Scopus', width: 90, align: 'text-center' },
-    { key: 'esci', label: 'ESCI', width: 80, align: 'text-center' },
-    { key: 'framework', label: 'Framework Trans.', width: 70, align: 'text-center' },
-    { key: 'glocal', label: 'Glocal Design', width: 70, align: 'text-center' },
-    { key: 'human', label: 'Human Centric', width: 70, align: 'text-center' },
-    { key: 'tech', label: 'Tech Sol.', width: 70, align: 'text-center' },
-    { key: 'urban', label: 'Urban Sys.', width: 70, align: 'text-center' },
-    { key: 'ueh_declared', label: 'UEH Decl.', width: 85, align: 'text-center' },
-    { key: 'ueh_reward', label: 'UEH Reward', width: 85, align: 'text-center' }
-  ]);
+  // Indexing badges, the Framework/Glocal/Human/Tech/Urban checklist, and
+  // UEH declaration/reward no longer get their own table columns — they now
+  // live in the expandable row panel below, alongside the APA citation.
+  const INDEXING_FIELDS = [
+    { key: 'ssci', label: 'ISI (SSCI)' },
+    { key: 'scie', label: 'ISI (SCIE)' },
+    { key: 'ahci', label: 'ISI (A&HCI)' },
+    { key: 'scopus', label: 'Scopus' },
+    { key: 'esci', label: 'ESCI' },
+  ];
 
-  // Drag and Drop state
-  const [draggedColIdx, setDraggedColIdx] = useState(null);
-
-  const handleDragStart = (idx) => {
-    setDraggedColIdx(idx);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (targetIdx) => {
-    if (draggedColIdx === null || draggedColIdx === targetIdx) return;
-    const reordered = [...columnOrder];
-    const [dragged] = reordered.splice(draggedColIdx, 1);
-    reordered.splice(targetIdx, 0, dragged);
-    setColumnOrder(reordered);
-    setDraggedColIdx(null);
-  };
-
-  // Column resizing handler
-  const handleResizeStart = (idx, e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = columnOrder[idx].width;
-
-    const handleMouseMove = (moveEvent) => {
-      const diffX = moveEvent.clientX - startX;
-      const nextWidth = Math.max(30, startWidth + diffX);
-      setColumnOrder(prev => {
-        const next = [...prev];
-        next[idx] = { ...next[idx], width: nextWidth };
-        return next;
-      });
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
+  const CHECKLIST_FIELDS = [
+    { key: 'framework', label: 'Framework Trans.' },
+    { key: 'glocal', label: 'Glocal Design' },
+    { key: 'human', label: 'Human Centric' },
+    { key: 'tech', label: 'Tech Sol.' },
+    { key: 'urban', label: 'Urban Sys.' },
+  ];
 
   // Load and persist state to LocalStorage. Prior local edits always win
   // (same precedence as before); only a fresh, never-edited table pulls its
@@ -285,11 +237,6 @@ export default function ResearchPublications({ lang }) {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  // Sum of column widths
-  const tableWidth = useMemo(() => {
-    return columnOrder.reduce((sum, c) => sum + c.width, 0);
-  }, [columnOrder]);
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
       
@@ -325,48 +272,25 @@ export default function ResearchPublications({ lang }) {
         </select>
       </div>
 
-      {/* 2. Data Table Grid (Scrollable horizontally) */}
+      {/* 2. Data Table Grid — fixed columns, fits the frame (no horizontal
+          scroll), matching Research List. Indexing/checklist/UEH details
+          live in the expandable row panel below instead of extra columns. */}
       <div className="min-h-0 flex-1 overflow-auto border border-neutral-200 bg-white shadow-sm">
-        <table 
-          className="table-fixed text-left border-collapse" 
-          style={{ width: tableWidth }}
-        >
-          <colgroup>
-            {columnOrder.map(col => (
-              <col key={col.key} style={{ width: col.width }} />
-            ))}
-          </colgroup>
-          <thead className="sticky top-0 z-10 bg-neutral-900 text-white font-barlow text-[10px] uppercase tracking-wider font-black select-none">
+        <table className="w-full table-fixed border-collapse text-left">
+          <thead className="sticky top-0 z-10 bg-neutral-900 text-white font-barlow text-[10px] uppercase tracking-wider font-bold select-none">
             <tr>
-              {columnOrder.map((col, idx) => (
-                <th
-                  key={col.key}
-                  draggable={col.key !== 'stt'}
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={handleDragOver}
-                  onDrop={() => handleDrop(idx)}
-                  className={`px-2 py-3 text-center border-r border-neutral-800 transition-colors relative ${
-                    col.key !== 'stt' ? 'cursor-move hover:bg-neutral-800/80' : ''
-                  }`}
-                  title={col.key !== 'stt' ? 'Drag to reorder column' : ''}
-                >
-                  <div className="flex items-center justify-center">
-                    <span>{col.label}</span>
-                  </div>
-                  {/* Resizing Handle */}
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#8b0000]/60 transition-colors z-20"
-                    onMouseDown={(e) => handleResizeStart(idx, e)}
-                  />
-                </th>
-              ))}
+              <th className="px-3 py-3 text-center w-[6%]">STT</th>
+              <th className="px-3 py-3 text-center w-[9%]">Pub. Year</th>
+              <th className="px-3 py-3 text-left w-[32%]">Publication Title</th>
+              <th className="px-3 py-3 text-left w-[26%]">Authors</th>
+              <th className="px-3 py-3 text-left w-[27%]">Journal / Publisher</th>
             </tr>
           </thead>
-          
+
           <tbody className="divide-y divide-neutral-200 text-xs font-ibm bg-white">
             {sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columnOrder.length} className="px-4 py-12 text-center text-neutral-400 italic bg-white">
+                <td colSpan={5} className="px-4 py-12 text-center text-neutral-400 italic bg-white">
                   {lang === 'vi' ? 'Không tìm thấy kết quả nào.' : 'No publications found matching criteria.'}
                 </td>
               </tr>
@@ -382,193 +306,183 @@ export default function ResearchPublications({ lang }) {
                         isExpanded ? 'bg-neutral-50 font-medium' : ''
                       }`}
                     >
-                      {columnOrder.map(col => {
-                        // STT
-                        if (col.key === 'stt') {
-                          return (
-                            <td key={col.key} className="px-3 py-3.5 text-center text-neutral-400 font-mono border-r border-neutral-100">
-                              {idx + 1}
-                            </td>
-                          );
-                        }
+                      <td className="px-3 py-3.5 text-center text-neutral-400 font-mono border-r border-neutral-100">
+                        {idx + 1}
+                      </td>
 
-                        // Pub. Year
-                        if (col.key === 'year') {
-                          return (
-                            <td key={col.key} className="p-1 border-r border-neutral-100 font-mono">
-                              <div
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => updatePublicationField(item.id, 'year', e.target.innerText)}
-                                className="w-full text-center bg-transparent focus:bg-white text-xs font-bold text-[#8b0000] focus:outline-none transition-all p-1 font-mono focus:ring-1 focus:ring-[#8b0000]/50"
-                              >
-                                {item.year}
+                      <td className="p-1 border-r border-neutral-100 font-mono">
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={(e) => updatePublicationField(item.id, 'year', e.target.innerText)}
+                          className="w-full text-center bg-transparent focus:bg-white text-xs font-bold text-[#8b0000] focus:outline-none transition-all p-1 font-mono focus:ring-1 focus:ring-[#8b0000]/50"
+                        >
+                          {item.year}
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-1 border-r border-neutral-100">
+                        <div className="flex items-start gap-1">
+                          <button
+                            onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                            className="mt-1.5 text-neutral-400 hover:text-[#8b0000] transition-colors shrink-0"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                          <div
+                            contentEditable
+                            suppressContentEditableWarning
+                            onBlur={(e) => updatePublicationField(item.id, 'title', e.target.innerText)}
+                            className="w-full bg-transparent focus:bg-white text-xs text-neutral-800 focus:outline-none transition-all p-1 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em] break-words"
+                          >
+                            {item.title}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-1 border-r border-neutral-100">
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={(e) => updatePublicationField(item.id, 'authors', e.target.innerText)}
+                          className="w-full bg-transparent focus:bg-white text-xs text-neutral-600 focus:outline-none transition-all p-1 leading-normal font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em] break-words"
+                        >
+                          {item.authors}
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-1">
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={(e) => updatePublicationField(item.id, 'journal_conference', e.target.innerText)}
+                          className="w-full bg-transparent focus:bg-white text-xs text-neutral-700 italic focus:outline-none transition-all p-1 leading-normal font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em] break-words"
+                        >
+                          {item.journal_conference}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expandable panel: Indexing, Framework Pillars, UEH, APA Citation */}
+                    {isExpanded && (
+                      <tr key={`${item.id}-exp`} className="bg-neutral-50/50">
+                        <td colSpan={5} className="px-6 py-3 border-t border-neutral-100">
+                          <div className="bg-white p-3 border border-neutral-200 shadow-sm space-y-3">
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Indexing */}
+                              <div>
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">Indexing</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {INDEXING_FIELDS.map(({ key, label }) => (
+                                    <div key={key} className="flex items-center gap-1 border border-neutral-200 bg-neutral-50/40 px-2 py-1">
+                                      <span className="text-[9px] font-semibold text-neutral-400 uppercase">{label}</span>
+                                      <div
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onBlur={(e) => updatePublicationIndexing(item.id, key, e.target.innerText)}
+                                        className="min-w-[1.5em] bg-transparent focus:bg-white text-[10px] text-neutral-700 focus:outline-none font-mono font-bold focus:ring-1 focus:ring-[#8b0000]/50"
+                                      >
+                                        {item.indexing_cols?.[key] || ''}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </td>
-                          );
-                        }
 
-                        // Publication Title
-                        if (col.key === 'title') {
-                          return (
-                            <td key={col.key} className="px-2 py-1 border-r border-neutral-100">
-                              <div className="flex items-start gap-1">
-                                <button
-                                  onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                                  className="mt-1.5 text-neutral-400 hover:text-[#8b0000] transition-colors shrink-0"
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                  )}
-                                </button>
+                              {/* Framework Pillars Checklist */}
+                              <div>
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">Framework Pillars</span>
+                                <div className="flex flex-wrap gap-2.5">
+                                  {CHECKLIST_FIELDS.map(({ key, label }) => (
+                                    <button
+                                      key={key}
+                                      type="button"
+                                      onClick={() => updatePublicationDetail(item.id, key, !item.details[key])}
+                                      className="flex items-center gap-1 text-[10px] text-neutral-600 hover:text-neutral-900"
+                                      title={lang === 'vi' ? 'Bấm để tích chọn / bỏ chọn' : 'Click to toggle'}
+                                    >
+                                      {item.details[key] ? (
+                                        <CheckSquare className="h-3.5 w-3.5 text-[#8b0000] shrink-0" />
+                                      ) : (
+                                        <Square className="h-3.5 w-3.5 text-neutral-300 shrink-0" />
+                                      )}
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* UEH Declared / Reward */}
+                              <div>
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">UEH</span>
+                                <div className="flex gap-3">
+                                  {[{ key: 'ueh_declared', label: 'UEH Decl.' }, { key: 'ueh_reward', label: 'UEH Reward' }].map(({ key, label }) => (
+                                    <div key={key} className="flex items-center gap-1 border border-neutral-200 bg-neutral-50/40 px-2 py-1">
+                                      <span className="text-[9px] font-semibold text-neutral-400 uppercase">{label}</span>
+                                      <div
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onBlur={(e) => updatePublicationField(item.id, key, e.target.innerText)}
+                                        className="min-w-[1.5em] bg-transparent focus:bg-white text-[10px] text-neutral-700 focus:outline-none font-mono font-medium focus:ring-1 focus:ring-[#8b0000]/50"
+                                      >
+                                        {item[key] || ''}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* APA Citation */}
+                            <div className="flex flex-col md:flex-row md:items-center gap-4 pt-3 border-t border-neutral-100">
+                              <div className="flex-1 space-y-1">
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">APA Citation (Directly editable)</span>
                                 <div
                                   contentEditable
                                   suppressContentEditableWarning
-                                  onBlur={(e) => updatePublicationField(item.id, 'title', e.target.innerText)}
-                                  className="w-full bg-transparent focus:bg-white text-xs text-neutral-800 focus:outline-none transition-all p-1 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em]"
+                                  onBlur={(e) => updatePublicationField(item.id, 'citation', e.target.innerText)}
+                                  className="w-full bg-transparent focus:bg-white text-[11px] text-neutral-800 italic focus:outline-none transition-all p-1.5 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50"
                                 >
-                                  {item.title}
+                                  {item.citation}
                                 </div>
                               </div>
-                            </td>
-                          );
-                        }
 
-                        // Authors
-                        if (col.key === 'authors') {
-                          return (
-                            <td key={col.key} className="px-2 py-1 border-r border-neutral-100">
-                              <div
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => updatePublicationField(item.id, 'authors', e.target.innerText)}
-                                className="w-full bg-transparent focus:bg-white text-xs text-neutral-600 focus:outline-none transition-all p-1 leading-normal font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em]"
-                              >
-                                {item.authors}
+                              <div className="flex gap-2 shrink-0 self-end md:self-center">
+                                {/* Copy Citation Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyCitation(item.id, item.citation)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-200 hover:border-[#8b0000] hover:text-[#8b0000] bg-white transition-colors text-neutral-700 font-sans"
+                                >
+                                  {copiedId === item.id ? (
+                                    <>
+                                      <Check className="h-3 w-3 text-emerald-600" />
+                                      Copied
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Clipboard className="h-3 w-3" />
+                                      Copy APA
+                                    </>
+                                  )}
+                                </button>
+
+                                {/* Search Google Scholar Button */}
+                                <a
+                                  href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-900 bg-neutral-900 text-white hover:bg-[#8b0000] transition-colors font-sans"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Scholar
+                                </a>
                               </div>
-                            </td>
-                          );
-                        }
-
-                        // Journal
-                        if (col.key === 'journal') {
-                          return (
-                            <td key={col.key} className="px-2 py-1 border-r border-neutral-100">
-                              <div
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => updatePublicationField(item.id, 'journal_conference', e.target.innerText)}
-                                className="w-full bg-transparent focus:bg-white text-xs text-neutral-700 italic focus:outline-none transition-all p-1 leading-normal font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em]"
-                              >
-                                {item.journal_conference}
-                              </div>
-                            </td>
-                          );
-                        }
-
-                        // Indexing keys (ssci, scie, ahci, scopus, esci)
-                        if (['ssci', 'scie', 'ahci', 'scopus', 'esci'].includes(col.key)) {
-                          return (
-                            <td key={col.key} className="p-1 border-r border-neutral-100 bg-neutral-50/20">
-                              <div
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => updatePublicationIndexing(item.id, col.key, e.target.innerText)}
-                                className="w-full text-center bg-transparent focus:bg-white text-[10px] text-neutral-700 focus:outline-none transition-all p-1 font-mono font-bold focus:ring-1 focus:ring-[#8b0000]/50"
-                              >
-                                {item.indexing_cols?.[col.key] || ''}
-                              </div>
-                            </td>
-                          );
-                        }
-
-                        // Checklist keys
-                        if (['framework', 'glocal', 'human', 'tech', 'urban'].includes(col.key)) {
-                          return (
-                            <td
-                              key={col.key}
-                              onClick={() => updatePublicationDetail(item.id, col.key, !item.details[col.key])}
-                              className="checklist-cell px-1 py-3.5 text-center cursor-pointer hover:bg-neutral-100/50 transition-colors border-r border-neutral-100"
-                              title={lang === 'vi' ? 'Bấm để tích chọn / bỏ chọn' : 'Click to toggle'}
-                            >
-                              {item.details[col.key] ? (
-                                <CheckSquare className="h-4 w-4 mx-auto text-[#8b0000]" />
-                              ) : (
-                                <Square className="h-4 w-4 mx-auto text-neutral-200 hover:text-neutral-400" />
-                              )}
-                            </td>
-                          );
-                        }
-
-                        // UEH Declared / Reward
-                        if (col.key === 'ueh_declared' || col.key === 'ueh_reward') {
-                          return (
-                            <td key={col.key} className="p-1 border-r border-neutral-100">
-                              <div
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => updatePublicationField(item.id, col.key, e.target.innerText)}
-                                className="w-full text-center bg-transparent focus:bg-white text-[11px] text-neutral-600 focus:outline-none transition-all p-1 font-mono font-medium focus:ring-1 focus:ring-[#8b0000]/50"
-                              >
-                                {item[col.key] || ''}
-                              </div>
-                            </td>
-                          );
-                        }
-
-                        return null;
-                      })}
-                    </tr>
-
-                    {/* Expandable APA Citation Row */}
-                    {isExpanded && (
-                      <tr key={`${item.id}-exp`} className="bg-neutral-50/50">
-                        <td colSpan={columnOrder.length} className="px-6 py-3 border-t border-neutral-100">
-                          <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white p-3 border border-neutral-200 shadow-sm">
-                            <div className="flex-1 space-y-1">
-                              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">APA Citation (Directly editable)</span>
-                              <div
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => updatePublicationField(item.id, 'citation', e.target.innerText)}
-                                className="w-full bg-transparent focus:bg-white text-[11px] text-neutral-800 italic focus:outline-none transition-all p-1.5 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50"
-                              >
-                                {item.citation}
-                              </div>
-                            </div>
-                            
-                            <div className="flex gap-2 shrink-0 self-end md:self-center">
-                              {/* Copy Citation Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleCopyCitation(item.id, item.citation)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-200 hover:border-[#8b0000] hover:text-[#8b0000] bg-white transition-colors text-neutral-700 font-sans"
-                              >
-                                {copiedId === item.id ? (
-                                  <>
-                                    <Check className="h-3 w-3 text-emerald-600" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Clipboard className="h-3 w-3" />
-                                    Copy APA
-                                  </>
-                                )}
-                              </button>
-
-                              {/* Search Google Scholar Button */}
-                              <a
-                                href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-900 bg-neutral-900 text-white hover:bg-[#8b0000] transition-colors font-sans"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                Scholar
-                              </a>
                             </div>
                           </div>
                         </td>
@@ -581,7 +495,7 @@ export default function ResearchPublications({ lang }) {
           </tbody>
         </table>
       </div>
-      
+
     </div>
   );
 }
