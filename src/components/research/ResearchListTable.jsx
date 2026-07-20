@@ -608,13 +608,15 @@ export default function ResearchListTable({
                         </button>
                       </td>
 
-                      {/* TASK TYPE */}
+                      {/* TASK TYPE — blank when unset */}
                       <td className="px-3 py-3 overflow-hidden">
-                        <span className={`inline-block max-w-full truncate border px-2 py-0.5 text-[9px] font-semibold rounded-none tracking-wider uppercase ${
-                          row.task_type ? (TASK_TYPE_CLASSES[row.task_type] || 'border-neutral-200 text-neutral-600 bg-neutral-50') : 'border-neutral-200 text-neutral-400 bg-neutral-50 italic'
-                        }`}>
-                          {row.task_type || (lang === 'vi' ? 'Không có' : 'None')}
-                        </span>
+                        {row.task_type && (
+                          <span className={`inline-block max-w-full truncate border px-2 py-0.5 text-[9px] font-semibold rounded-none tracking-wider uppercase ${
+                            TASK_TYPE_CLASSES[row.task_type] || 'border-neutral-200 text-neutral-600 bg-neutral-50'
+                          }`}>
+                            {row.task_type}
+                          </span>
+                        )}
                       </td>
 
                       {/* COORDINATOR */}
@@ -633,21 +635,23 @@ export default function ResearchListTable({
                         {level > 0 && renderAvatarGroup(row.members)}
                       </td>
 
-                      {/* STATUS */}
+                      {/* STATUS — blank when unset */}
                       <td className="px-3 py-3 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          value={row.status || ''}
-                          onChange={(e) => setCell(row.id, 'status', e.target.value)}
-                          className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
-                            row.status ? (STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50') : 'border-neutral-200 text-neutral-400 bg-neutral-50 italic'
-                          }`}
-                        >
-                          <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
-                          {!STATUS_CLASSES[row.status] && row.status && <option value={row.status}>{row.status}</option>}
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
+                        {row.status && (
+                          <select
+                            value={row.status}
+                            onChange={(e) => setCell(row.id, 'status', e.target.value)}
+                            className={`max-w-full cursor-pointer rounded-none border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider focus:outline-none ${
+                              STATUS_CLASSES[row.status] || 'border-neutral-200 text-neutral-600 bg-neutral-50'
+                            }`}
+                          >
+                            <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
+                            {!STATUS_CLASSES[row.status] && <option value={row.status}>{row.status}</option>}
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        )}
                       </td>
 
                       {/* TIMELINE */}
