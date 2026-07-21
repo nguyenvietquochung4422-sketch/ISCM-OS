@@ -477,13 +477,21 @@ export default function ResearchListTable({
 
   const customColumns = store.customColumns;
 
-  // Exports the currently filtered rows (search/unit/task type/status) —
-  // opens directly in Excel/Sheets.
+  // Exports exactly the rows currently rendered in the table — same rows,
+  // same order, respecting the search/unit/task type/status filters AND
+  // which Research Unit folders are collapsed vs expanded right now (a
+  // collapsed folder's children aren't "in the table" until expanded).
+  // Coordinator and Members are resolved to the same display names shown
+  // on screen, not the raw short-name strings the fields are stored as, so
+  // the CSV matches what's actually visible rather than the backing data.
   const handleExportCsv = () => {
     const headers = ['Code', 'Task Name', 'Research Unit', 'Task Type', 'Coordinator / Manager', 'Members', 'Status', 'Start Year', 'End Year'];
-    const rows = filteredRows.map((r) => [
+    const visibleRows = groupedAndSortedData.flatMap((group) => group.rows);
+    const rows = visibleRows.map((r) => [
       r.code || '', r.task_name || '', r.research_unit || '', r.task_type || '',
-      r.coordinator_manager || '', r.members || '', r.status || '', r.start_year || '', r.end_year || '',
+      resolveMemberNameAndTitle(r.coordinator_manager || ''),
+      (r.members || '').split(',').map((m) => m.trim()).filter(Boolean).map(resolveMemberNameAndTitle).join(', '),
+      r.status || '', r.start_year || '', r.end_year || '',
     ]);
     exportToCsv('research-list', headers, rows);
   };
