@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect, Fragment } from 'react';
 import {
-  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus
+  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus, Download
 } from 'lucide-react';
 import { RESEARCH_UNITS } from '../../data/researchList.js';
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { isMemberMatch } from './ResearchWorkload.jsx';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
+import { exportToCsv } from '../../lib/exportCsv.js';
 
 const resolveMemberNameAndTitle = (nameStr) => {
   if (!nameStr) return '';
@@ -476,6 +477,17 @@ export default function ResearchListTable({
 
   const customColumns = store.customColumns;
 
+  // Exports the currently filtered rows (search/unit/task type/status) —
+  // opens directly in Excel/Sheets.
+  const handleExportCsv = () => {
+    const headers = ['Code', 'Task Name', 'Research Unit', 'Task Type', 'Coordinator / Manager', 'Members', 'Status', 'Start Year', 'End Year'];
+    const rows = filteredRows.map((r) => [
+      r.code || '', r.task_name || '', r.research_unit || '', r.task_type || '',
+      r.coordinator_manager || '', r.members || '', r.status || '', r.start_year || '', r.end_year || '',
+    ]);
+    exportToCsv('research-list', headers, rows);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
       
@@ -518,6 +530,15 @@ export default function ResearchListTable({
           <option value="all">All Statuses</option>
           {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="ml-auto inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
+        >
+          <Download className="h-3.5 w-3.5" />
+          {lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+        </button>
       </div>
 
       {/* 2. Grid Table */}

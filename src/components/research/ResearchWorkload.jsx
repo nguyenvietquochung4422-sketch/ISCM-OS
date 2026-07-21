@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Search, User, Briefcase, CheckSquare, Layers, AlertCircle, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { Search, User, Briefcase, CheckSquare, Layers, AlertCircle, ArrowUpRight, CheckCircle2, Download } from 'lucide-react';
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
+import { exportToCsv } from '../../lib/exportCsv.js';
 
 // Helper to normalize and resolve names for matching
 export function getShortNamesForMember(member) {
@@ -164,6 +165,25 @@ export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {
     });
   }, [memberWorkloads, query, workloadFilter]);
 
+  // Exports the currently filtered members with their coordinating/
+  // engagement/done task lists — opens directly in Excel/Sheets.
+  const handleExportCsv = () => {
+    const headers = ['Name', 'Title', 'Capacity Status', 'Total Roles', 'Coordinating', 'Engagements (with role)', 'Done Tasks'];
+    const rows = filteredWorkloads.map((w) => [
+      w.member.nameVi,
+      w.member.titleVi || '',
+      w.status,
+      w.totalRoles,
+      w.coordinatorTasks.map((t) => t.task_name).join('; '),
+      w.memberTasks.map((t) => {
+        const role = getMemberRoleForTask(t, w.member);
+        return role ? `${t.task_name} (${role})` : t.task_name;
+      }).join('; '),
+      w.doneTasks.map((t) => t.task_name).join('; '),
+    ]);
+    exportToCsv('workload', headers, rows);
+  };
+
   // Get initials for member avatar display
   const getInitials = (name) => {
     const clean = name.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
@@ -201,7 +221,16 @@ export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {
           <option value="Available">Available (0 Tasks)</option>
         </select>
 
-        <div className="ml-auto text-xs text-neutral-500 font-medium">
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="ml-auto inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export CSV
+        </button>
+
+        <div className="text-xs text-neutral-500 font-medium">
           Showing {filteredWorkloads.length} of {ISCM_MEMBERS.length} members
         </div>
       </div>

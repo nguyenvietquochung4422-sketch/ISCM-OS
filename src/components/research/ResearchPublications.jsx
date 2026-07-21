@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ExternalLink, Clipboard, Check, ChevronDown, ChevronRight, CheckSquare, Square } from 'lucide-react';
+import { Search, ExternalLink, Clipboard, Check, ChevronDown, ChevronRight, CheckSquare, Square, Download } from 'lucide-react';
 import { PUBLICATIONS_DATA } from '../../data/publicationsData.js';
 import { supabase, isLive } from '../../lib/supabaseClient.js';
+import { exportToCsv } from '../../lib/exportCsv.js';
 
 const STORE_KEY = 'iscm_publications_edits_v1';
 
@@ -251,6 +252,26 @@ export default function ResearchPublications({ lang }) {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  // Exports the currently filtered/sorted rows, including the fields moved
+  // into the expandable panel — opens directly in Excel/Sheets.
+  const handleExportCsv = () => {
+    const headers = [
+      'STT', 'Pub. Year', 'Title', 'Authors', 'Journal / Publisher',
+      'ISI (SSCI)', 'ISI (SCIE)', 'ISI (A&HCI)', 'Scopus', 'ESCI',
+      'Framework Trans.', 'Glocal Design', 'Human Centric', 'Tech Sol.', 'Urban Sys.',
+      'UEH Decl.', 'UEH Reward', 'APA Citation',
+    ];
+    const rows = sortedData.map((item, idx) => [
+      idx + 1, item.year || '', item.title || '', item.authors || '', item.journal_conference || '',
+      item.indexing_cols?.ssci || '', item.indexing_cols?.scie || '', item.indexing_cols?.ahci || '',
+      item.indexing_cols?.scopus || '', item.indexing_cols?.esci || '',
+      item.details.framework ? 'Yes' : '', item.details.glocal ? 'Yes' : '', item.details.human ? 'Yes' : '',
+      item.details.tech ? 'Yes' : '', item.details.urban ? 'Yes' : '',
+      item.ueh_declared || '', item.ueh_reward || '', item.citation || buildAutoCitation(item),
+    ]);
+    exportToCsv('publications', headers, rows);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
       
@@ -284,6 +305,15 @@ export default function ResearchPublications({ lang }) {
           <option value="Domestic Conference">{lang === 'vi' ? 'Hội thảo Trong nước' : 'Domestic Conferences'}</option>
           <option value="Book_Chapter">{lang === 'vi' ? 'Sách & Chương sách' : 'Books & Chapters'}</option>
         </select>
+
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="ml-auto inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
+        >
+          <Download className="h-3.5 w-3.5" />
+          {lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+        </button>
       </div>
 
       {/* 2. Data Table Grid — fixed columns, fits the frame (no horizontal
