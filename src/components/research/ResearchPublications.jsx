@@ -206,6 +206,40 @@ export default function ResearchPublications({ lang }) {
     localStorage.setItem(STORE_KEY, JSON.stringify(next));
   };
 
+  const handleAddPublication = () => {
+    const newId = `manual-${Date.now()}`;
+    const newPub = {
+      id: newId,
+      section: '',
+      category: 'International Journal',
+      year: new Date().getFullYear().toString(),
+      pub_time: '',
+      ueh_declared: '',
+      ueh_reward: '',
+      title: 'New Publication',
+      authors: '',
+      journal_conference: '',
+      indexing: [],
+      citation: '',
+      details: { framework: false, glocal: false, human: false, tech: false, urban: false },
+      indexing_cols: { ssci: '', scie: '', ahci: '', scopus: '', esci: '' },
+    };
+    const next = [newPub, ...publications];
+    setPublications(next);
+    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    setExpandedId(newId);
+    setQuery('');
+    setCategoryFilter('all');
+  };
+
+  const handleDeletePublication = (pubId) => {
+    if (!window.confirm(lang === 'vi' ? 'Bạn có chắc muốn xóa bài báo này?' : 'Are you sure you want to delete this publication?')) return;
+    const next = publications.filter(p => p.id !== pubId);
+    setPublications(next);
+    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    if (expandedId === pubId) setExpandedId(null);
+  };
+
   // Filtering
   const filteredData = useMemo(() => {
     return publications.filter(item => {
@@ -535,6 +569,24 @@ export default function ResearchPublications({ lang }) {
                                 </a>
                               </div>
                             </div>
+                            
+                            {/* Action Buttons: Save & Delete */}
+                            <div className="flex justify-end gap-3 pt-3 border-t border-neutral-100 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePublication(item.id)}
+                                className="px-4 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                {lang === 'vi' ? 'XÓA' : 'DELETE'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedId(null)}
+                                className="px-4 py-1.5 text-xs font-semibold bg-[#8b0000] text-white hover:bg-[#6a0000] transition-colors"
+                              >
+                                {lang === 'vi' ? 'LƯU LẠI' : 'SAVE'}
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -543,6 +595,19 @@ export default function ResearchPublications({ lang }) {
                 );
               })
             )}
+
+            {/* Add Publication Row */}
+            <tr
+              onClick={handleAddPublication}
+              className="cursor-pointer group/addpub hover:bg-neutral-50/60 transition-colors border-t border-neutral-200"
+            >
+              <td colSpan={5} className="px-4 py-3 text-center">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold font-ibm text-neutral-500 group-hover/addpub:text-[#8b0000] transition-colors">
+                  <Plus className="h-3.5 w-3.5" />
+                  {lang === 'vi' ? 'Thêm bài báo (Add Publication)' : 'Add Publication'}
+                </span>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
