@@ -348,6 +348,15 @@ export default function ResearchPublications({ lang }) {
           <Download className="h-3.5 w-3.5" />
           {lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
         </button>
+
+        <button
+          type="button"
+          onClick={handleAddPublication}
+          className="inline-flex items-center gap-1.5 border border-neutral-900 bg-neutral-900 text-white px-2.5 py-1.5 text-xs font-semibold hover:bg-[#8b0000] hover:border-[#8b0000] transition-colors rounded-none"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {lang === 'vi' ? 'Thêm bài báo' : 'Add Publication'}
+        </button>
       </div>
 
       {/* 2. Data Table Grid — fixed columns, fits the frame (no horizontal
@@ -596,18 +605,6 @@ export default function ResearchPublications({ lang }) {
               })
             )}
 
-            {/* Add Publication Row */}
-            <tr
-              onClick={handleAddPublication}
-              className="cursor-pointer group/addpub hover:bg-neutral-50/60 transition-colors border-t border-neutral-200"
-            >
-              <td colSpan={5} className="px-4 py-3 text-center">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold font-ibm text-neutral-500 group-hover/addpub:text-[#8b0000] transition-colors">
-                  <Plus className="h-3.5 w-3.5" />
-                  {lang === 'vi' ? 'Thêm bài báo (Add Publication)' : 'Add Publication'}
-                </span>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
