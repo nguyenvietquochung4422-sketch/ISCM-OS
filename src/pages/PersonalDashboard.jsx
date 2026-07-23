@@ -26,7 +26,7 @@ import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
 /** Signed-in demo persona: Director Trịnh Tú Anh */
 const MY_PROFILE = {
-  full_name: 'TRỊNH TÚ ANH',
+  full_name: 'GUEST',
   email: 'tuanh.trinh@iscm.ueh.edu.vn',
   system_role: 'Institute Director',
   base_functional_group: 'Management Board (RU0)',
