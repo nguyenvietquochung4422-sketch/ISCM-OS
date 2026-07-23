@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ExternalLink, Clipboard, Check, ChevronDown, ChevronRight, CheckSquare, Square, Download } from 'lucide-react';
+import { Search, ExternalLink, Clipboard, Check, ChevronDown, ChevronRight, CheckSquare, Square, Download, Plus } from 'lucide-react';
 import { PUBLICATIONS_DATA } from '../../data/publicationsData.js';
 import { supabase, isLive } from '../../lib/supabaseClient.js';
 import { exportToCsv } from '../../lib/exportCsv.js';
