@@ -7,6 +7,7 @@ import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { exportToCsv } from '../../lib/exportCsv.js';
 import { resolveMemberNameAndTitle } from '../../data/memberNames.js';
+import { roleOf } from '../../data/memberRoles.js';
 import {
   compareCodes, parentCodeOf, codeDepth, isSubUnitCode,
 } from '../../data/researchCodes.js';
@@ -348,8 +349,8 @@ export default function ResearchListTable({
               <li key={i} className="flex items-center gap-1.5 text-white/90">
                 <span className="h-1 w-1 rounded-full bg-[#8b0000] shrink-0" />
                 <span className="truncate">{resolveMemberNameAndTitle(name)}</span>
-                {memberRoles?.[name] && (
-                  <span className="ml-auto shrink-0 text-white/40 text-[9px]">{memberRoles[name]}</span>
+                {roleOf(memberRoles, name) && (
+                  <span className="ml-auto shrink-0 text-white/40 text-[9px]">{roleOf(memberRoles, name)}</span>
                 )}
               </li>
             ))}

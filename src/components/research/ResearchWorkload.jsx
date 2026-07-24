@@ -4,20 +4,22 @@ import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { exportToCsv } from '../../lib/exportCsv.js';
 
 import { getShortNamesForMember, isMemberMatch, stripTitles } from '../../data/memberNames.js';
+import { roleOf } from '../../data/memberRoles.js';
 
 // Name matching lives in ../../data/memberNames.js — re-exported here because
 // several modules already import it from this file.
 export { getShortNamesForMember, isMemberMatch };
 
-// Member Roles (Head/Co-Head/Manager/...) are tagged per-task in the
+// Member Roles (Leader/Coordinator/Member) are tagged per-task in the
 // Research List drawer, keyed by the exact name string as it appears in
 // `row.members` — resolve which of those name segments is this member to
-// look up their role on that specific task.
+// look up their role on that specific task. Via roleOf, so the Director
+// reads as Leader here too when no role was recorded.
 export function getMemberRoleForTask(row, member) {
-  if (!row.member_roles || !row.members) return null;
+  if (!row.members) return null;
   const names = row.members.split(',').map(m => m.trim()).filter(Boolean);
   const matchedName = names.find(name => isMemberMatch(member, name));
-  return matchedName ? (row.member_roles[matchedName] || null) : null;
+  return matchedName ? (roleOf(row.member_roles, matchedName) || null) : null;
 }
 
 export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {

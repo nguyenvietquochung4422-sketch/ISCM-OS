@@ -18,6 +18,7 @@ import {
   memberOptionValue,
 } from '../data/memberNames.js';
 import { parentCodeOf } from '../data/researchCodes.js';
+import { MEMBER_ROLES, DEFAULT_LEADER, roleOf } from '../data/memberRoles.js';
 import { fetchExternalMembers, saveExternalMember } from '../data/externalMembersStore.js';
 import OutsideMembersField from '../components/research/OutsideMembersField.jsx';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
@@ -79,11 +80,8 @@ const MAIN_FOLDER_TASK_TYPES = [
 
 // Role a member holds on a given task/unit — purely a tag for management
 // clarity, independent of whether they're an ISCM Roster or Outside member.
-const MEMBER_ROLES = ['Leader', 'Coordinator', 'Member'];
-
-// The Leader is almost always the Director, so a new task starts with her on
-// it — still just a default, removable like any other member.
-const DEFAULT_LEADER = 'Trịnh Tú Anh';
+// Roles, the Director-as-Leader default and the lookup all live in
+// src/data/memberRoles.js so the table and Workload read them the same way.
 
 const PILLARS = [
   { key: 'framework_transition', label: 'Framework Transition' },
@@ -1069,7 +1067,7 @@ export default function ResearchSubWorkspace() {
                         <div key={name} className="flex items-center justify-between gap-2 px-2.5 py-1.5">
                           <span className="text-xs font-semibold text-neutral-700 truncate">{name}</span>
                           <select
-                            value={currentSelectedTask.member_roles?.[name] || ''}
+                            value={roleOf(currentSelectedTask.member_roles, name)}
                             onChange={(e) => setDrawerCell('member_roles', {
                               ...(currentSelectedTask.member_roles || {}),
                               [name]: e.target.value,
