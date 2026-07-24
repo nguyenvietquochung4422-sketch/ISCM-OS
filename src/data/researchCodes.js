@@ -2,18 +2,18 @@
  * Research List code convention.
  *
  *   RU1              main Research Unit          (MOVE System)
- *   RU1.SML          sub Research Unit           (Smart Mobility Lab)
- *   RU1.SML1         task inside that sub-unit   (…_UEH DRT Bus)
+ *   RU1.CE           sub Research Unit           (CE-Rail@UEH)
+ *   RU1.CE.1         task inside that sub-unit   (CE-Rail@UEH_TOD)
  *   RU1.2            task sitting directly under the main unit
  *   RU1.2.1          sub-task of that task
  *
- * A sub-unit segment is letters; its tasks are that same segment with a
- * running number appended (no extra dot) — which is why the parent of
- * "RU1.SML1" is "RU1.SML" and not "RU1".
+ * Every level is dot-separated, so the parent of any code is simply the
+ * segments above it. Older rows used a run-together form ("RU1.SML1") — those
+ * still resolve to the right parent, but new codes always use the dotted form.
  */
 
-/** Splits a code's last dot-segment into its letter and number parts. */
-const SEGMENT = /^([A-Za-z]+)(\d+)$/;
+/** Matches the legacy run-together form: "SML1" -> letters "SML", number "1". */
+const LEGACY_SEGMENT = /^([A-Za-z]+)(\d+)$/;
 
 /** The code of the row this one nests under, or null for a top-level unit. */
 export function parentCodeOf(code) {
@@ -23,8 +23,8 @@ export function parentCodeOf(code) {
   const segments = clean.split('.');
   const last = segments[segments.length - 1];
 
-  // "SML1" -> parent is the "SML" sub-unit; "SML" -> parent is everything above.
-  const match = SEGMENT.exec(last);
+  // Legacy "RU1.SML1" -> parent is the "RU1.SML" sub-unit.
+  const match = LEGACY_SEGMENT.exec(last);
   if (match && segments.length > 1) {
     return [...segments.slice(0, -1), match[1]].join('.');
   }

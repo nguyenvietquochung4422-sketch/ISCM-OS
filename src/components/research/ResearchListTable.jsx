@@ -129,35 +129,25 @@ export default function ResearchListTable({
   };
 
   // ── Code convention ──  (see src/data/researchCodes.js)
-  //   RU1        main Research Unit   -> RU1.SML   sub Research Unit
-  //   RU1.SML1   task inside the sub-unit
+  //   RU1        main Research Unit   -> RU1.CE    sub Research Unit
+  //   RU1.CE.1   task inside the sub-unit
   //   RU1.2      task sitting directly under the main unit
-  // A sub-unit's tasks append a running number to its letters with no extra
-  // dot, so numbering restarts per sub-unit.
+  // Numbering restarts under each parent. Legacy run-together codes
+  // ("RU1.SML1") still count towards the next number so a new task can't
+  // collide with one, but the code generated is always the dotted form.
   const nextChildCode = (parentCode) => {
     if (!parentCode) return '';
     let maxNum = 0;
 
-    if (isSubUnitCode(parentCode)) {
-      // RU1.SML -> RU1.SML1, RU1.SML2, …
-      allRowsResolved.forEach((r) => {
-        const code = (r.code || '').trim();
-        if (!code.startsWith(parentCode)) return;
-        const rest = code.slice(parentCode.length);
-        if (!/^\d+$/.test(rest)) return;
-        maxNum = Math.max(maxNum, parseInt(rest, 10));
-      });
-      return `${parentCode}${maxNum + 1}`;
-    }
-
-    // RU1 -> RU1.1, RU1.2, … (direct numeric children only)
     allRowsResolved.forEach((r) => {
       const code = (r.code || '').trim();
-      if (!code.startsWith(parentCode + '.')) return;
-      const rest = code.slice(parentCode.length + 1);
-      if (!/^\d+$/.test(rest)) return;
-      maxNum = Math.max(maxNum, parseInt(rest, 10));
+      if (!code.startsWith(parentCode)) return;
+      const rest = code.slice(parentCode.length);
+      const match = /^\.?(\d+)$/.exec(rest); // "RU1.CE.1" and legacy "RU1.CE1"
+      if (!match) return;
+      maxNum = Math.max(maxNum, parseInt(match[1], 10));
     });
+
     return `${parentCode}.${maxNum + 1}`;
   };
 
