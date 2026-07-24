@@ -18,6 +18,8 @@ import {
   memberOptionValue,
 } from '../data/memberNames.js';
 import { parentCodeOf } from '../data/researchCodes.js';
+import { fetchExternalMembers, saveExternalMember } from '../data/externalMembersStore.js';
+import OutsideMembersField from '../components/research/OutsideMembersField.jsx';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
 import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
@@ -439,6 +441,27 @@ export default function ResearchSubWorkspace() {
     setDrawerCell('members', merged);
   };
 
+  // Kho nhân sự công tác — everyone ever added as an outside member, so they
+  // can be picked instead of retyped. Filed as soon as they're added (not on
+  // Save), since the directory is shared and independent of this one task.
+  const [externalRoster, setExternalRoster] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchExternalMembers().then((list) => { if (alive) setExternalRoster(list); });
+    return () => { alive = false; };
+  }, []);
+
+  const handleSaveExternalPerson = async (person) => {
+    const { persisted } = await saveExternalMember(person);
+    setExternalRoster(await fetchExternalMembers());
+    if (!persisted && isLive) {
+      alert(lang === 'vi'
+        ? 'Đã thêm vào tác vụ, nhưng chưa lưu được vào kho nhân sự công tác dùng chung (chỉ lưu trên trình duyệt này). Hãy đăng nhập bằng tài khoản có quyền quản lý Nghiên cứu Khoa học.'
+        : 'Added to the task, but not saved to the shared collaborator directory (kept in this browser only). Sign in with an account authorised to manage Scientific Research.');
+    }
+  };
+
   // Roster Members multi-select component
   const RosterMemberSelect = ({ value, onChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -501,64 +524,6 @@ export default function ResearchSubWorkspace() {
     );
   };
 
-  // Outside Members tag selector component
-  const OutsideMemberSelect = ({ value, onChange }) => {
-    const [externalName, setExternalName] = useState('');
-
-    const removeMember = (name) => {
-      onChange(value.filter(m => m !== name));
-    };
-
-    const addMember = (e) => {
-      e.preventDefault();
-      const name = externalName.trim();
-      if (name && !value.some(m => m.toLowerCase() === name.toLowerCase())) {
-        onChange([...value, name]);
-        setExternalName('');
-      }
-    };
-
-    return (
-      <div className="font-ibm mt-1 border border-neutral-200 bg-white p-2 flex flex-col gap-2">
-        <div className="flex flex-wrap gap-1 items-center min-h-[24px]">
-          {value.length === 0 && <span className="text-neutral-400 text-xs italic">No outside members.</span>}
-          {value.map(m => (
-            <span key={m} className="inline-flex items-center gap-1 bg-neutral-100 border border-neutral-200 text-neutral-700 px-2 py-0.5 text-[10px] font-bold">
-              {m}
-              <button
-                type="button"
-                onClick={() => removeMember(m)}
-                className="hover:text-black shrink-0"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </span>
-          ))}
-        </div>
-        <div className="flex gap-1.5 border-t border-neutral-100 pt-2 mt-1">
-          <input
-            type="text"
-            value={externalName}
-            onChange={(e) => setExternalName(e.target.value)}
-            placeholder="Enter outside member name..."
-            className="flex-1 border border-neutral-200 bg-white px-2 py-1 text-xs focus:border-[#8b0000] focus:outline-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                addMember(e);
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={addMember}
-            className="bg-neutral-900 hover:bg-[#8b0000] text-white px-3 py-1 text-[10px] font-bold uppercase shrink-0 transition-colors"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-    );
-  };
 
     const DOCUMENT_CONTENTS = useMemo(() => {
     return {
@@ -1079,9 +1044,11 @@ export default function ResearchSubWorkspace() {
                 {/* Members (Outside ISCM) */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase">Members (Outside ISCM)</label>
-                  <OutsideMemberSelect
+                  <OutsideMembersField
                     value={outsideMembers}
                     onChange={handleOutsideChange}
+                    roster={externalRoster}
+                    onSavePerson={handleSaveExternalPerson}
                   />
                 </div>
 
