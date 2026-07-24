@@ -8,8 +8,9 @@ import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { exportToCsv } from '../../lib/exportCsv.js';
 import { resolveMemberNameAndTitle } from '../../data/memberNames.js';
 import {
-  compareCodes, parentCodeOf, codeDepth, isSubUnitCode, suggestAbbreviation,
+  compareCodes, parentCodeOf, codeDepth, isSubUnitCode,
 } from '../../data/researchCodes.js';
+import NewResearchRowDialog from './NewResearchRowDialog.jsx';
 
 const STATUS_CLASSES = {
   'In progress': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -75,16 +76,8 @@ export default function ResearchListTable({
   const [taskType, setTaskType] = useState('all');
   const [status, setStatus] = useState('all');
   const [expandedRows, setExpandedRows] = useState(new Set());
-  const [addUnitTarget, setAddUnitTarget] = useState('');
-
-  // Keep the "add task into" target in sync with the active unit filter / available units
-  useEffect(() => {
-    if (unit !== 'all') {
-      setAddUnitTarget(unit);
-    } else if (!addUnitTarget || !researchUnits.includes(addUnitTarget)) {
-      setAddUnitTarget(researchUnits[0] || '');
-    }
-  }, [unit, researchUnits]);
+  const [newOpen, setNewOpen] = useState(false);
+  const [newPrefill, setNewPrefill] = useState(null);
 
   // Set default view collapsed on load
   useEffect(() => {
@@ -106,50 +99,12 @@ export default function ResearchListTable({
     });
   };
 
-  // Find the main-folder row for a given research unit (its top-level "RU#" code)
-  const findMainFolder = (targetUnit) =>
-    allRowsResolved.find((r) => {
-      if (r.research_unit !== targetUnit) return false;
-      const code = (r.code || '').trim();
-      const name = (r.task_name || '').toLowerCase();
-      return name.includes('main folder') || (code.startsWith('RU') && !code.includes('.'));
-    });
-
-  // Next top-level WBS code across the whole dataset (RU1, RU2, ...) — level 0 of the scheme below.
-  const nextTopLevelCode = () => {
-    let maxNum = 0;
-    allRowsResolved.forEach((r) => {
-      const code = (r.code || '').trim();
-      if (/^RU\s*\d+$/.test(code)) {
-        const n = parseInt(code.replace('RU', '').trim(), 10);
-        if (!isNaN(n) && n > maxNum) maxNum = n;
-      }
-    });
-    return `RU${maxNum + 1}`;
-  };
-
   // ── Code convention ──  (see src/data/researchCodes.js)
   //   RU1        main Research Unit   -> RU1.CE    sub Research Unit
   //   RU1.CE.1   task inside the sub-unit
   //   RU1.2      task sitting directly under the main unit
-  // Numbering restarts under each parent. Legacy run-together codes
-  // ("RU1.SML1") still count towards the next number so a new task can't
-  // collide with one, but the code generated is always the dotted form.
-  const nextChildCode = (parentCode) => {
-    if (!parentCode) return '';
-    let maxNum = 0;
-
-    allRowsResolved.forEach((r) => {
-      const code = (r.code || '').trim();
-      if (!code.startsWith(parentCode)) return;
-      const rest = code.slice(parentCode.length);
-      const match = /^\.?(\d+)$/.exec(rest); // "RU1.CE.1" and legacy "RU1.CE1"
-      if (!match) return;
-      maxNum = Math.max(maxNum, parseInt(match[1], 10));
-    });
-
-    return `${parentCode}.${maxNum + 1}`;
-  };
+  // All three levels are created from the one dialog below, which enters the
+  // code as its three parts and numbers the task itself.
 
   /** Blank row — every field starts empty so nothing is pre-filled with a guess. */
   const blankRow = (idPrefix, targetUnit) => {
@@ -175,86 +130,28 @@ export default function ResearchListTable({
     };
   };
 
-  const handleAddTask = (targetUnitOverride, parentCodeOverride) => {
-    const targetUnit = targetUnitOverride || addUnitTarget || researchUnits[0];
-    if (!targetUnit) {
-      alert(lang === 'vi' ? 'Chưa có Đơn vị nghiên cứu nào. Hãy tạo một Đơn vị trước.' : 'No Research Unit exists yet. Please create one first.');
-      return;
-    }
-    const mainFolder = findMainFolder(targetUnit);
-    const parentCode = parentCodeOverride || (mainFolder ? (mainFolder.code || '').trim() : '');
-    onCreateDraft({
-      ...blankRow('new-task', targetUnit),
-      code: nextChildCode(parentCode),
-    });
+  const openNewDialog = (prefill = null) => {
+    setNewPrefill(prefill);
+    setNewOpen(true);
   };
 
-  /** Creates a sub Research Unit (RU1.SML) inside a main unit's folder. */
-  const handleAddSubUnit = (targetUnit) => {
-    const mainFolder = findMainFolder(targetUnit);
-    const mainCode = mainFolder ? (mainFolder.code || '').trim() : '';
-    if (!mainCode) {
-      alert(lang === 'vi'
-        ? 'Đơn vị này chưa có Main Folder nên chưa tạo được nhóm con.'
-        : 'This unit has no Main Folder yet, so a sub-unit cannot be coded.');
-      return;
+  /**
+   * The one place a row is born, whichever of the three levels it is: the
+   * dialog has already worked out the code and which level it belongs to, so
+   * all that's left is to register a brand-new Research Unit and hand the row
+   * over as a draft (nothing is stored until Save).
+   */
+  const handleCreateFromDialog = ({ kind, code, task_name, research_unit }) => {
+    if (kind === 'unit') {
+      if (researchUnits.includes(research_unit)) {
+        alert(lang === 'vi' ? 'Đơn vị này đã tồn tại.' : 'This Research Unit already exists.');
+        setUnit(research_unit);
+        return;
+      }
+      setResearchUnits?.((prev) => [...prev, research_unit]);
+      setUnit(research_unit);
     }
-
-    const name = window.prompt(lang === 'vi' ? 'Tên nhóm nghiên cứu con:' : 'Sub Research Unit name:');
-    if (!name || !name.trim()) return;
-
-    const abbr = window.prompt(
-      lang === 'vi'
-        ? `Mã viết tắt cho "${name.trim()}" (ví dụ Smart Mobility Lab → SML):`
-        : `Abbreviation for "${name.trim()}" (e.g. Smart Mobility Lab → SML):`,
-      suggestAbbreviation(name)
-    );
-    if (!abbr || !abbr.trim()) return;
-
-    const clean = abbr.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!/^[A-Z]+$/.test(clean)) {
-      alert(lang === 'vi' ? 'Mã viết tắt chỉ được gồm chữ cái.' : 'The abbreviation must contain letters only.');
-      return;
-    }
-
-    const code = `${mainCode}.${clean}`;
-    if (allRowsResolved.some((r) => (r.code || '').trim() === code)) {
-      alert(lang === 'vi' ? `Mã "${code}" đã tồn tại.` : `Code "${code}" already exists.`);
-      return;
-    }
-
-    onCreateDraft({ ...blankRow('new-subunit', targetUnit), code, task_name: name.trim() });
-  };
-
-  const handleAddUnit = () => {
-    const name = window.prompt(lang === 'vi' ? 'Nhập tên Đơn vị nghiên cứu mới:' : 'Enter new Research Unit name:');
-    if (!name || !name.trim()) return;
-    const trimmed = name.trim();
-    if (researchUnits.includes(trimmed)) {
-      alert(lang === 'vi' ? 'Đơn vị này đã tồn tại.' : 'This Research Unit already exists.');
-      setUnit(trimmed);
-      return;
-    }
-    setResearchUnits?.((prev) => [...prev, trimmed]);
-
-    inlineRowSeq += 1;
-    const id = `new-unit-${Date.now()}-${inlineRowSeq}`;
-    const newRow = {
-      id,
-      code: nextTopLevelCode(),
-      task_name: `${trimmed} Main Folder`,
-      research_unit: trimmed,
-      status: '',
-      start_year: '',
-      end_year: null,
-      task_type: '',
-      coordinator_manager: '',
-      members: '',
-      report_plan_link: '',
-      sdgs: '',
-    };
-    setUnit(trimmed);
-    onCreateDraft(newRow);
+    onCreateDraft({ ...blankRow(`new-${kind}`, research_unit), code, task_name });
   };
 
   // Filter rows first (matching search and hierarchy parents)
@@ -405,20 +302,8 @@ export default function ResearchListTable({
         return mainFolder ? expandedRows.has(mainFolder.id) : true;
       });
 
-      // Only offer "+ Add task" once the group's root folder(s) are actually
-      // expanded — showing it while collapsed invites adding blind, without
-      // seeing what's already there. Groups with no expandable root (flat,
-      // no folder/children) always show it since there's nothing to expand.
-      const hasCollapsedRoot = roots.some(
-        (r) => (childrenMap[r.id]?.length > 0) && !expandedRows.has(r.id)
-      );
-
       if (visibleGroupRows.length > 0) {
-        result.push({
-          groupName,
-          rows: visibleGroupRows,
-          hasCollapsedRoot,
-        });
+        result.push({ groupName, rows: visibleGroupRows });
       }
     });
 
@@ -541,12 +426,12 @@ export default function ResearchListTable({
 
         <button
           type="button"
-          onClick={handleAddUnit}
-          title={lang === 'vi' ? 'Tạo Đơn vị nghiên cứu mới' : 'New Research Unit'}
+          onClick={() => openNewDialog()}
+          title={lang === 'vi' ? 'Tạo Đơn vị / Nhóm con / Tác vụ' : 'New Unit / Sub-unit / Task'}
           className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
         >
           <FolderPlus className="h-3.5 w-3.5 shrink-0" />
-          {lang === 'vi' ? 'Đơn vị mới' : 'New Unit'}
+          {lang === 'vi' ? 'Tạo mới' : 'New'}
         </button>
 
         <button
@@ -649,11 +534,15 @@ export default function ResearchListTable({
                         >
                           {row.task_name || 'Untitled Task'}
                         </button>
-                        {/* Sub-units own their task numbering (RU1.SML1, RU1.SML2),
-                            so they need their own way to add one. */}
+                        {/* Shortcut into the same dialog, with this sub-unit
+                            already selected in the two left-hand code boxes. */}
                         {isSubUnitCode(row.code) && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleAddTask(row.research_unit, (row.code || '').trim()); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const [unitCode, subAbbr] = (row.code || '').trim().split('.');
+                              openNewDialog({ unitCode, subAbbr });
+                            }}
                             title={lang === 'vi' ? 'Thêm tác vụ vào nhóm này' : 'Add a task inside this sub-unit'}
                             className="relative ml-1.5 inline-flex items-center text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-[#8b0000] transition-all"
                           >
@@ -723,31 +612,8 @@ export default function ResearchListTable({
                   );
                 })}
 
-                {/* Inline add row — only once the group's folder is expanded */}
-                {!group.hasCollapsedRoot && (
-                  <tr className="border-b border-neutral-100">
-                    <td colSpan={7 + customColumns.length} className="px-4 py-2">
-                      <div className="flex flex-wrap items-center gap-4">
-                        <button
-                          type="button"
-                          onClick={() => handleAddTask(group.rows[0]?.research_unit)}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 hover:text-[#8b0000] transition-colors"
-                        >
-                          <Plus className="h-3 w-3" />
-                          {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAddSubUnit(group.rows[0]?.research_unit)}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 hover:text-[#8b0000] transition-colors"
-                        >
-                          <FolderPlus className="h-3 w-3" />
-                          {lang === 'vi' ? 'Thêm nhóm con' : 'Add sub-unit'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                {/* Adding anything — Unit, sub-unit or task — goes through the
+                    single "Tạo mới" dialog in the toolbar. */}
               </Fragment>
             ))}
 
@@ -763,6 +629,13 @@ export default function ResearchListTable({
         </table>
       </div>
 
+      <NewResearchRowDialog
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+        rows={allRowsResolved}
+        prefill={newPrefill}
+        onCreate={handleCreateFromDialog}
+      />
     </div>
   );
 }
