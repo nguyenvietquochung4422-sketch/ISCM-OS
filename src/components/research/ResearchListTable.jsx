@@ -292,15 +292,22 @@ export default function ResearchListTable({
       roots.sort((a, b) => compareCodes(a.code, b.code));
       roots.forEach(root => traverse(root, 0));
 
-      // Filter visible rows in this group based on expanded state — only the
-      // top-level Research Unit folder is collapsible; once it's expanded,
-      // every task and sub-task beneath it shows in full (no per-task
-      // chevrons to open individually).
+      // Every folder is collapsible, not just the Research Unit at the top: a
+      // sub-unit opens and closes on its own, so a row shows only when its
+      // whole chain of ancestors is expanded. A search/filter overrides this —
+      // a match must be reachable without hunting for it.
       const isFiltered = query.trim() !== '' || unit !== 'all' || taskType !== 'all' || status !== 'all';
-      const visibleGroupRows = sortedGroupRows.filter(row => {
+      const parentById = {};
+      sortedGroupRows.forEach((r) => { parentById[r.id] = r.resolvedParentId; });
+
+      const visibleGroupRows = sortedGroupRows.filter((row) => {
         if (isFiltered) return true;
-        if (row.resolvedLevel === 0) return true;
-        return mainFolder ? expandedRows.has(mainFolder.id) : true;
+        let parentId = row.resolvedParentId;
+        while (parentId) {
+          if (!expandedRows.has(parentId)) return false;
+          parentId = parentById[parentId];
+        }
+        return true;
       });
 
       if (visibleGroupRows.length > 0) {
@@ -497,7 +504,7 @@ export default function ResearchListTable({
                       {/* CODE */}
                       <td className="px-3 py-3 font-semibold overflow-hidden">
                         <div className="flex items-center gap-1.5">
-                          {hasChildren && level === 0 ? (
+                          {hasChildren ? (
                             <button
                               onClick={(e) => toggleRow(row.id, e)}
                               className="h-4 w-4 inline-flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors rounded-sm shrink-0"
