@@ -1,5 +1,5 @@
 -- ============================================================================
--- ISCM HUB (Trạm 1) — Supabase / PostgreSQL Initialization Script
+-- ISCM OS (Trạm 1) — Supabase / PostgreSQL Initialization Script
 -- Institute of Smart City and Management (ISCM-UEH)
 -- Hybrid ERP · CRM · KMS portal on a matrix organization model
 --

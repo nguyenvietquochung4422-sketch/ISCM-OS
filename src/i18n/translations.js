@@ -1,4 +1,4 @@
-/** ISCM HUB — Translation dictionary (vi / en)
+/** ISCM OS — Translation dictionary (vi / en)
  *  Keys are logical identifiers used via t('key') throughout the app.
  *  Add new keys here; missing keys fall back to English, then to the raw key string.
  */

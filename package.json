@@ -2,7 +2,7 @@
   "name": "iscm-hub",
   "private": true,
   "version": "0.1.0",
-  "description": "ISCM Hub — Matrix-based Project & Spatial Data Management Platform (ISCM-UEH)",
+  "description": "ISCM OS — Matrix-based Project & Spatial Data Management Platform (ISCM-UEH)",
   "type": "module",
   "scripts": {
     "dev": "vite",
