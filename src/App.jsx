@@ -76,8 +76,11 @@ export default function App() {
       {activeModule === 'hierarchical-projects' && <HierarchicalProjects />}
       {activeModule === 'approval-engine' && <ApprovalEngine />}
       {activeModule === 'equipment-tracking' && <EquipmentTracking />}
-      {activeModule === 'placeholder-dl3' && <IscmOverviewStructure />}
-      
+      {/* ISCM Organizational Structure (placeholder-dl3) is hidden for now —
+          both its menu entries and this route. The page itself is kept so it
+          can be put back by restoring these two lines. */}
+      {/* {activeModule === 'placeholder-dl3' && <IscmOverviewStructure />} */}
+
       {/* Governance & Policy Regulations (CR1, CR2, CR3) */}
       {(activeModule === 'placeholder-cr1' || 
         activeModule === 'placeholder-cr2' || 
@@ -94,8 +97,7 @@ export default function App() {
       {activeModule.startsWith('placeholder-') && 
         activeModule !== 'placeholder-cr1' && 
         activeModule !== 'placeholder-cr2' && 
-        activeModule !== 'placeholder-cr3' && 
-        activeModule !== 'placeholder-dl3' && 
+        activeModule !== 'placeholder-cr3' &&
         renderPlaceholder(activeModule)}
       </AppLayout>
     </AuthGate>

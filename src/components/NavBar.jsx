@@ -202,7 +202,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('overview')}>
             <button
               onClick={() => (openMenu === 'overview' ? setOpenMenu(null) : openAt('overview'))}
-              className={topBtnClass('overview', ['placeholder-dl2', 'placeholder-dl3', 'placeholder-dl4'].includes(active))}
+              className={topBtnClass('overview', ['placeholder-dl2', 'placeholder-dl4'].includes(active))}
             >
               {t.ISCM_OVERVIEW}
               <ChevronDown className="h-3 w-3" />
@@ -221,14 +221,8 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                       {t.UEH_UNITS}
                     </button>
                   </li>
-                  <li>
-                    <button
-                      onClick={() => navigateTo('placeholder-dl3')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.ISCM_ORGANIZATION}
-                    </button>
-                  </li>
+                  {/* ISCM Organizational Structure (placeholder-dl3) is hidden
+                      from the site for now — the page itself is untouched. */}
                   <li>
                     <button
                       onClick={() => navigateTo('placeholder-dl4')}
@@ -406,7 +400,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.ISCM_OVERVIEW}</div>
             <button onClick={() => navigateTo('placeholder-dl2')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.UEH_UNITS}</button>
-            <button onClick={() => navigateTo('placeholder-dl3')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ISCM_ORGANIZATION}</button>
             <button onClick={() => navigateTo('placeholder-dl4')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ISCM_UNITS}</button>
           </div>
           <div>
