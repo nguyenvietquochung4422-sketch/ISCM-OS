@@ -541,8 +541,17 @@ export default function ResearchListTable({
 
         <button
           type="button"
-          onClick={handleExportCsv}
+          onClick={handleAddUnit}
           className="ml-auto inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
+        >
+          <FolderPlus className="h-3.5 w-3.5" />
+          {lang === 'vi' ? 'Đơn vị mới' : 'New Research Unit'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
         >
           <Download className="h-3.5 w-3.5" />
           {lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
@@ -726,18 +735,6 @@ export default function ResearchListTable({
               </tr>
             )}
 
-            {/* Table-wide "+ New Unit" row */}
-            <tr
-              onClick={handleAddUnit}
-              className="cursor-pointer group/addunit hover:bg-neutral-100 transition-colors bg-neutral-50/60"
-            >
-              <td colSpan={7 + customColumns.length} className="px-4 py-2.5">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold font-ibm text-neutral-500 group-hover/addunit:text-[#8b0000] transition-colors uppercase tracking-wide">
-                  <FolderPlus className="h-3.5 w-3.5" />
-                  {lang === 'vi' ? 'Tạo Đơn vị nghiên cứu mới' : 'New Research Unit'}
-                </span>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
