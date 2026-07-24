@@ -478,12 +478,12 @@ export default function ResearchListTable({
                   const isExpanded = expandedRows.has(row.id);
                   const isSelected = selectedTask?.id === row.id;
 
-                  // Check if row has children (has children with this row's id as parent)
-                  const hasChildren = allRowsResolved.some(r => {
-                    const pcode = (row.code || '').trim();
-                    const rcode = (r.code || '').trim();
-                    return pcode && rcode.startsWith(pcode + '.') && rcode.split('.').length === pcode.split('.').length + 1;
-                  });
+                  // Does anything nest under this row? Asked through the code
+                  // convention rather than by counting dots, so a task coded
+                  // RU1.0.4 still counts as a child of RU1.
+                  const rowCode = (row.code || '').trim();
+                  const hasChildren = !!rowCode
+                    && allRowsResolved.some((r) => parentCodeOf((r.code || '').trim()) === rowCode);
 
                   return (
                     <tr

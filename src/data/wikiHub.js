@@ -28,7 +28,7 @@ export const WIKI_BRANCHES = {
         docs: [{ name: '[2026-04-02][ISCM-AF][Meeting Room Booking Guide].pdf', updated: '2026-04-02' }] },
       { section: 'Multi-Campus Onboarding', topics: ['Starter — UEH Campus B (HCMC)', 'Starter — UEH Mekong Campus (Vĩnh Long)', 'Starter — UEH Nexus Campus (Nha Trang)'],
         docs: [{ name: '[2026-05-20][ISCM-HR][Nexus Campus Starter Pack].pdf', updated: '2026-05-20' }] },
-      { section: 'Tools & Systems', topics: ['ISCM Hub', 'UEH ERP', 'Smart Office', 'Supabase Console (Admin only)', 'Ticketing'],
+      { section: 'Tools & Systems', topics: ['ISCM OS', 'UEH ERP', 'Smart Office', 'Supabase Console (Admin only)', 'Ticketing'],
         docs: [{ name: '[2026-06-11][ISCM-Hub][Trạm 1 User Manual].pdf', updated: '2026-06-11' }] },
       { section: 'Purchasing – Payment', topics: ['Payment', 'Purchasing', 'Sign contract with e-Sign', 'Template contract'],
         docs: [{ name: 'HD thanh toan 2026.docx', updated: '2026-02-28' }] },

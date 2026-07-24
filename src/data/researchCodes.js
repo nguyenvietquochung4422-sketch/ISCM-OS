@@ -4,12 +4,17 @@
  *   RU1              main Research Unit          (MOVE System)
  *   RU1.CE           sub Research Unit           (CE-Rail@UEH)
  *   RU1.CE.1         task inside that sub-unit   (CE-Rail@UEH_TOD)
- *   RU1.2            task sitting directly under the main unit
- *   RU1.2.1          sub-task of that task
+ *   RU1.0.2          task with no sub-unit — 0 holds the sub-unit's place
+ *   RU1.0.2.1        sub-task of that task
  *
- * Every level is dot-separated, so the parent of any code is simply the
- * segments above it. Older rows used a run-together form ("RU1.SML1") — those
- * still resolve to the right parent, but new codes always use the dotted form.
+ * A code is always Unit . Sub-unit . Task, which is why a task that belongs
+ * to no sub-unit still carries a 0 in the middle. Every level is
+ * dot-separated, so the parent of any code is simply the segments above it —
+ * except the 0, which is a placeholder rather than a row of its own, so
+ * RU1.0.2 nests straight under RU1.
+ *
+ * Older rows used a run-together form ("RU1.SML1") — those still resolve to
+ * the right parent, but new codes always use the dotted form.
  */
 
 /** Matches the legacy run-together form: "SML1" -> letters "SML", number "1". */
@@ -29,11 +34,17 @@ export function parentCodeOf(code) {
     return [...segments.slice(0, -1), match[1]].join('.');
   }
 
+  // "RU1.0.2" — the 0 stands in for "no sub-unit", and no such row exists, so
+  // the task hangs directly off the main unit.
+  if (segments.length > 2 && segments[segments.length - 2] === '0') {
+    return segments.slice(0, -2).join('.');
+  }
+
   if (segments.length <= 1) return null;
   return segments.slice(0, -1).join('.');
 }
 
-/** Indentation depth: RU1 = 0, RU1.SML = 1, RU1.SML1 = 2. */
+/** Indentation depth: RU1 = 0, RU1.SML = 1, RU1.0.2 = 1, RU1.SML.1 = 2. */
 export function codeDepth(code) {
   let depth = 0;
   let current = String(code || '').trim();

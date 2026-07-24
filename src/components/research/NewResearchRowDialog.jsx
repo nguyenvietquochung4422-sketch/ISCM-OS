@@ -99,8 +99,11 @@ export default function NewResearchRowDialog({ open, onClose, rows, onCreate, pr
 
   const creating = unitSel === NEW ? 'unit' : subSel === NEW ? 'sub' : 'task';
 
+  // What the task number counts under. With no sub-unit the 0 keeps the
+  // sub-unit's place in the code, so the task is RU1.0.4 — the row still
+  // nests under RU1 itself (see parentCodeOf).
   const parentCode = unitSel && unitSel !== NEW
-    ? (subSel !== NO_SUB && subSel !== NEW ? `${unitSel}.${subSel}` : unitSel)
+    ? `${unitSel}.${subSel === NEW ? '' : subSel}`
     : '';
 
   // Once Unit (and Sub-unit) are chosen, the task number proposes itself.
