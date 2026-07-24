@@ -494,6 +494,45 @@ export default function ResearchPublications({ lang }) {
                               </div>
                             </div>
 
+                            {/* Links carried over from the source sheet: the
+                                DOI/article page and the copy in the ISCM Drive
+                                folder. Hidden when the row has neither. */}
+                            {(item.details?.doi_url || item.details?.drive_url) && (
+                              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-neutral-100">
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Links</span>
+                                {item.details.doi_url && (
+                                  <a
+                                    href={item.details.doi_url.replace(/^doi:/i, 'https://doi.org/')}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000]"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    DOI
+                                  </a>
+                                )}
+                                {item.details.drive_url && (
+                                  <a
+                                    href={item.details.drive_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000]"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    {lang === 'vi' ? 'Bản lưu' : 'Full text'}
+                                  </a>
+                                )}
+                                {item.details.pages && (
+                                  <span className="text-[10px] text-neutral-500">
+                                    {lang === 'vi' ? 'Tập/số/trang: ' : 'Vol/issue/pages: '}{item.details.pages}
+                                  </span>
+                                )}
+                                {item.details.keywords && (
+                                  <span className="text-[10px] text-neutral-500">· {item.details.keywords}</span>
+                                )}
+                              </div>
+                            )}
+
                             {/* APA Citation */}
                             <div className="flex flex-col md:flex-row md:items-center gap-4 pt-3 border-t border-neutral-100">
                               <div className="flex-1 space-y-1">
