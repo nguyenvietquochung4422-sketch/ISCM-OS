@@ -1,37 +1,36 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Search, ExternalLink, Clipboard, Check, ChevronDown, ChevronRight, CheckSquare, Square, Download, Plus } from 'lucide-react';
 import { PUBLICATIONS_DATA } from '../../data/publicationsData.js';
-import { supabase, isLive } from '../../lib/supabaseClient.js';
+import { isLive } from '../../lib/supabaseClient.js';
 import { exportToCsv } from '../../lib/exportCsv.js';
+import { dbIdOf, updatePublication, fetchPublications } from '../../data/publicationsStore.js';
 
 const STORE_KEY = 'iscm_publications_edits_v1';
 
-// The live `publications` table only stores the base bibliographic fields
-// (stt, pub_year, title, authors, journal, category) — it has no columns yet
-// for indexing badges, the framework/glocal/human/tech/urban checklist, APA
-// citation, or UEH declaration/reward tracking. Those stay blank for
-// Supabase-sourced rows until the schema is extended; they're still editable
-// in the UI and persist to localStorage like any other row.
+const EMPTY_DETAILS = { framework: false, glocal: false, human: false, tech: false, urban: false };
+
+// Maps a Supabase row onto the shape the table works with. Every field the UI
+// edits now has a real column, so nothing is silently dropped on load.
 const mapLiveRow = (row) => ({
   id: `live-${row.id}`,
-  section: '',
+  section: row.section || '',
   category: row.category || '',
   year: row.pub_year || '',
-  pub_time: '',
-  ueh_declared: '',
-  ueh_reward: '',
+  pub_time: row.pub_time || '',
+  ueh_declared: row.ueh_declared || '',
+  ueh_reward: row.ueh_reward || '',
   title: row.title || '',
   authors: row.authors || '',
   journal_conference: row.journal || '',
   indexing: [],
-  citation: '',
-  details: { framework: false, glocal: false, human: false, tech: false, urban: false },
+  indexing_cols: row.indexing_cols || {},
+  citation: row.citation || '',
+  details: { ...EMPTY_DETAILS, ...(row.details || {}) },
 });
 
-// The live `publications` table has no citation column, so every
-// Supabase-sourced row starts with citation: '' — falls back to a
-// best-effort APA-style string built from the fields we do have
-// (Authors (Year). Title. Journal.) until someone edits it manually.
+// A row with no stored citation falls back to a best-effort APA string built
+// from the fields we do have (Authors (Year). Title. Journal.) until someone
+// edits it manually.
 const buildAutoCitation = (item) => {
   const parts = [];
   if (item.authors) parts.push(item.authors.trim());
@@ -58,17 +57,21 @@ const buildPublicationRows = (baseData) => baseData.map(item => {
   }
   const esciVal = indexing.find(x => x.toLowerCase().includes('esci')) ? 'ESCI' : '';
 
+  // Values already stored on the row (e.g. loaded from the DB's indexing_cols
+  // column) win — the derivation above is only a seed for rows that have the
+  // raw `indexing` tag array and nothing else.
+  const stored = item.indexing_cols || {};
   return {
     ...item,
     pub_time: item.pub_time || '',
     ueh_declared: item.ueh_declared || '',
     ueh_reward: item.ueh_reward || '',
     indexing_cols: {
-      ssci: ssciVal,
-      scie: scieVal,
-      ahci: ahciVal,
-      scopus: scopusVal,
-      esci: esciVal,
+      ssci: stored.ssci ?? ssciVal,
+      scie: stored.scie ?? scieVal,
+      ahci: stored.ahci ?? ahciVal,
+      scopus: stored.scopus ?? scopusVal,
+      esci: stored.esci ?? esciVal,
     },
   };
 });
@@ -107,103 +110,69 @@ export default function ResearchPublications({ lang }) {
     let cancelled = false;
 
     async function load() {
+      let localRows = [];
       try {
-        const stored = localStorage.getItem(STORE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          // Ensure all loaded objects have the indexing_cols and UEH properties
-          const restored = parsed.map(item => {
-            const ssciVal = item.indexing_cols?.ssci ?? (item.indexing?.find(x => x.toLowerCase().includes('ssci')) ? 'ISI (SSCI)' : '');
-            const scieVal = item.indexing_cols?.scie ?? (item.indexing?.find(x => x.toLowerCase().includes('scie')) ? 'ISI (SCIE)' : '');
-            const ahciVal = item.indexing_cols?.ahci ?? (item.indexing?.find(x => x.toLowerCase().includes('a&hci') || x.toLowerCase().includes('ahci')) ? 'ISI (A&HCI)' : '');
-
-            let scopusVal = item.indexing_cols?.scopus ?? '';
-            if (!scopusVal && item.indexing) {
-              const scopusEntry = item.indexing.find(x => x.toLowerCase().includes('scopus'));
-              if (scopusEntry) {
-                const qMatch = scopusEntry.match(/Q\d/i);
-                scopusVal = qMatch ? `Scopus (${qMatch[0].toUpperCase()})` : 'Scopus';
-              }
-            }
-            const esciVal = item.indexing_cols?.esci ?? (item.indexing?.find(x => x.toLowerCase().includes('esci')) ? 'ESCI' : '');
-
-            return {
-              ...item,
-              pub_time: item.pub_time ?? '',
-              ueh_declared: item.ueh_declared ?? '',
-              ueh_reward: item.ueh_reward ?? '',
-              indexing_cols: { ssci: ssciVal, scie: scieVal, ahci: ahciVal, scopus: scopusVal, esci: esciVal },
-            };
-          });
-          if (!cancelled) setPublications(restored);
-          return;
-        }
+        localRows = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
       } catch {}
 
-      let baseData = PUBLICATIONS_DATA;
+      let dbRows = null;
       if (isLive) {
-        try {
-          const { data, error } = await supabase
-            .from('publications')
-            .select('*')
-            .order('pub_year', { ascending: false });
-          if (!error && data && data.length > 0) baseData = data.map(mapLiveRow);
-        } catch {}
+        try { dbRows = await fetchPublications(); } catch {}
+      }
+      if (cancelled) return;
+
+      if (dbRows) {
+        // Supabase is authoritative for the rows it owns — reading the local
+        // cache first (as this used to) meant anyone who had ever made an edit
+        // never saw the shared database again. Rows that exist only in this
+        // browser (manual additions, edits to bundled demo rows) are kept.
+        const localOnly = localRows.filter((r) => dbIdOf(r.id) === null);
+        setPublications(buildPublicationRows([...dbRows.map(mapLiveRow), ...localOnly]));
+        return;
       }
 
-      if (!cancelled) setPublications(buildPublicationRows(baseData));
+      // No backend reachable: fall back to the local cache, else the bundled set.
+      setPublications(buildPublicationRows(localRows.length > 0 ? localRows : PUBLICATIONS_DATA));
     }
 
     load();
     return () => { cancelled = true; };
   }, []);
 
-  const updatePublicationField = (pubId, fieldKey, value) => {
-    const next = publications.map(p => {
-      if (p.id === pubId) {
-        return {
-          ...p,
-          [fieldKey]: value
-        };
-      }
-      return p;
-    });
+  /**
+   * Applies a patch to one publication: updates local state, mirrors it to
+   * localStorage (so demo/offline rows and in-session additions survive a
+   * reload), and pushes it to Supabase when the row is database-backed.
+   * A rejected write is reported rather than silently dropped.
+   */
+  const patchPublication = async (pubId, patch) => {
+    const next = publications.map(p => (p.id === pubId ? { ...p, ...patch } : p));
     setPublications(next);
     localStorage.setItem(STORE_KEY, JSON.stringify(next));
+
+    if (!isLive || dbIdOf(pubId) === null) return;
+    try {
+      await updatePublication(pubId, patch);
+    } catch (e) {
+      alert(
+        lang === 'vi'
+          ? `Không lưu được lên cơ sở dữ liệu${e?.message ? ` (${e.message})` : ''}.\n\nThay đổi đang hiển thị trên màn hình nhưng CHƯA được lưu và sẽ mất khi tải lại trang. Hãy đăng nhập bằng tài khoản có quyền quản lý Nghiên cứu Khoa học rồi sửa lại.`
+          : `Could not save to the database${e?.message ? ` (${e.message})` : ''}.\n\nThe change is showing on screen but was NOT saved and will be lost on reload. Sign in with an account authorised to manage Scientific Research and edit again.`
+      );
+    }
   };
 
+  const updatePublicationField = (pubId, fieldKey, value) =>
+    patchPublication(pubId, { [fieldKey]: value });
+
   const updatePublicationIndexing = (pubId, colKey, value) => {
-    const next = publications.map(p => {
-      if (p.id === pubId) {
-        return {
-          ...p,
-          indexing_cols: {
-            ...p.indexing_cols,
-            [colKey]: value
-          }
-        };
-      }
-      return p;
-    });
-    setPublications(next);
-    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    const current = publications.find(p => p.id === pubId)?.indexing_cols || {};
+    return patchPublication(pubId, { indexing_cols: { ...current, [colKey]: value } });
   };
 
   const updatePublicationDetail = (pubId, detailKey, value) => {
-    const next = publications.map(p => {
-      if (p.id === pubId) {
-        return {
-          ...p,
-          details: {
-            ...p.details,
-            [detailKey]: value
-          }
-        };
-      }
-      return p;
-    });
-    setPublications(next);
-    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    const current = publications.find(p => p.id === pubId)?.details || {};
+    return patchPublication(pubId, { details: { ...current, [detailKey]: value } });
   };
 
   const handleAddPublication = () => {

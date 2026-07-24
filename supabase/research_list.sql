@@ -24,7 +24,15 @@ CREATE TABLE iscm_research_list (
     human_centric_orientation VARCHAR(100) NULL,
     tech_solutions VARCHAR(100) NULL,
     urban_system VARCHAR(100) NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Fields the Research List drawer edits (Classification tab, Members tab
+    -- role tags, and the Documents tab's two upload lists).
+    sdgs TEXT NULL,
+    member_roles   JSONB NOT NULL DEFAULT '{}'::jsonb,  -- { "<member name>": "Head" | "Coordinator" | ... }
+    minute_reports JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{ id, name, addedAt }]
+    documents      JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{ id, name, addedAt }]
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
 -- Enable Row Level Security (RLS) for privacy settings control
@@ -35,6 +43,11 @@ CREATE POLICY "Allow authenticated read access"
 ON iscm_research_list FOR SELECT
 TO authenticated
 USING (true);
+
+-- Writes (INSERT/UPDATE/DELETE) are restricted to a top admin or the head of
+-- Scientific Research via can_manage_group(); see the policies named
+-- "iscm_research_list write/update/delete (research head)" in the project.
+-- The app surfaces a rejection to the user instead of pretending it saved.
 
 -- ----------------------------------------------------------------------------
 -- SEED — representative subset of the 2026 Research List TSV (all 10 units).

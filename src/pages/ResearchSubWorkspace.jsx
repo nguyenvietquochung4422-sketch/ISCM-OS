@@ -5,9 +5,13 @@ import {
   Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
-import { supabase, isLive } from '../lib/supabaseClient.js';
+import { isLive } from '../lib/supabaseClient.js';
 import { researchList as fallbackRows, RESEARCH_UNITS } from '../data/researchList.js';
 import { ISCM_MEMBERS } from '../data/iscmMembers.js';
+import {
+  fetchResearchRows, insertResearchRow, updateResearchRow, deleteResearchRows,
+  isDbRow, writeFailedMessage,
+} from '../data/researchListStore.js';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
 import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
@@ -131,24 +135,31 @@ export default function ResearchSubWorkspace() {
     saveStore(store);
   }, [store]);
 
+  // Pulls the list from Supabase (falling back to the bundled dataset when
+  // there's no backend). Re-called after every successful write so the table
+  // reflects exactly what the database now holds — including server-assigned
+  // ids and defaults — instead of a locally-patched guess.
+  const reloadRows = async () => {
+    const data = await fetchResearchRows();
+    if (data) {
+      setRows(data);
+      setSource('live');
+      return true;
+    }
+    setRows(fallbackRows);
+    return false;
+  };
+
   // Load database rows on mount
   useEffect(() => {
     let cancelled = false;
     async function load() {
       if (!isLive) { setRows(fallbackRows); return; }
       try {
-        const { data, error } = await supabase
-          .from('iscm_research_list')
-          .select('*')
-          .order('research_unit', { ascending: true })
-          .order('code', { ascending: true, nullsFirst: false });
+        const data = await fetchResearchRows();
         if (cancelled) return;
-        if (error || !data || data.length === 0) {
-          setRows(fallbackRows);
-        } else {
-          setRows(data);
-          setSource(source => 'live');
-        }
+        if (data) { setRows(data); setSource('live'); }
+        else setRows(fallbackRows);
       } catch {
         if (!cancelled) setRows(fallbackRows);
       }
@@ -156,6 +167,10 @@ export default function ResearchSubWorkspace() {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  // True only when the table is actually backed by Supabase — the demo
+  // dataset has no server rows to write to.
+  const isDbBacked = isLive && source === 'live';
 
   const allRows = useMemo(() => {
     if (!rows) return [];
@@ -237,15 +252,10 @@ export default function ResearchSubWorkspace() {
     return null;
   };
 
-  // Validates, confirms, and commits either the new draft row or the
-  // buffered edits to an existing row into the store.
-  const saveTask = () => {
-    const err = validateTaskCode(currentSelectedTask);
-    if (err) { alert(err); return; }
-    const ok = window.confirm(
-      lang === 'vi' ? 'Bạn có chắc chắn muốn lưu thay đổi?' : 'Are you sure you want to save your changes?'
-    );
-    if (!ok) return;
+  // Browser-only fallback: used when there's no Supabase backend, when the row
+  // is a bundled demo row with no server counterpart, or when a database write
+  // was refused (the user is told, so this never silently masquerades as saved).
+  const commitLocally = () => {
     if (draftRow) {
       setStore((prev) => ({ ...prev, extraRows: [...prev.extraRows, draftRow] }));
     } else if (Object.keys(pendingEdits).length > 0) {
@@ -255,15 +265,52 @@ export default function ResearchSubWorkspace() {
         cellEdits: { ...prev.cellEdits, [rowId]: { ...prev.cellEdits[rowId], ...pendingEdits } },
       }));
     }
-    setDraftRow(null);
-    setPendingEdits({});
-    setSelectedTask(null);
+  };
+
+  // Validates, confirms, then persists — to Supabase when the table is
+  // database-backed, otherwise to localStorage.
+  const saveTask = async () => {
+    const err = validateTaskCode(currentSelectedTask);
+    if (err) { alert(err); return; }
+    const ok = window.confirm(
+      lang === 'vi' ? 'Bạn có chắc chắn muốn lưu thay đổi?' : 'Are you sure you want to save your changes?'
+    );
+    if (!ok) return;
+
+    const rowId = currentSelectedTask.id;
+    const hasEdits = Object.keys(pendingEdits).length > 0;
+
+    if (isDbBacked && (draftRow || (hasEdits && isDbRow(rowId)))) {
+      try {
+        if (draftRow) {
+          await insertResearchRow(draftRow);
+        } else {
+          await updateResearchRow(rowId, pendingEdits);
+          // The database is now the source of truth for this row — drop any
+          // stale local override, or it would keep shadowing what we just saved.
+          setStore((prev) => {
+            const cellEdits = { ...prev.cellEdits };
+            delete cellEdits[rowId];
+            return { ...prev, cellEdits };
+          });
+        }
+        await reloadRows();
+        closeDrawer();
+        return;
+      } catch (e) {
+        alert(writeFailedMessage(e, lang));
+        // Fall through: keep the work in localStorage so it isn't lost.
+      }
+    }
+
+    commitLocally();
+    closeDrawer();
   };
 
   // Deletes a row (always confirms; the message also warns about any
   // WBS-code descendants that would be deleted along with it). Deleting an
   // unsaved draft is just discarding it — nothing exists to remove yet.
-  const deleteTask = (row) => {
+  const deleteTask = async (row) => {
     if (draftRow && row?.id === draftRow.id) {
       closeDrawer();
       return;
@@ -284,6 +331,30 @@ export default function ResearchSubWorkspace() {
             : `Are you sure you want to delete "${row.task_name}"?`)
     );
     if (!ok) return;
+
+    if (isDbBacked && idsToDelete.some(isDbRow)) {
+      try {
+        await deleteResearchRows(idsToDelete);
+        // Really gone server-side, so the local "hide these ids" list and any
+        // per-row overrides for them are now dead weight — clear them out.
+        setStore((prev) => {
+          const cellEdits = { ...prev.cellEdits };
+          idsToDelete.forEach((id) => delete cellEdits[id]);
+          return {
+            ...prev,
+            cellEdits,
+            extraRows: prev.extraRows.filter((r) => !idsToDelete.includes(r.id)),
+            deletedRowIds: (prev.deletedRowIds || []).filter((id) => !idsToDelete.includes(id)),
+          };
+        });
+        await reloadRows();
+        if (idsToDelete.includes(selectedTask?.id)) closeDrawer();
+        return;
+      } catch (e) {
+        alert(writeFailedMessage(e, lang));
+        return; // Don't hide a row locally that still exists in the database.
+      }
+    }
 
     setStore((prev) => {
       const extraIds = new Set(prev.extraRows.filter((r) => idsToDelete.includes(r.id)).map((r) => r.id));
