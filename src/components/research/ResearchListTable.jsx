@@ -499,9 +499,10 @@ export default function ResearchListTable({
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
       
-      {/* 1. Filters Bar */}
-      <div className="flex flex-wrap items-center gap-2.5 bg-neutral-50 p-2.5 border border-neutral-200/60">
-        <div className="relative flex-1 min-w-[240px]">
+      {/* 1. Filters Bar — single row; the search field absorbs all the slack
+          so the filters/actions never wrap to a second line. */}
+      <div className="flex items-center gap-2 bg-neutral-50 p-2.5 border border-neutral-200/60">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
@@ -515,7 +516,7 @@ export default function ResearchListTable({
         <select
           value={unit}
           onChange={(e) => setUnit(e.target.value)}
-          className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+          className="shrink-0 max-w-[150px] border border-neutral-200 bg-white px-2 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
         >
           <option value="all">All Research Units</option>
           {researchUnits.map((u) => <option key={u} value={u}>{u}</option>)}
@@ -524,7 +525,7 @@ export default function ResearchListTable({
         <select
           value={taskType}
           onChange={(e) => setTaskType(e.target.value)}
-          className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+          className="shrink-0 max-w-[130px] border border-neutral-200 bg-white px-2 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
         >
           <option value="all">All Task Types</option>
           {taskTypes.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -533,7 +534,7 @@ export default function ResearchListTable({
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+          className="shrink-0 max-w-[125px] border border-neutral-200 bg-white px-2 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
         >
           <option value="all">All Statuses</option>
           {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -542,19 +543,21 @@ export default function ResearchListTable({
         <button
           type="button"
           onClick={handleAddUnit}
-          className="ml-auto inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
+          title={lang === 'vi' ? 'Tạo Đơn vị nghiên cứu mới' : 'New Research Unit'}
+          className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
         >
-          <FolderPlus className="h-3.5 w-3.5" />
-          {lang === 'vi' ? 'Đơn vị mới' : 'New Research Unit'}
+          <FolderPlus className="h-3.5 w-3.5 shrink-0" />
+          {lang === 'vi' ? 'Đơn vị mới' : 'New Unit'}
         </button>
 
         <button
           type="button"
           onClick={handleExportCsv}
-          className="inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
+          title={lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+          className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
         >
-          <Download className="h-3.5 w-3.5" />
-          {lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+          <Download className="h-3.5 w-3.5 shrink-0" />
+          CSV
         </button>
       </div>
 
