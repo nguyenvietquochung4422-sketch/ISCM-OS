@@ -4,19 +4,9 @@ import {
 } from 'lucide-react';
 import { RESEARCH_UNITS } from '../../data/researchList.js';
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
-import { isMemberMatch } from './ResearchWorkload.jsx';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { exportToCsv } from '../../lib/exportCsv.js';
-
-const resolveMemberNameAndTitle = (nameStr) => {
-  if (!nameStr) return '';
-  const clean = nameStr.trim();
-  const member = ISCM_MEMBERS.find(m => isMemberMatch(m, clean));
-  if (member) {
-    return member.nameVi;
-  }
-  return clean;
-};
+import { resolveMemberNameAndTitle } from '../../data/memberNames.js';
 
 const STATUS_CLASSES = {
   'In progress': 'bg-blue-50 text-blue-700 border-blue-200',

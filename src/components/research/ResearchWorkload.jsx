@@ -3,40 +3,11 @@ import { Search, User, Briefcase, CheckSquare, Layers, AlertCircle, ArrowUpRight
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { exportToCsv } from '../../lib/exportCsv.js';
 
-// Helper to normalize and resolve names for matching
-export function getShortNamesForMember(member) {
-  const names = [];
-  
-  // Clean titles (PGS. TS. etc.)
-  const cleanVi = member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
-  names.push(cleanVi);
+import { getShortNamesForMember, isMemberMatch, stripTitles } from '../../data/memberNames.js';
 
-  const wordsVi = cleanVi.split(' ');
-  const firstNameVi = wordsVi[wordsVi.length - 1];
-  names.push(firstNameVi);
-
-  if (wordsVi.length >= 2) {
-    names.push(wordsVi.slice(-2).join(' '));
-    names.push(wordsVi.slice(-2).join(''));
-  }
-
-  const cleanEn = member.nameEn.split(',')[0].trim();
-  names.push(cleanEn);
-  const wordsEn = cleanEn.split(' ');
-  const firstNameEn = wordsEn[wordsEn.length - 1];
-  names.push(firstNameEn);
-  if (wordsEn.length >= 2) {
-    names.push(wordsEn.slice(-2).join(' '));
-    names.push(wordsEn.slice(-2).join(''));
-  }
-
-  // Direct mapping corrections
-  if (member.id === 'm01') {
-    names.push('tú anh', 'tu anh', 'tuanh-lead', 'tuanh');
-  }
-
-  return [...new Set(names.map(n => n.toLowerCase().trim()))];
-}
+// Name matching lives in ../../data/memberNames.js — re-exported here because
+// several modules already import it from this file.
+export { getShortNamesForMember, isMemberMatch };
 
 // Member Roles (Head/Co-Head/Manager/...) are tagged per-task in the
 // Research List drawer, keyed by the exact name string as it appears in
@@ -47,19 +18,6 @@ export function getMemberRoleForTask(row, member) {
   const names = row.members.split(',').map(m => m.trim()).filter(Boolean);
   const matchedName = names.find(name => isMemberMatch(member, name));
   return matchedName ? (row.member_roles[matchedName] || null) : null;
-}
-
-export function isMemberMatch(member, targetStr) {
-  if (!targetStr) return false;
-  const target = targetStr.toLowerCase();
-  const searchTerms = getShortNamesForMember(member);
-  return searchTerms.some(term => {
-    if (target.includes(term)) return true;
-    const normTarget = target.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const normTerm = term.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (normTarget.includes(normTerm)) return true;
-    return false;
-  });
 }
 
 export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {
@@ -186,7 +144,7 @@ export default function ResearchWorkload({ allRowsResolved, setSelectedTask }) {
 
   // Get initials for member avatar display
   const getInitials = (name) => {
-    const clean = name.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
+    const clean = stripTitles(name);
     const parts = clean.split(/\s+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();

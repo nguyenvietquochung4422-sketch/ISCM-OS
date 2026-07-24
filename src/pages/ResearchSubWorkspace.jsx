@@ -12,6 +12,11 @@ import {
   fetchResearchRows, insertResearchRow, updateResearchRow, deleteResearchRows,
   isDbRow, writeFailedMessage,
 } from '../data/researchListStore.js';
+import {
+  isMemberMatch, resolveMemberFullName,
+  resolveMemberNameAndTitle as resolveMemberFullNameAndTitle,
+  memberOptionValue,
+} from '../data/memberNames.js';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
 import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
@@ -371,65 +376,6 @@ export default function ResearchSubWorkspace() {
     }
   };
 
-  // Helper to normalize and resolve names for matching
-  const getShortNamesForMember = (member) => {
-    const names = [];
-    const cleanVi = member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
-    names.push(cleanVi);
-    const wordsVi = cleanVi.split(' ');
-    const firstNameVi = wordsVi[wordsVi.length - 1];
-    names.push(firstNameVi);
-    if (wordsVi.length >= 2) {
-      names.push(wordsVi.slice(-2).join(' '));
-      names.push(wordsVi.slice(-2).join(''));
-    }
-    const cleanEn = member.nameEn.split(',')[0].trim();
-    names.push(cleanEn);
-    const wordsEn = cleanEn.split(' ');
-    const firstNameEn = wordsEn[wordsEn.length - 1];
-    names.push(firstNameEn);
-    if (wordsEn.length >= 2) {
-      names.push(wordsEn.slice(-2).join(' '));
-      names.push(wordsEn.slice(-2).join(''));
-    }
-    if (member.id === 'm01') {
-      names.push('tú anh', 'tu anh', 'tuanh-lead', 'tuanh');
-    }
-    return [...new Set(names.map(n => n.toLowerCase().trim()))];
-  };
-
-  const isMemberMatch = (member, targetStr) => {
-    if (!targetStr) return false;
-    const target = targetStr.toLowerCase();
-    const searchTerms = getShortNamesForMember(member);
-    return searchTerms.some(term => {
-      if (target.includes(term)) return true;
-      const normTarget = target.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const normTerm = term.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (normTarget.includes(normTerm)) return true;
-      return false;
-    });
-  };
-
-  const resolveMemberFullName = (shortName) => {
-    if (!shortName) return '';
-    const member = ISCM_MEMBERS.find(m => isMemberMatch(m, shortName));
-    if (member) {
-      return member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
-    }
-    return shortName;
-  };
-
-  const resolveMemberFullNameAndTitle = (nameStr) => {
-    if (!nameStr) return '';
-    const clean = nameStr.trim();
-    const member = ISCM_MEMBERS.find(m => isMemberMatch(m, clean));
-    if (member) {
-      return member.nameVi;
-    }
-    return clean;
-  };
-
   // Find currently active selected task in resolved rows, with any
   // not-yet-saved drawer edits layered on top so the drawer reflects them
   // immediately without touching the store.
@@ -446,6 +392,14 @@ export default function ResearchSubWorkspace() {
     ? (currentSelectedTask.task_name || '').toLowerCase().includes('main folder')
       || /^RU\s*\d+$/.test((currentSelectedTask.code || '').trim())
     : false;
+
+  // A coordinator who isn't on the ISCM roster — the Coordinator select needs
+  // an option for them, otherwise it shows blank and saving discards the name.
+  const coordinatorOffRoster = useMemo(() => {
+    const raw = (currentSelectedTask?.coordinator_manager || '').trim();
+    if (!raw) return null;
+    return ISCM_MEMBERS.some((m) => isMemberMatch(m, raw)) ? null : raw;
+  }, [currentSelectedTask?.coordinator_manager]);
 
   // Always land back on the Metadata tab and drop any leftover unsaved
   // buffer when a different task is opened (or the drawer closes).
@@ -526,7 +480,7 @@ export default function ResearchSubWorkspace() {
             <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
             <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto border border-neutral-200 bg-white shadow-lg text-xs">
               {ISCM_MEMBERS.map(member => {
-                const name = member.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
+                const name = memberOptionValue(member);
                 const isSelected = value.includes(name) || value.some(m => m.toLowerCase() === name.toLowerCase());
                 return (
                   <div
@@ -1032,14 +986,21 @@ export default function ResearchSubWorkspace() {
                       className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
                     >
                       <option value="">Select Coordinator...</option>
-                      {ISCM_MEMBERS.map((m) => {
-                        const cleanName = m.nameVi.replace(/^(PGS\.|TS\.|ThS\.|KTS\.|CN\.)\s*/g, '').trim();
-                        return (
-                          <option key={m.id} value={cleanName}>
-                            {m.nameVi} ({m.titleVi})
-                          </option>
-                        );
-                      })}
+                      {/* Plenty of coordinators are external collaborators who
+                          aren't on the ISCM roster ("Mr. Steven", "Tony", …).
+                          Without an option carrying their name the select
+                          rendered blank and simply opening the drawer and
+                          saving wiped the field, so keep the stored value. */}
+                      {coordinatorOffRoster && (
+                        <option value={coordinatorOffRoster}>
+                          {coordinatorOffRoster} {lang === 'vi' ? '(ngoài danh sách)' : '(not on roster)'}
+                        </option>
+                      )}
+                      {ISCM_MEMBERS.map((m) => (
+                        <option key={m.id} value={memberOptionValue(m)}>
+                          {m.nameVi} ({m.titleVi})
+                        </option>
+                      ))}
                     </select>
                   </div>
                   
