@@ -9,8 +9,8 @@ import { ISCM_MEMBERS, MEMBER_GROUPS, memberInitials } from '../../data/iscmMemb
 const DEPARTMENTS = [
   {
     id: 'director',
-    nameVi: 'Director & Management Board (RU0)',
-    nameEn: 'Director & Management Board (RU0)',
+    nameVi: 'Director & Management Board',
+    nameEn: 'Director & Management Board',
     roleVi: 'Điều hành tối cao',
     roleEn: 'Supreme Director',
     pic: 'Trịnh Tú Anh',
