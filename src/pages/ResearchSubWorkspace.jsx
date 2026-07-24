@@ -79,19 +79,11 @@ const MAIN_FOLDER_TASK_TYPES = [
 
 // Role a member holds on a given task/unit — purely a tag for management
 // clarity, independent of whether they're an ISCM Roster or Outside member.
-const MEMBER_ROLES = [
-  'Head',
-  'Co-Head',
-  'Manager',
-  'Coordinator',
-  'International Scholar / International Member',
-  'Core Faculty / Key Member',
-  'Secretary',
-  'PhD Student / Postdoc',
-  'Collaborator',
-  'Individual Lead / Author',
-  'Member',
-];
+const MEMBER_ROLES = ['Leader', 'Coordinator', 'Member'];
+
+// The Leader is almost always the Director, so a new task starts with her on
+// it — still just a default, removable like any other member.
+const DEFAULT_LEADER = 'Trịnh Tú Anh';
 
 const PILLARS = [
   { key: 'framework_transition', label: 'Framework Transition' },
@@ -218,8 +210,16 @@ export default function ResearchSubWorkspace() {
   // A new task/unit is only ever handed to us as a draft — nothing is
   // written to the store until Save is pressed.
   const createDraft = (newRow) => {
-    setDraftRow({ ...newRow, isDraft: true });
-    setSelectedTask(newRow);
+    // Every new row starts with the Director as its Leader — the usual case,
+    // and it can be changed or removed in the Members tab like anything else.
+    const seeded = {
+      ...newRow,
+      isDraft: true,
+      members: newRow.members || DEFAULT_LEADER,
+      member_roles: newRow.member_roles || { [DEFAULT_LEADER]: 'Leader' },
+    };
+    setDraftRow(seeded);
+    setSelectedTask(seeded);
   };
 
   // Closing the drawer (header X, backdrop click, Close/Delete-on-draft)
