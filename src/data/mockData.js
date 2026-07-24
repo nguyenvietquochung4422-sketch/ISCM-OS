@@ -11,8 +11,12 @@ export const FUNCTIONAL_GROUPS = [
 // NOTE: `phone` left blank — real numbers weren't provided; fill in when available
 // (deliberately not fabricated, since these are real named ISCM staff).
 export const users = [
+  // users[0] is the persona shown before a real Google sign-in — a generic
+  // guest, deliberately NOT one of the named staff below.
+  { id: '00000000-0000-0000-0000-000000000000', email: 'guest@iscm.ueh.edu.vn', full_name: 'GUEST',          phone: '', base_functional_group: 'ISCM',             system_role: 'Guest' },
+
   // — ISCM leadership (Ban Giám đốc / Quản lý bộ phận) —
-  { id: '11111111-1111-1111-1111-111111111111', email: 'guest@iscm.ueh.edu.vn',   full_name: 'Trịnh Tú Anh',   phone: '', base_functional_group: 'Management Board', system_role: 'Director' },
+  { id: '11111111-1111-1111-1111-111111111111', email: 'trinhtuanh@ueh.edu.vn',  full_name: 'Trịnh Tú Anh',   phone: '', base_functional_group: 'Management Board', system_role: 'Director' },
   { id: '77777777-7777-7777-7777-777777777777', email: 'ttqmai@ueh.edu.vn',      full_name: 'Trần Thị Quỳnh Mai',    phone: '', base_functional_group: 'Operation & Finance', system_role: 'Vice Director' },
   { id: '88888888-8888-8888-8888-888888888888', email: 'hoaipm@ueh.edu.vn',      full_name: 'Phạm Nguyễn Hoài',      phone: '', base_functional_group: 'Nghiên cứu Khoa học', system_role: 'Group Head' },
   { id: '99999999-9999-9999-9999-999999999999', email: 'lanhn@ueh.edu.vn',       full_name: 'Hoàng Ngọc Lan',        phone: '', base_functional_group: 'Đào tạo Học thuật',   system_role: 'Group Head' },

@@ -76,10 +76,11 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
 
   const currentUser = dbUser || users[0];
   // A real Google sign-in (via Supabase Auth) overrides the mock/demo profile above.
-  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name || 'Trịnh Tú Anh';
+  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name || 'GUEST';
   const displayEmail = authUser?.email || currentUser.email;
   // DB rows use `global_system_role`; the mock fallback array uses `system_role`.
-  const displayRole = currentUser.global_system_role || currentUser.system_role || 'Director';
+  // Falls back to 'Guest', never 'Director' — an unknown role must not imply privilege.
+  const displayRole = currentUser.global_system_role || currentUser.system_role || 'Guest';
 
   const openAt = (key) => {
     clearTimeout(closeTimer.current);

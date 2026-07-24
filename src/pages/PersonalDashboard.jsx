@@ -24,12 +24,12 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
-/** Signed-in demo persona: Director Trịnh Tú Anh */
+/** Demo persona shown before a real Google sign-in: a generic guest. */
 const MY_PROFILE = {
-  full_name: 'Trịnh Tú Anh',
+  full_name: 'GUEST',
   email: 'guest@iscm.ueh.edu.vn',
-  system_role: 'Director',
-  base_functional_group: 'Management Board',
+  system_role: 'Guest',
+  base_functional_group: 'ISCM',
   mentor: 'N/A',
 };
 
