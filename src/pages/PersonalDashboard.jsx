@@ -26,10 +26,10 @@ import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
 /** Signed-in demo persona: Director Trịnh Tú Anh */
 const MY_PROFILE = {
-  full_name: 'GUEST',
+  full_name: 'Trịnh Tú Anh',
   email: 'guest@iscm.ueh.edu.vn',
-  system_role: 'Institute Director',
-  base_functional_group: 'Management Board (RU0)',
+  system_role: 'Director',
+  base_functional_group: 'Management Board',
   mentor: 'N/A',
 };
 
@@ -1169,7 +1169,7 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
 const WS_EVENTS = [
   { id: 'e1', title: 'Họp giao ban điều hành Tuần', start: '2026-07-06T09:00', end: '2026-07-06T11:00', location: 'StudioLab A, T1, ISCM', tag: 'Internal', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
   { id: 'e2', title: 'Ký kết MOU với Grab Vietnam', start: '2026-07-07T14:30', end: '2026-07-07T15:30', location: 'Hội thảo CTD', tag: 'Partnership', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e3', title: 'Thẩm định đề xuất HCMC Walkability Atlas', start: '2026-07-09T10:00', end: '2026-07-09T12:00', location: 'Meeting Room C, ISCM Hub', tag: 'Research', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
+  { id: 'e3', title: 'Thẩm định đề xuất HCMC Walkability Atlas', start: '2026-07-09T10:00', end: '2026-07-09T12:00', location: 'Meeting Room C, ISCM OS', tag: 'Research', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
   { id: 'e4', title: 'ISCM-UEH Academic Seminar', start: '2026-07-10T13:30', end: '2026-07-10T16:00', location: 'Hội trường CTD', tag: 'Seminar', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
   { id: 'e5', title: 'Board Meeting — Director Level', start: '2026-07-10T09:00', end: '2026-07-10T10:30', location: 'Văn phòng Giám đốc, T3', tag: 'Admin', tagColor: 'bg-[#990000] text-white border-[#990000]' },
   { id: 'e6', title: 'All-hands Core Team Sync', start: '2026-07-06T13:00', end: '2026-07-06T14:00', location: 'Online (Google Meet)', tag: 'Internal', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },

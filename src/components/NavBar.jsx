@@ -76,7 +76,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
 
   const currentUser = dbUser || users[0];
   // A real Google sign-in (via Supabase Auth) overrides the mock/demo profile above.
-  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name || 'GUEST';
+  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name || 'Trịnh Tú Anh';
   const displayEmail = authUser?.email || currentUser.email;
   // DB rows use `global_system_role`; the mock fallback array uses `system_role`.
   const displayRole = currentUser.global_system_role || currentUser.system_role || 'Director';
@@ -127,10 +127,10 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
         {/* Brand logo block */}
         <button
           onClick={() => navigateTo('personal-dashboard')}
-          className="flex h-full px-6 shrink-0 items-center justify-center bg-[#990000] hover:bg-[#b30000] text-white font-barlow text-2xl font-black uppercase tracking-widest transition-colors -ml-4 mr-4"
+          className="flex h-full px-4 shrink-0 items-center justify-center bg-transparent hover:bg-neutral-800 transition-colors -ml-4 mr-4"
           title="ISCM Control Panel"
         >
-          ISCM
+          <img src={`${import.meta.env.BASE_URL}logo-nav.png`} alt="ISCM Logo" className="h-10 w-auto object-contain" />
         </button>
 
         {/* Main Nav Tree (Desktop) */}
