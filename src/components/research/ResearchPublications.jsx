@@ -1,13 +1,41 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ExternalLink, Clipboard, Check, ChevronDown, ChevronRight, CheckSquare, Square, Download, Plus } from 'lucide-react';
+import {
+  Search, ExternalLink, Clipboard, Check, CheckSquare, Square, Download, Plus, X,
+  Briefcase, Tag, Quote,
+} from 'lucide-react';
 import { PUBLICATIONS_DATA } from '../../data/publicationsData.js';
 import { isLive } from '../../lib/supabaseClient.js';
 import { exportToCsv } from '../../lib/exportCsv.js';
-import { dbIdOf, updatePublication, fetchPublications } from '../../data/publicationsStore.js';
+import {
+  dbIdOf, updatePublication, insertPublication, deletePublication, fetchPublications,
+} from '../../data/publicationsStore.js';
+import { writeFailedMessage } from '../../data/researchListStore.js';
 
 const STORE_KEY = 'iscm_publications_edits_v1';
 
 const EMPTY_DETAILS = { framework: false, glocal: false, human: false, tech: false, urban: false };
+
+const CATEGORIES = [
+  'International Journal', 'International Conference',
+  'Domestic Journal', 'Domestic Conference',
+  'Book', 'Book Chapter',
+];
+
+const INDEXING_FIELDS = [
+  { key: 'ssci', label: 'ISI (SSCI)' },
+  { key: 'scie', label: 'ISI (SCIE)' },
+  { key: 'ahci', label: 'ISI (A&HCI)' },
+  { key: 'scopus', label: 'Scopus' },
+  { key: 'esci', label: 'ESCI' },
+];
+
+const CHECKLIST_FIELDS = [
+  { key: 'framework', label: 'Framework Trans.' },
+  { key: 'glocal', label: 'Glocal Design' },
+  { key: 'human', label: 'Human Centric' },
+  { key: 'tech', label: 'Tech Sol.' },
+  { key: 'urban', label: 'Urban Sys.' },
+];
 
 // Maps a Supabase row onto the shape the table works with. Every field the UI
 // edits now has a real column, so nothing is silently dropped on load.
@@ -66,6 +94,7 @@ const buildPublicationRows = (baseData) => baseData.map(item => {
     pub_time: item.pub_time || '',
     ueh_declared: item.ueh_declared || '',
     ueh_reward: item.ueh_reward || '',
+    details: { ...EMPTY_DETAILS, ...(item.details || {}) },
     indexing_cols: {
       ssci: stored.ssci ?? ssciVal,
       scie: stored.scie ?? scieVal,
@@ -77,34 +106,21 @@ const buildPublicationRows = (baseData) => baseData.map(item => {
 });
 
 export default function ResearchPublications({ lang }) {
+  const vi = lang === 'vi';
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
 
-  // Indexing badges, the Framework/Glocal/Human/Tech/Urban checklist, and
-  // UEH declaration/reward no longer get their own table columns — they now
-  // live in the expandable row panel below, alongside the APA citation.
-  const INDEXING_FIELDS = [
-    { key: 'ssci', label: 'ISI (SSCI)' },
-    { key: 'scie', label: 'ISI (SCIE)' },
-    { key: 'ahci', label: 'ISI (A&HCI)' },
-    { key: 'scopus', label: 'Scopus' },
-    { key: 'esci', label: 'ESCI' },
-  ];
-
-  const CHECKLIST_FIELDS = [
-    { key: 'framework', label: 'Framework Trans.' },
-    { key: 'glocal', label: 'Glocal Design' },
-    { key: 'human', label: 'Human Centric' },
-    { key: 'tech', label: 'Tech Sol.' },
-    { key: 'urban', label: 'Urban Sys.' },
-  ];
-
-  // Load and persist state to LocalStorage. Prior local edits always win
-  // (same precedence as before); only a fresh, never-edited table pulls its
-  // base rows from Supabase (when live) instead of the bundled dataset.
   const [publications, setPublications] = useState([]);
+
+  // Editing works like the Research List: the table is read-only, clicking a
+  // row opens a drawer, and nothing is written anywhere until Save. A new
+  // publication lives in `draft` until then; edits to an existing one buffer
+  // in `pendingEdits`.
+  const [selectedId, setSelectedId] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [pendingEdits, setPendingEdits] = useState({});
+  const [drawerTab, setDrawerTab] = useState('metadata');
 
   useEffect(() => {
     let cancelled = false;
@@ -139,96 +155,143 @@ export default function ResearchPublications({ lang }) {
     return () => { cancelled = true; };
   }, []);
 
-  /**
-   * Applies a patch to one publication: updates local state, mirrors it to
-   * localStorage (so demo/offline rows and in-session additions survive a
-   * reload), and pushes it to Supabase when the row is database-backed.
-   * A rejected write is reported rather than silently dropped.
-   */
-  const patchPublication = async (pubId, patch) => {
-    const next = publications.map(p => (p.id === pubId ? { ...p, ...patch } : p));
-    setPublications(next);
-    localStorage.setItem(STORE_KEY, JSON.stringify(next));
-
-    if (!isLive || dbIdOf(pubId) === null) return;
-    try {
-      await updatePublication(pubId, patch);
-    } catch (e) {
-      alert(
-        lang === 'vi'
-          ? `Không lưu được lên cơ sở dữ liệu${e?.message ? ` (${e.message})` : ''}.\n\nThay đổi đang hiển thị trên màn hình nhưng CHƯA được lưu và sẽ mất khi tải lại trang. Hãy đăng nhập bằng tài khoản có quyền quản lý Nghiên cứu Khoa học rồi sửa lại.`
-          : `Could not save to the database${e?.message ? ` (${e.message})` : ''}.\n\nThe change is showing on screen but was NOT saved and will be lost on reload. Sign in with an account authorised to manage Scientific Research and edit again.`
-      );
-    }
+  const reload = async () => {
+    if (!isLive) return false;
+    const dbRows = await fetchPublications();
+    if (!dbRows) return false;
+    let localRows = [];
+    try { localRows = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch {}
+    const localOnly = localRows.filter((r) => dbIdOf(r.id) === null);
+    setPublications(buildPublicationRows([...dbRows.map(mapLiveRow), ...localOnly]));
+    return true;
   };
 
-  const updatePublicationField = (pubId, fieldKey, value) =>
-    patchPublication(pubId, { [fieldKey]: value });
+  const selected = draft || publications.find((p) => p.id === selectedId) || null;
+  // What the drawer shows: the stored row with any unsaved edits layered on top.
+  const current = selected ? { ...selected, ...(draft ? {} : pendingEdits) } : null;
 
-  const updatePublicationIndexing = (pubId, colKey, value) => {
-    const current = publications.find(p => p.id === pubId)?.indexing_cols || {};
-    return patchPublication(pubId, { indexing_cols: { ...current, [colKey]: value } });
+  const openRow = (id) => {
+    setDraft(null);
+    setPendingEdits({});
+    setDrawerTab('metadata');
+    setSelectedId(id);
   };
 
-  const updatePublicationDetail = (pubId, detailKey, value) => {
-    const current = publications.find(p => p.id === pubId)?.details || {};
-    return patchPublication(pubId, { details: { ...current, [detailKey]: value } });
+  const closeDrawer = () => {
+    setDraft(null);
+    setPendingEdits({});
+    setSelectedId(null);
   };
+
+  /** Every drawer field goes through here so it stays unsaved until Save. */
+  const setField = (key, value) => {
+    if (draft) setDraft((prev) => ({ ...prev, [key]: value }));
+    else setPendingEdits((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setIndexing = (key, value) =>
+    setField('indexing_cols', { ...(current?.indexing_cols || {}), [key]: value });
+
+  const setDetail = (key, value) =>
+    setField('details', { ...(current?.details || {}), [key]: value });
 
   const handleAddPublication = () => {
-    const newId = `manual-${Date.now()}`;
-    const newPub = {
-      id: newId,
+    setPendingEdits({});
+    setSelectedId(null);
+    setDrawerTab('metadata');
+    setDraft({
+      id: `manual-${Date.now()}`,
       section: '',
       category: 'International Journal',
       year: new Date().getFullYear().toString(),
       pub_time: '',
       ueh_declared: '',
       ueh_reward: '',
-      title: 'New Publication',
+      title: '',
       authors: '',
       journal_conference: '',
       indexing: [],
       citation: '',
-      details: { framework: false, glocal: false, human: false, tech: false, urban: false },
+      details: { ...EMPTY_DETAILS },
       indexing_cols: { ssci: '', scie: '', ahci: '', scopus: '', esci: '' },
-    };
-    const next = [newPub, ...publications];
-    setPublications(next);
-    localStorage.setItem(STORE_KEY, JSON.stringify(next));
-    setExpandedId(newId);
-    setQuery('');
-    setCategoryFilter('all');
+    });
   };
 
-  const handleDeletePublication = (pubId) => {
-    if (!window.confirm(lang === 'vi' ? 'Bạn có chắc muốn xóa bài báo này?' : 'Are you sure you want to delete this publication?')) return;
-    const next = publications.filter(p => p.id !== pubId);
+  /** Keeps the row in this browser when there's no backend, or a write failed. */
+  const commitLocally = (row) => {
+    const next = draft
+      ? [row, ...publications]
+      : publications.map((p) => (p.id === row.id ? row : p));
     setPublications(next);
     localStorage.setItem(STORE_KEY, JSON.stringify(next));
-    if (expandedId === pubId) setExpandedId(null);
+  };
+
+  const handleSave = async () => {
+    if (!current) return;
+    if (!current.title?.trim()) {
+      alert(vi ? 'Nhập tên bài báo trước khi lưu.' : 'Enter a title before saving.');
+      return;
+    }
+    if (!window.confirm(vi ? 'Bạn có chắc chắn muốn lưu thay đổi?' : 'Are you sure you want to save your changes?')) return;
+
+    const isDbRow = dbIdOf(current.id) !== null;
+    if (isLive && (draft || isDbRow)) {
+      try {
+        if (draft) await insertPublication(current);
+        else await updatePublication(current.id, pendingEdits);
+        await reload();
+        closeDrawer();
+        return;
+      } catch (e) {
+        alert(writeFailedMessage(e, lang));
+        // Fall through: keep the work in this browser so it isn't lost.
+      }
+    }
+
+    commitLocally(current);
+    closeDrawer();
+  };
+
+  const handleDelete = async () => {
+    if (!current) return;
+    if (draft) { closeDrawer(); return; }   // discarding an unsaved draft
+    if (!window.confirm(vi ? 'Bạn có chắc muốn xóa bài báo này?' : 'Are you sure you want to delete this publication?')) return;
+
+    if (isLive && dbIdOf(current.id) !== null) {
+      try {
+        await deletePublication(current.id);
+        await reload();
+        closeDrawer();
+        return;
+      } catch (e) {
+        // Refuse to hide it locally: it still exists in the shared database.
+        alert(writeFailedMessage(e, lang));
+        return;
+      }
+    }
+
+    const next = publications.filter((p) => p.id !== current.id);
+    setPublications(next);
+    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    closeDrawer();
   };
 
   // Filtering
   const filteredData = useMemo(() => {
     return publications.filter(item => {
-      // Category filter
       if (categoryFilter !== 'all') {
         if (categoryFilter === 'Book_Chapter') {
           if (item.category !== 'Book' && item.category !== 'Book Chapter') return false;
-        } else {
-          if (item.category !== categoryFilter) return false;
-        }
+        } else if (item.category !== categoryFilter) return false;
       }
 
-      // Search query filter
       if (!query.trim()) return true;
       const q = query.toLowerCase();
       return (
-        item.title.toLowerCase().includes(q) ||
-        item.authors.toLowerCase().includes(q) ||
-        item.journal_conference.toLowerCase().includes(q) ||
-        item.year.includes(q)
+        (item.title || '').toLowerCase().includes(q) ||
+        (item.authors || '').toLowerCase().includes(q) ||
+        (item.journal_conference || '').toLowerCase().includes(q) ||
+        (item.year || '').includes(q)
       );
     });
   }, [publications, categoryFilter, query]);
@@ -239,24 +302,18 @@ export default function ResearchPublications({ lang }) {
       const yearA = parseInt(a.year) || 0;
       const yearB = parseInt(b.year) || 0;
       if (yearB !== yearA) return yearB - yearA;
-      return a.title.localeCompare(b.title);
+      return (a.title || '').localeCompare(b.title || '');
     });
   }, [filteredData]);
 
-  // Copy citation helper
   const handleCopyCitation = (id, text) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const toggleRow = (id, e) => {
-    if (e.target.closest('.checklist-cell') || e.target.closest('[contenteditable="true"]')) return;
-    setExpandedId(expandedId === id ? null : id);
-  };
-
-  // Exports the currently filtered/sorted rows, including the fields moved
-  // into the expandable panel — opens directly in Excel/Sheets.
+  // Exports the currently filtered/sorted rows, including the fields that live
+  // in the drawer — opens directly in Excel/Sheets.
   const handleExportCsv = () => {
     const headers = [
       'STT', 'Pub. Year', 'Title', 'Authors', 'Journal / Publisher',
@@ -275,38 +332,36 @@ export default function ResearchPublications({ lang }) {
     exportToCsv('publications', headers, rows);
   };
 
+  const label = 'text-[10px] font-bold text-neutral-400 uppercase';
+  const input = 'w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none';
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 font-ibm text-neutral-900 bg-white">
-      
+
       {/* 1. Header Toolbar */}
       <div className="flex flex-wrap items-center gap-2.5 bg-neutral-50 p-2.5 border border-neutral-200/60 shrink-0">
-        {/* Search */}
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={lang === 'vi' ? 'Tìm theo tên bài báo, tác giả, tạp chí...' : 'Search by title, author, journal...'}
+            placeholder={vi ? 'Tìm theo tên bài báo, tác giả, tạp chí...' : 'Search by title, author, journal...'}
             className="w-full pl-9 pr-3 py-1.5 border border-neutral-200 bg-white text-xs text-neutral-800 placeholder:text-neutral-400 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
           />
         </div>
 
-        {/* Category Select Dropdown */}
         <select
           value={categoryFilter}
-          onChange={(e) => {
-            setCategoryFilter(e.target.value);
-            setExpandedId(null);
-          }}
+          onChange={(e) => setCategoryFilter(e.target.value)}
           className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
         >
-          <option value="all">{lang === 'vi' ? 'Tất cả thể loại' : 'All Categories'}</option>
-          <option value="International Journal">{lang === 'vi' ? 'Tạp chí Quốc tế' : 'International Journals'}</option>
-          <option value="International Conference">{lang === 'vi' ? 'Hội thảo Quốc tế' : 'International Conferences'}</option>
-          <option value="Domestic Journal">{lang === 'vi' ? 'Tạp chí Trong nước' : 'Domestic Journals'}</option>
-          <option value="Domestic Conference">{lang === 'vi' ? 'Hội thảo Trong nước' : 'Domestic Conferences'}</option>
-          <option value="Book_Chapter">{lang === 'vi' ? 'Sách & Chương sách' : 'Books & Chapters'}</option>
+          <option value="all">{vi ? 'Tất cả thể loại' : 'All Categories'}</option>
+          <option value="International Journal">{vi ? 'Tạp chí Quốc tế' : 'International Journals'}</option>
+          <option value="International Conference">{vi ? 'Hội thảo Quốc tế' : 'International Conferences'}</option>
+          <option value="Domestic Journal">{vi ? 'Tạp chí Trong nước' : 'Domestic Journals'}</option>
+          <option value="Domestic Conference">{vi ? 'Hội thảo Trong nước' : 'Domestic Conferences'}</option>
+          <option value="Book_Chapter">{vi ? 'Sách & Chương sách' : 'Books & Chapters'}</option>
         </select>
 
         <button
@@ -315,7 +370,7 @@ export default function ResearchPublications({ lang }) {
           className="ml-auto inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
         >
           <Download className="h-3.5 w-3.5" />
-          {lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+          {vi ? 'Xuất CSV' : 'Export CSV'}
         </button>
 
         <button
@@ -324,13 +379,12 @@ export default function ResearchPublications({ lang }) {
           className="inline-flex items-center gap-1.5 border border-neutral-900 bg-neutral-900 text-white px-2.5 py-1.5 text-xs font-semibold hover:bg-[#8b0000] hover:border-[#8b0000] transition-colors rounded-none"
         >
           <Plus className="h-3.5 w-3.5" />
-          {lang === 'vi' ? 'Thêm bài báo' : 'Add Publication'}
+          {vi ? 'Thêm bài báo' : 'Add Publication'}
         </button>
       </div>
 
-      {/* 2. Data Table Grid — fixed columns, fits the frame (no horizontal
-          scroll), matching Research List. Indexing/checklist/UEH details
-          live in the expandable row panel below instead of extra columns. */}
+      {/* 2. Data table — read-only, same as the Research List: a row opens the
+          drawer, it is never edited in place. */}
       <div className="min-h-0 flex-1 overflow-auto border border-neutral-200 bg-white shadow-sm">
         <table className="w-full table-fixed border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-neutral-900 text-white font-barlow text-[10px] uppercase tracking-wider font-bold select-none">
@@ -347,276 +401,348 @@ export default function ResearchPublications({ lang }) {
             {sortedData.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-neutral-400 italic bg-white">
-                  {lang === 'vi' ? 'Không tìm thấy kết quả nào.' : 'No publications found matching criteria.'}
+                  {vi ? 'Không tìm thấy kết quả nào.' : 'No publications found matching criteria.'}
                 </td>
               </tr>
             ) : (
-              sortedData.map((item, idx) => {
-                const isExpanded = expandedId === item.id;
-                return (
-                  <>
-                    <tr
-                      key={item.id}
-                      onClick={(e) => toggleRow(item.id, e)}
-                      className={`hover:bg-neutral-50/50 transition-colors cursor-pointer ${
-                        isExpanded ? 'bg-neutral-50 font-medium' : ''
-                      }`}
-                    >
-                      <td className="px-3 py-3.5 text-center text-neutral-400 font-mono border-r border-neutral-100">
-                        {idx + 1}
-                      </td>
-
-                      <td className="p-1 border-r border-neutral-100 font-mono">
-                        <div
-                          contentEditable
-                          suppressContentEditableWarning
-                          onBlur={(e) => updatePublicationField(item.id, 'year', e.target.innerText)}
-                          className="w-full text-center bg-transparent focus:bg-white text-xs font-bold text-[#8b0000] focus:outline-none transition-all p-1 font-mono focus:ring-1 focus:ring-[#8b0000]/50"
-                        >
-                          {item.year}
-                        </div>
-                      </td>
-
-                      <td className="px-2 py-1 border-r border-neutral-100">
-                        <div className="flex items-start gap-1">
-                          <button
-                            onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                            className="mt-1.5 text-neutral-400 hover:text-[#8b0000] transition-colors shrink-0"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <div
-                            contentEditable
-                            suppressContentEditableWarning
-                            onBlur={(e) => updatePublicationField(item.id, 'title', e.target.innerText)}
-                            className="w-full bg-transparent focus:bg-white text-xs text-neutral-800 focus:outline-none transition-all p-1 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em] break-words"
-                          >
-                            {item.title}
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-2 py-1 border-r border-neutral-100">
-                        <div
-                          contentEditable
-                          suppressContentEditableWarning
-                          onBlur={(e) => updatePublicationField(item.id, 'authors', e.target.innerText)}
-                          className="w-full bg-transparent focus:bg-white text-xs text-neutral-600 focus:outline-none transition-all p-1 leading-normal font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em] break-words"
-                        >
-                          {item.authors}
-                        </div>
-                      </td>
-
-                      <td className="px-2 py-1">
-                        <div
-                          contentEditable
-                          suppressContentEditableWarning
-                          onBlur={(e) => updatePublicationField(item.id, 'journal_conference', e.target.innerText)}
-                          className="w-full bg-transparent focus:bg-white text-xs text-neutral-700 italic focus:outline-none transition-all p-1 leading-normal font-ibm focus:ring-1 focus:ring-[#8b0000]/50 min-h-[2.2em] break-words"
-                        >
-                          {item.journal_conference}
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Expandable panel: Indexing, Framework Pillars, UEH, APA Citation */}
-                    {isExpanded && (
-                      <tr key={`${item.id}-exp`} className="bg-neutral-50/50">
-                        <td colSpan={5} className="px-6 py-3 border-t border-neutral-100">
-                          <div className="bg-white p-3 border border-neutral-200 shadow-sm space-y-3">
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Indexing */}
-                              <div>
-                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">Indexing</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {INDEXING_FIELDS.map(({ key, label }) => (
-                                    <div key={key} className="flex items-center gap-1 border border-neutral-200 bg-neutral-50/40 px-2 py-1">
-                                      <span className="text-[9px] font-semibold text-neutral-400 uppercase">{label}</span>
-                                      <div
-                                        contentEditable
-                                        suppressContentEditableWarning
-                                        onBlur={(e) => updatePublicationIndexing(item.id, key, e.target.innerText)}
-                                        className="min-w-[1.5em] bg-transparent focus:bg-white text-[10px] text-neutral-700 focus:outline-none font-mono font-bold focus:ring-1 focus:ring-[#8b0000]/50"
-                                      >
-                                        {item.indexing_cols?.[key] || ''}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Framework Pillars Checklist */}
-                              <div>
-                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">Framework Pillars</span>
-                                <div className="flex flex-wrap gap-2.5">
-                                  {CHECKLIST_FIELDS.map(({ key, label }) => (
-                                    <button
-                                      key={key}
-                                      type="button"
-                                      onClick={() => updatePublicationDetail(item.id, key, !item.details[key])}
-                                      className="flex items-center gap-1 text-[10px] text-neutral-600 hover:text-neutral-900"
-                                      title={lang === 'vi' ? 'Bấm để tích chọn / bỏ chọn' : 'Click to toggle'}
-                                    >
-                                      {item.details[key] ? (
-                                        <CheckSquare className="h-3.5 w-3.5 text-[#8b0000] shrink-0" />
-                                      ) : (
-                                        <Square className="h-3.5 w-3.5 text-neutral-300 shrink-0" />
-                                      )}
-                                      {label}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* UEH Declared / Reward */}
-                              <div>
-                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">UEH</span>
-                                <div className="flex gap-3">
-                                  {[{ key: 'ueh_declared', label: 'UEH Decl.' }, { key: 'ueh_reward', label: 'UEH Reward' }].map(({ key, label }) => (
-                                    <div key={key} className="flex items-center gap-1 border border-neutral-200 bg-neutral-50/40 px-2 py-1">
-                                      <span className="text-[9px] font-semibold text-neutral-400 uppercase">{label}</span>
-                                      <div
-                                        contentEditable
-                                        suppressContentEditableWarning
-                                        onBlur={(e) => updatePublicationField(item.id, key, e.target.innerText)}
-                                        className="min-w-[1.5em] bg-transparent focus:bg-white text-[10px] text-neutral-700 focus:outline-none font-mono font-medium focus:ring-1 focus:ring-[#8b0000]/50"
-                                      >
-                                        {item[key] || ''}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Links carried over from the source sheet: the
-                                DOI/article page and the copy in the ISCM Drive
-                                folder. Hidden when the row has neither. */}
-                            {(item.details?.doi_url || item.details?.drive_url) && (
-                              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-neutral-100">
-                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Links</span>
-                                {item.details.doi_url && (
-                                  <a
-                                    href={item.details.doi_url.replace(/^doi:/i, 'https://doi.org/')}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000]"
-                                  >
-                                    <ExternalLink className="h-3 w-3" />
-                                    DOI
-                                  </a>
-                                )}
-                                {item.details.drive_url && (
-                                  <a
-                                    href={item.details.drive_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000]"
-                                  >
-                                    <ExternalLink className="h-3 w-3" />
-                                    {lang === 'vi' ? 'Bản lưu' : 'Full text'}
-                                  </a>
-                                )}
-                                {item.details.pages && (
-                                  <span className="text-[10px] text-neutral-500">
-                                    {lang === 'vi' ? 'Tập/số/trang: ' : 'Vol/issue/pages: '}{item.details.pages}
-                                  </span>
-                                )}
-                                {item.details.keywords && (
-                                  <span className="text-[10px] text-neutral-500">· {item.details.keywords}</span>
-                                )}
-                              </div>
-                            )}
-
-                            {/* APA Citation */}
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 pt-3 border-t border-neutral-100">
-                              <div className="flex-1 space-y-1">
-                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
-                                  APA Citation (Directly editable)
-                                  {!item.citation && (
-                                    <span className="ml-1.5 normal-case font-medium text-neutral-300">
-                                      — {lang === 'vi' ? 'tự động tạo, chỉnh để chốt' : 'auto-generated, edit to finalize'}
-                                    </span>
-                                  )}
-                                </span>
-                                <div
-                                  contentEditable
-                                  suppressContentEditableWarning
-                                  onBlur={(e) => updatePublicationField(item.id, 'citation', e.target.innerText)}
-                                  className="w-full bg-transparent focus:bg-white text-[11px] text-neutral-800 italic focus:outline-none transition-all p-1.5 leading-relaxed font-ibm focus:ring-1 focus:ring-[#8b0000]/50"
-                                >
-                                  {item.citation || buildAutoCitation(item)}
-                                </div>
-                              </div>
-
-                              <div className="flex gap-2 shrink-0 self-end md:self-center">
-                                {/* Copy Citation Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyCitation(item.id, item.citation || buildAutoCitation(item))}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-200 hover:border-[#8b0000] hover:text-[#8b0000] bg-white transition-colors text-neutral-700 font-sans"
-                                >
-                                  {copiedId === item.id ? (
-                                    <>
-                                      <Check className="h-3 w-3 text-emerald-600" />
-                                      Copied
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Clipboard className="h-3 w-3" />
-                                      Copy APA
-                                    </>
-                                  )}
-                                </button>
-
-                                {/* Search Google Scholar Button */}
-                                <a
-                                  href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-900 bg-neutral-900 text-white hover:bg-[#8b0000] transition-colors font-sans"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                  Scholar
-                                </a>
-                              </div>
-                            </div>
-                            
-                            {/* Action Buttons: Save & Delete */}
-                            <div className="flex justify-end gap-3 pt-3 border-t border-neutral-100 mt-2">
-                              <button
-                                type="button"
-                                onClick={() => handleDeletePublication(item.id)}
-                                className="px-4 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                {lang === 'vi' ? 'XÓA' : 'DELETE'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setExpandedId(null)}
-                                className="px-4 py-1.5 text-xs font-semibold bg-[#8b0000] text-white hover:bg-[#6a0000] transition-colors"
-                              >
-                                {lang === 'vi' ? 'LƯU LẠI' : 'SAVE'}
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })
+              sortedData.map((item, idx) => (
+                <tr
+                  key={item.id}
+                  onClick={() => openRow(item.id)}
+                  className={`group cursor-pointer hover:bg-neutral-50/80 transition-colors ${
+                    selectedId === item.id ? '!bg-red-50/40' : ''
+                  }`}
+                >
+                  <td className="px-3 py-3.5 text-center text-neutral-400 font-mono border-r border-neutral-100">
+                    {idx + 1}
+                  </td>
+                  <td className="px-3 py-3.5 text-center font-mono text-xs font-bold text-[#8b0000] border-r border-neutral-100">
+                    {item.year}
+                  </td>
+                  <td className="px-3 py-3.5 border-r border-neutral-100">
+                    <span className="text-xs font-semibold text-slate-700 group-hover:text-[#8b0000] leading-relaxed break-words">
+                      {item.title || (vi ? 'Chưa có tên' : 'Untitled')}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3.5 text-neutral-600 leading-normal break-words border-r border-neutral-100">
+                    {item.authors}
+                  </td>
+                  <td className="px-3 py-3.5 text-neutral-700 italic leading-normal break-words">
+                    {item.journal_conference}
+                  </td>
+                </tr>
+              ))
             )}
-
           </tbody>
         </table>
       </div>
 
+      {/* 3. Slide-in drawer — same shape as the Research List's */}
+      {current && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-all duration-300"
+            onClick={closeDrawer}
+          />
+
+          <div className="fixed right-0 top-0 z-50 h-screen w-[35vw] bg-white shadow-2xl border-l border-neutral-200 flex flex-col font-ibm">
+
+            <div className="p-5 border-b border-neutral-100 bg-neutral-900 text-white flex items-center justify-between">
+              <div className="min-w-0 pr-4">
+                <span className="text-[10px] font-mono tracking-widest text-[#8b0000] bg-[#8b0000]/10 px-2 py-0.5 border border-[#8b0000]/30 font-bold block w-fit mb-1.5 uppercase">
+                  {current.category || (vi ? 'CHƯA PHÂN LOẠI' : 'UNCATEGORISED')}{current.year ? ` · ${current.year}` : ''}
+                </span>
+                <h2 className="font-barlow text-base font-black uppercase tracking-wide truncate" title={current.title}>
+                  {current.title || (vi ? 'Bài báo mới' : 'New publication')}
+                </h2>
+              </div>
+              <button
+                onClick={closeDrawer}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex border-b border-neutral-100 bg-white px-2">
+              {[
+                { key: 'metadata', label: vi ? 'Thông tin' : 'Metadata', icon: Briefcase },
+                { key: 'classification', label: vi ? 'Phân loại' : 'Classification', icon: Tag },
+                { key: 'citation', label: vi ? 'Trích dẫn' : 'Citation', icon: Quote },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setDrawerTab(t.key)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide border-b-2 transition-colors ${
+                    drawerTab === t.key
+                      ? 'border-[#8b0000] text-[#8b0000]'
+                      : 'border-transparent text-neutral-400 hover:text-neutral-600'
+                  }`}
+                >
+                  <t.icon className="h-3.5 w-3.5" />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+              {drawerTab === 'metadata' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className={label}>{vi ? 'Tên bài báo' : 'Title'}</label>
+                    <textarea
+                      rows={3}
+                      value={current.title || ''}
+                      onChange={(e) => setField('title', e.target.value)}
+                      className={`${input} resize-y`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={label}>{vi ? 'Tác giả' : 'Authors'}</label>
+                    <textarea
+                      rows={2}
+                      value={current.authors || ''}
+                      onChange={(e) => setField('authors', e.target.value)}
+                      className={`${input} resize-y`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={label}>{vi ? 'Tạp chí / Nhà xuất bản' : 'Journal / Publisher'}</label>
+                    <textarea
+                      rows={2}
+                      value={current.journal_conference || ''}
+                      onChange={(e) => setField('journal_conference', e.target.value)}
+                      className={`${input} resize-y`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={label}>{vi ? 'Thể loại' : 'Category'}</label>
+                      <select
+                        value={current.category || ''}
+                        onChange={(e) => setField('category', e.target.value)}
+                        className={input}
+                      >
+                        <option value="">{vi ? 'Không có' : 'None'}</option>
+                        {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Mục trong danh sách' : 'Section'}</label>
+                      <input
+                        value={current.section || ''}
+                        onChange={(e) => setField('section', e.target.value)}
+                        className={input}
+                      />
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Năm công bố' : 'Pub. year'}</label>
+                      <input
+                        value={current.year || ''}
+                        onChange={(e) => setField('year', e.target.value)}
+                        className={`${input} font-mono`}
+                      />
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Thời gian công bố' : 'Pub. time'}</label>
+                      <input
+                        value={current.pub_time || ''}
+                        onChange={(e) => setField('pub_time', e.target.value)}
+                        placeholder="9/2025"
+                        className={`${input} font-mono`}
+                      />
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Khai báo UEH' : 'UEH declared'}</label>
+                      <input
+                        value={current.ueh_declared || ''}
+                        onChange={(e) => setField('ueh_declared', e.target.value)}
+                        className={`${input} font-mono`}
+                      />
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Đăng ký thưởng' : 'UEH reward'}</label>
+                      <input
+                        value={current.ueh_reward || ''}
+                        onChange={(e) => setField('ueh_reward', e.target.value)}
+                        className={`${input} font-mono`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'classification' && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 mb-2">
+                      {vi ? 'Chỉ mục' : 'Indexing'}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {INDEXING_FIELDS.map(({ key, label: l }) => (
+                        <div key={key}>
+                          <label className={label}>{l}</label>
+                          <input
+                            value={current.indexing_cols?.[key] || ''}
+                            onChange={(e) => setIndexing(key, e.target.value)}
+                            placeholder="—"
+                            className={`${input} font-mono`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 mb-2">
+                      {vi ? 'Trụ cột khung' : 'Framework Pillars'}
+                    </h3>
+                    <div className="flex flex-wrap gap-3">
+                      {CHECKLIST_FIELDS.map(({ key, label: l }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setDetail(key, !current.details?.[key])}
+                          className="flex items-center gap-1.5 text-[11px] text-neutral-600 hover:text-neutral-900"
+                        >
+                          {current.details?.[key]
+                            ? <CheckSquare className="h-3.5 w-3.5 text-[#8b0000] shrink-0" />
+                            : <Square className="h-3.5 w-3.5 text-neutral-300 shrink-0" />}
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={label}>{vi ? 'Từ khoá' : 'Keywords'}</label>
+                      <input
+                        value={current.details?.keywords || ''}
+                        onChange={(e) => setDetail('keywords', e.target.value)}
+                        className={input}
+                      />
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Tập, số, trang' : 'Vol, issue, pages'}</label>
+                      <input
+                        value={current.details?.pages || ''}
+                        onChange={(e) => setDetail('pages', e.target.value)}
+                        className={input}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'citation' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className={label}>
+                      APA Citation
+                      {!current.citation && (
+                        <span className="ml-1.5 normal-case font-medium text-neutral-300">
+                          — {vi ? 'tự động tạo, sửa để chốt' : 'auto-generated, edit to finalize'}
+                        </span>
+                      )}
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={current.citation || buildAutoCitation(current)}
+                      onChange={(e) => setField('citation', e.target.value)}
+                      className={`${input} italic leading-relaxed resize-y`}
+                    />
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCitation(current.id, current.citation || buildAutoCitation(current))}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-200 hover:border-[#8b0000] hover:text-[#8b0000] bg-white transition-colors text-neutral-700 font-sans"
+                      >
+                        {copiedId === current.id
+                          ? <><Check className="h-3 w-3 text-emerald-600" />Copied</>
+                          : <><Clipboard className="h-3 w-3" />Copy APA</>}
+                      </button>
+                      <a
+                        href={`https://scholar.google.com/scholar?q=${encodeURIComponent(current.title || '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase border border-neutral-900 bg-neutral-900 text-white hover:bg-[#8b0000] transition-colors font-sans"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Scholar
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 pt-2 border-t border-neutral-100">
+                    <div>
+                      <label className={label}>DOI / {vi ? 'trang bài báo' : 'article page'}</label>
+                      <input
+                        value={current.details?.doi_url || ''}
+                        onChange={(e) => setDetail('doi_url', e.target.value)}
+                        placeholder="https://doi.org/..."
+                        className={input}
+                      />
+                    </div>
+                    <div>
+                      <label className={label}>{vi ? 'Bản lưu (Drive)' : 'Full text (Drive)'}</label>
+                      <input
+                        value={current.details?.drive_url || ''}
+                        onChange={(e) => setDetail('drive_url', e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                        className={input}
+                      />
+                    </div>
+                    {(current.details?.doi_url || current.details?.drive_url) && (
+                      <div className="flex flex-wrap gap-2">
+                        {current.details?.doi_url && (
+                          <a
+                            href={current.details.doi_url.replace(/^doi:/i, 'https://doi.org/')}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000]"
+                          >
+                            <ExternalLink className="h-3 w-3" />DOI
+                          </a>
+                        )}
+                        {current.details?.drive_url && (
+                          <a
+                            href={current.details.drive_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000]"
+                          >
+                            <ExternalLink className="h-3 w-3" />{vi ? 'Bản lưu' : 'Full text'}
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 p-4 border-t border-neutral-100 bg-neutral-50">
+              <button
+                onClick={handleDelete}
+                className="border border-neutral-300 text-neutral-500 hover:border-[#8b0000] hover:text-[#8b0000] font-bold uppercase tracking-wider px-4 py-2 text-xs transition-colors rounded-none"
+              >
+                {draft ? (vi ? 'Huỷ' : 'Discard') : (vi ? 'Xoá' : 'Delete')}
+              </button>
+              <button
+                onClick={handleSave}
+                className="bg-neutral-900 hover:bg-[#8b0000] text-white font-bold uppercase tracking-wider px-5 py-2 text-xs transition-colors rounded-none"
+              >
+                {vi ? 'Lưu' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

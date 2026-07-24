@@ -53,6 +53,25 @@ export async function fetchPublications() {
   return data;
 }
 
+export async function insertPublication(row) {
+  const columns = toColumns(row);
+  const { data, error } = await supabase
+    .from('publications')
+    .insert(columns)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deletePublication(uiId) {
+  const id = dbIdOf(uiId);
+  if (id === null) return false;
+  const { error } = await supabase.from('publications').delete().eq('id', id);
+  if (error) throw error;
+  return true;
+}
+
 export async function updatePublication(uiId, patch) {
   const id = dbIdOf(uiId);
   if (id === null) return false;
