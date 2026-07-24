@@ -13,10 +13,8 @@ export default function AuthGate({ children }) {
   const { user, loading, signInWithGoogle } = useAuth();
   const { lang } = useLanguage();
 
-  // Tạm thời tắt chế độ login để ai cũng có thể xem được website
-  return children;
+  if (!isLive) return children;
 
-  // if (!isLive) return children;
   if (loading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#1c1c1c]">
