@@ -7,6 +7,9 @@ import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { exportToCsv } from '../../lib/exportCsv.js';
 import { resolveMemberNameAndTitle } from '../../data/memberNames.js';
+import {
+  compareCodes, parentCodeOf, codeDepth, isSubUnitCode, suggestAbbreviation,
+} from '../../data/researchCodes.js';
 
 const STATUS_CLASSES = {
   'In progress': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -36,39 +39,6 @@ const TASK_TYPE_CLASSES = {
 };
 
 let inlineRowSeq = 0;
-
-// Hierarchical code parsing for numerical/alphabetical sorting
-const parseCodeParts = (codeStr) => {
-  if (!codeStr) return [];
-  const clean = codeStr.replace('RU', '').trim();
-  return clean.split('.').map(p => {
-    const val = parseInt(p, 10);
-    return isNaN(val) ? p.toLowerCase() : val;
-  });
-};
-
-const compareCodes = (codeA, codeB) => {
-  if (!codeA && !codeB) return 0;
-  if (!codeA) return 1;
-  if (!codeB) return -1;
-
-  const partsA = parseCodeParts(codeA);
-  const partsB = parseCodeParts(codeB);
-
-  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-    if (partsA[i] === undefined) return -1;
-    if (partsB[i] === undefined) return 1;
-
-    if (typeof partsA[i] === 'number' && typeof partsB[i] === 'number') {
-      if (partsA[i] !== partsB[i]) return partsA[i] - partsB[i];
-    } else {
-      const strA = String(partsA[i]);
-      const strB = String(partsB[i]);
-      if (strA !== strB) return strA.localeCompare(strB);
-    }
-  }
-  return 0;
-};
 
 // Map group name to its main numeric code for section sorting
 const getGroupMainCode = (groupName) => {
@@ -158,60 +128,112 @@ export default function ResearchListTable({
     return `RU${maxNum + 1}`;
   };
 
-  // ── Code convention: Work Breakdown Structure (WBS) numbering ──
-  // This is the standard PMI/ISO 21500 scheme used industry-wide to code
-  // hierarchical project breakdowns: a purely numeric, dot-delimited path
-  // where each segment is that level's running sequence number under its
-  // parent — RU8 (unit) -> RU8.1, RU8.2, RU8.3 (tasks) -> RU8.1.1, RU8.1.2
-  // (sub-tasks), and so on to any depth. No semantic/abbreviated segments
-  // are introduced, so codes stay short, collision-free, and sortable —
-  // two different labs can never end up with the same prefix by accident.
-  // (A handful of historical rows predate this — e.g. RU1.CE1, RU1.SML —
-  // those are left as-is; only newly created codes follow this scheme.)
+  // ── Code convention ──  (see src/data/researchCodes.js)
+  //   RU1        main Research Unit   -> RU1.SML   sub Research Unit
+  //   RU1.SML1   task inside the sub-unit
+  //   RU1.2      task sitting directly under the main unit
+  // A sub-unit's tasks append a running number to its letters with no extra
+  // dot, so numbering restarts per sub-unit.
   const nextChildCode = (parentCode) => {
+    if (!parentCode) return '';
     let maxNum = 0;
+
+    if (isSubUnitCode(parentCode)) {
+      // RU1.SML -> RU1.SML1, RU1.SML2, …
+      allRowsResolved.forEach((r) => {
+        const code = (r.code || '').trim();
+        if (!code.startsWith(parentCode)) return;
+        const rest = code.slice(parentCode.length);
+        if (!/^\d+$/.test(rest)) return;
+        maxNum = Math.max(maxNum, parseInt(rest, 10));
+      });
+      return `${parentCode}${maxNum + 1}`;
+    }
+
+    // RU1 -> RU1.1, RU1.2, … (direct numeric children only)
     allRowsResolved.forEach((r) => {
       const code = (r.code || '').trim();
       if (!code.startsWith(parentCode + '.')) return;
       const rest = code.slice(parentCode.length + 1);
-      if (rest.includes('.')) return; // only direct children
-      const n = parseInt(rest, 10);
-      if (!isNaN(n) && n > maxNum) maxNum = n;
+      if (!/^\d+$/.test(rest)) return;
+      maxNum = Math.max(maxNum, parseInt(rest, 10));
     });
     return `${parentCode}.${maxNum + 1}`;
   };
 
-  const handleAddTask = (targetUnitOverride) => {
+  /** Blank row — every field starts empty so nothing is pre-filled with a guess. */
+  const blankRow = (idPrefix, targetUnit) => {
+    inlineRowSeq += 1;
+    return {
+      id: `${idPrefix}-${Date.now()}-${inlineRowSeq}`,
+      code: '',
+      task_name: '',
+      research_unit: targetUnit,
+      status: '',
+      start_year: '',
+      end_year: null,
+      task_type: '',
+      coordinator_manager: '',
+      members: '',
+      report_plan_link: '',
+      framework_transition: '',
+      glocal_design: '',
+      human_centric_orientation: '',
+      tech_solutions: '',
+      urban_system: '',
+      sdgs: '',
+    };
+  };
+
+  const handleAddTask = (targetUnitOverride, parentCodeOverride) => {
     const targetUnit = targetUnitOverride || addUnitTarget || researchUnits[0];
     if (!targetUnit) {
       alert(lang === 'vi' ? 'Chưa có Đơn vị nghiên cứu nào. Hãy tạo một Đơn vị trước.' : 'No Research Unit exists yet. Please create one first.');
       return;
     }
-    inlineRowSeq += 1;
-    const id = `new-task-${Date.now()}-${inlineRowSeq}`;
     const mainFolder = findMainFolder(targetUnit);
-    const parentCode = mainFolder ? (mainFolder.code || '').trim() : '';
-    const code = parentCode ? nextChildCode(parentCode) : '';
-    const newRow = {
-      id,
-      code,
-      task_name: 'New Research Activity',
-      research_unit: targetUnit,
-      status: 'Not start',
-      start_year: '2026',
-      end_year: null,
-      task_type: 'Research',
-      coordinator_manager: 'Ms. Chi',
-      members: '',
-      report_plan_link: '',
-      framework_transition: 'Không',
-      glocal_design: 'Không',
-      human_centric_orientation: 'Không',
-      tech_solutions: 'Không',
-      urban_system: 'Không',
-      sdgs: '',
-    };
-    onCreateDraft(newRow);
+    const parentCode = parentCodeOverride || (mainFolder ? (mainFolder.code || '').trim() : '');
+    onCreateDraft({
+      ...blankRow('new-task', targetUnit),
+      code: nextChildCode(parentCode),
+    });
+  };
+
+  /** Creates a sub Research Unit (RU1.SML) inside a main unit's folder. */
+  const handleAddSubUnit = (targetUnit) => {
+    const mainFolder = findMainFolder(targetUnit);
+    const mainCode = mainFolder ? (mainFolder.code || '').trim() : '';
+    if (!mainCode) {
+      alert(lang === 'vi'
+        ? 'Đơn vị này chưa có Main Folder nên chưa tạo được nhóm con.'
+        : 'This unit has no Main Folder yet, so a sub-unit cannot be coded.');
+      return;
+    }
+
+    const name = window.prompt(lang === 'vi' ? 'Tên nhóm nghiên cứu con:' : 'Sub Research Unit name:');
+    if (!name || !name.trim()) return;
+
+    const abbr = window.prompt(
+      lang === 'vi'
+        ? `Mã viết tắt cho "${name.trim()}" (ví dụ Smart Mobility Lab → SML):`
+        : `Abbreviation for "${name.trim()}" (e.g. Smart Mobility Lab → SML):`,
+      suggestAbbreviation(name)
+    );
+    if (!abbr || !abbr.trim()) return;
+
+    const clean = abbr.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!/^[A-Z]+$/.test(clean)) {
+      alert(lang === 'vi' ? 'Mã viết tắt chỉ được gồm chữ cái.' : 'The abbreviation must contain letters only.');
+      return;
+    }
+
+    const code = `${mainCode}.${clean}`;
+    if (allRowsResolved.some((r) => (r.code || '').trim() === code)) {
+      alert(lang === 'vi' ? `Mã "${code}" đã tồn tại.` : `Code "${code}" already exists.`);
+      return;
+    }
+
+    onCreateDraft({ ...blankRow('new-subunit', targetUnit), code, task_name: name.trim() });
   };
 
   const handleAddUnit = () => {
@@ -280,16 +302,15 @@ export default function ResearchListTable({
     matched.forEach((r) => {
       activeSet.add(r.id);
       
-      // Determine dynamic parent based on code pattern
+      // Walk up the code chain so a filtered-in row keeps its ancestors
+      // visible (RU1.SML1 -> RU1.SML -> RU1).
       let code = (r.code || '').trim();
-      while (code.includes('.')) {
-        const parts = code.split('.');
-        const parentCode = parts.slice(0, -1).join('.');
+      let parentCode = parentCodeOf(code);
+      while (parentCode) {
         const parentId = codeToId[parentCode];
-        if (parentId) {
-          activeSet.add(parentId);
-        }
+        if (parentId) activeSet.add(parentId);
         code = parentCode;
+        parentCode = parentCodeOf(code);
       }
     });
 
@@ -340,16 +361,14 @@ export default function ResearchListTable({
         const code = (r.code || '').trim();
 
         if (mainFolder && r.id !== mainFolder.id) {
-          if (code && code.includes('.')) {
-            const parts = code.split('.');
-            const parentCode = parts.slice(0, -1).join('.');
-            // Indentation always matches the code's own depth (e.g. RU8.4.1
-            // is a level-2 grandchild), even if an intermediate row like
-            // RU8.4 was never created — it just falls back to attaching
-            // under the main folder instead of visually flattening to
-            // level 1 next to true direct children like RU8.1/RU8.2.
+          const parentCode = parentCodeOf(code);
+          if (parentCode) {
+            // Indentation always matches the code's own depth (RU1.SML1 is a
+            // level-2 grandchild), even when an intermediate row like RU1.SML
+            // was never created — it just falls back to attaching under the
+            // main folder instead of visually flattening to level 1.
             parentId = codeToId[parentCode] || mainFolder.id;
-            level = parts.length - 1;
+            level = codeDepth(code);
           } else {
             parentId = mainFolder.id;
             level = 1;
@@ -613,8 +632,8 @@ export default function ResearchListTable({
                             <span className="w-4 shrink-0" />
                           )}
 
-                          {level === 0 ? (
-                            <Folder className="h-3.5 w-3.5 text-[#8b0000] shrink-0" />
+                          {level === 0 || isSubUnitCode(row.code) ? (
+                            <Folder className={`h-3.5 w-3.5 shrink-0 ${level === 0 ? 'text-[#8b0000]' : 'text-neutral-400'}`} />
                           ) : (
                             <FileText className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
                           )}
@@ -640,6 +659,17 @@ export default function ResearchListTable({
                         >
                           {row.task_name || 'Untitled Task'}
                         </button>
+                        {/* Sub-units own their task numbering (RU1.SML1, RU1.SML2),
+                            so they need their own way to add one. */}
+                        {isSubUnitCode(row.code) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleAddTask(row.research_unit, (row.code || '').trim()); }}
+                            title={lang === 'vi' ? 'Thêm tác vụ vào nhóm này' : 'Add a task inside this sub-unit'}
+                            className="relative ml-1.5 inline-flex items-center text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-[#8b0000] transition-all"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        )}
                       </td>
 
                       {/* TASK TYPE — blank when unset */}
@@ -703,17 +733,28 @@ export default function ResearchListTable({
                   );
                 })}
 
-                {/* Inline "+ Add task" row — only once the group's folder is expanded */}
+                {/* Inline add row — only once the group's folder is expanded */}
                 {!group.hasCollapsedRoot && (
-                  <tr
-                    onClick={() => handleAddTask(group.rows[0]?.research_unit)}
-                    className="cursor-pointer group/addrow hover:bg-neutral-50/60 transition-colors border-b border-neutral-100"
-                  >
+                  <tr className="border-b border-neutral-100">
                     <td colSpan={7 + customColumns.length} className="px-4 py-2">
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 group-hover/addrow:text-[#8b0000] transition-colors">
-                        <Plus className="h-3 w-3" />
-                        {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => handleAddTask(group.rows[0]?.research_unit)}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 hover:text-[#8b0000] transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {lang === 'vi' ? `Thêm tác vụ vào ${group.groupName}` : `Add task to ${group.groupName}`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAddSubUnit(group.rows[0]?.research_unit)}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold font-ibm text-neutral-400 hover:text-[#8b0000] transition-colors"
+                        >
+                          <FolderPlus className="h-3 w-3" />
+                          {lang === 'vi' ? 'Thêm nhóm con' : 'Add sub-unit'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}

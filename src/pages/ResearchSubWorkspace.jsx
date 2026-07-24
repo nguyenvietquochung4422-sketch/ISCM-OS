@@ -17,6 +17,7 @@ import {
   resolveMemberNameAndTitle as resolveMemberFullNameAndTitle,
   memberOptionValue,
 } from '../data/memberNames.js';
+import { parentCodeOf } from '../data/researchCodes.js';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
 import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
@@ -245,9 +246,9 @@ export default function ResearchSubWorkspace() {
   // under. Returns an error string to report, or null if the code is fine.
   const validateTaskCode = (row) => {
     const code = (row.code || '').trim();
-    if (!code || !code.includes('.')) return null;
-    const parts = code.split('.');
-    const parentCode = parts.slice(0, -1).join('.');
+    if (!code) return null;
+    const parentCode = parentCodeOf(code);
+    if (!parentCode) return null;
     const parentExists = allRowsResolved.some((r) => r.id !== row.id && (r.code || '').trim() === parentCode);
     if (!parentExists) {
       return lang === 'vi'
