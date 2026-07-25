@@ -458,13 +458,13 @@ export default function ResearchListTable({
         <table className="w-full table-fixed border-collapse text-left">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-900 text-white font-barlow text-[10px] font-bold uppercase tracking-wider">
-              <th className="px-3 py-3 w-[9%]">Code</th>
-              <th className="px-3 py-3 w-[24%]">Task Name</th>
-              <th className="px-3 py-3 w-[10%]">Task Type</th>
-              <th className="px-3 py-3 w-[14%]">Coordinator / Manager</th>
-              <th className="px-3 py-3 w-[10%]">Members</th>
-              <th className="px-3 py-3 w-[13%]">Status</th>
-              <th className="px-3 py-3 w-[9%]">Timeline</th>
+              <th className="px-3 py-3 w-[8%]">Code</th>
+              <th className="px-3 py-3 w-[21%]">Task Name</th>
+              <th className="px-3 py-3 w-[9%]">Task Type</th>
+              <th className="px-3 py-3 w-[20%]">Coordinator / Manager</th>
+              <th className="px-3 py-3 w-[9%]">Members</th>
+              <th className="px-3 py-3 w-[12%]">Status</th>
+              <th className="px-3 py-3 w-[8%]">Timeline</th>
               {customColumns.map((col) => (
                 <th key={col.key} className="px-3 py-3" />
               ))}
@@ -570,14 +570,11 @@ export default function ResearchListTable({
                         )}
                       </td>
 
-                      {/* COORDINATOR — kept to a single line (truncated with a
-                          hover title) so long names don't wrap onto two rows */}
-                      <td className="px-3 py-3 overflow-hidden">
+                      {/* COORDINATOR — full name kept on a single line (no
+                          wrapping, no truncation) */}
+                      <td className="px-3 py-3">
                         {row.coordinator_manager ? (
-                          <span
-                            title={resolveMemberNameAndTitle(row.coordinator_manager)}
-                            className="block truncate whitespace-nowrap text-[11px] font-semibold text-neutral-700"
-                          >
+                          <span className="block whitespace-nowrap text-[11px] font-semibold text-neutral-700">
                             {resolveMemberNameAndTitle(row.coordinator_manager)}
                           </span>
                         ) : (
