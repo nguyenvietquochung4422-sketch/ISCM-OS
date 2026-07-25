@@ -570,10 +570,14 @@ export default function ResearchListTable({
                         )}
                       </td>
 
-                      {/* COORDINATOR */}
-                      <td className="px-3 py-3">
+                      {/* COORDINATOR — kept to a single line (truncated with a
+                          hover title) so long names don't wrap onto two rows */}
+                      <td className="px-3 py-3 overflow-hidden">
                         {row.coordinator_manager ? (
-                          <span className="text-[11px] font-semibold text-neutral-700">
+                          <span
+                            title={resolveMemberNameAndTitle(row.coordinator_manager)}
+                            className="block truncate whitespace-nowrap text-[11px] font-semibold text-neutral-700"
+                          >
                             {resolveMemberNameAndTitle(row.coordinator_manager)}
                           </span>
                         ) : (
