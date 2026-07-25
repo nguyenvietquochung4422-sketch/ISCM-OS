@@ -9,7 +9,7 @@ import { exportToCsv } from '../../lib/exportCsv.js';
 import { resolveMemberNameAndTitle } from '../../data/memberNames.js';
 import { roleOf } from '../../data/memberRoles.js';
 import {
-  compareCodes, parentCodeOf, codeDepth, isSubUnitCode,
+  compareCodes, parentCodeOf, codeDepth, isSubUnitCode, isMainUnitCode,
 } from '../../data/researchCodes.js';
 import NewResearchRowDialog from './NewResearchRowDialog.jsx';
 
@@ -542,16 +542,19 @@ export default function ResearchListTable({
                         >
                           {row.task_name || 'Untitled Task'}
                         </button>
-                        {/* Shortcut into the same dialog, with this sub-unit
-                            already selected in the two left-hand code boxes. */}
-                        {isSubUnitCode(row.code) && (
+                        {/* Shortcut into the same dialog, with this row's unit
+                            (and its sub-unit, when this is one) already selected
+                            in the left-hand code boxes. Shown on every unit /
+                            sub-unit row — a task directly under a main unit just
+                            leaves the sub-unit box on "none". */}
+                        {(isSubUnitCode(row.code) || isMainUnitCode(row.code)) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               const [unitCode, subAbbr] = (row.code || '').trim().split('.');
                               openNewDialog({ unitCode, subAbbr });
                             }}
-                            title={lang === 'vi' ? 'Thêm tác vụ vào nhóm này' : 'Add a task inside this sub-unit'}
+                            title={lang === 'vi' ? 'Thêm tác vụ vào nhóm này' : 'Add a task inside this unit'}
                             className="relative ml-1.5 inline-flex items-center text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-[#8b0000] transition-all"
                           >
                             <Plus className="h-3 w-3" />
