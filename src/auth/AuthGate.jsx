@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { isLive } from '../lib/supabaseClient.js';
 import { useAuth } from './AuthContext.jsx';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
@@ -24,6 +25,19 @@ export default function AuthGate({ children }) {
   const { user, loading, signInWithGoogle } = useAuth();
   const { lang } = useLanguage();
 
+  // The glow follows the cursor on the sign-in screen only — the listener
+  // detaches the moment a user is signed in, so it never re-renders the
+  // rest of the app on every mouse move.
+  const [glow, setGlow] = useState({ x: 50, y: 30 });
+  useEffect(() => {
+    if (!isLive || loading || user) return;
+    const handleMove = (e) => {
+      setGlow({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 });
+    };
+    window.addEventListener('mousemove', handleMove);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [loading, user]);
+
   if (!isLive) return children;
 
   if (loading) {
@@ -37,10 +51,13 @@ export default function AuthGate({ children }) {
   if (!user) {
     return (
       <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-[#141414] px-4">
-        {/* subtle brand-red glow behind the card */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(153,0,0,0.22),transparent_60%)]" />
+        {/* brand-red glow that tracks the cursor */}
+        <div
+          className="pointer-events-none absolute inset-0 transition-[background] duration-300 ease-out"
+          style={{ background: `radial-gradient(circle at ${glow.x}% ${glow.y}%, rgba(153,0,0,0.25), transparent 55%)` }}
+        />
 
-        <div className="relative w-full max-w-sm border border-neutral-800 bg-neutral-900/95 shadow-2xl">
+        <div className="relative w-full max-w-lg border border-neutral-800 bg-neutral-900/95 shadow-2xl">
           <div className="h-1 w-full bg-[#990000]" />
           <div className="p-9 text-center">
             <img
@@ -51,7 +68,7 @@ export default function AuthGate({ children }) {
             <h1 className="mt-7 font-barlow text-lg font-bold uppercase tracking-wide text-white">
               {lang === 'vi' ? 'Cổng vận hành ISCM' : 'ISCM Control Panel'}
             </h1>
-            <p className="mt-1.5 font-sans text-xs text-neutral-400">
+            <p className="mt-1.5 font-sans text-xs text-neutral-400 sm:whitespace-nowrap">
               {lang === 'vi'
                 ? 'Vui lòng đăng nhập bằng tài khoản Google để tiếp tục.'
                 : 'Please sign in with your Google account to continue.'}
