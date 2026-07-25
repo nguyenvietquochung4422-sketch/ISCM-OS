@@ -75,6 +75,14 @@ export const NAVIGATION_LOCALIZATION = {
         children: [
           { key: 'profile-bio', label: 'Hồ sơ & Tiểu sử khoa học' },
           { key: 'attendance-log', label: 'Chấm công hàng ngày' },
+          {
+            id: 'monitoring-status',
+            label: 'THEO DÕI LUỒNG PHÊ DUYỆT',
+            children: [
+              { key: 'my-tasks', label: 'Hồ sơ đang chờ phê duyệt' },
+              { key: 'my-forms', label: 'Nhật ký theo dõi tiến độ đơn từ' }
+            ]
+          },
           { key: 'my-assets', label: 'Tài sản & Thiết bị đang mượn' },
           { key: 'admin-content-permissions', label: 'Phân quyền quản trị nội dung', adminOnly: true }
         ]
@@ -149,14 +157,6 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'form:annual-student-survey', label: 'Khảo sát sinh viên thường niên' },
               { key: 'form:student-pigeon-post', label: 'Hòm thư bồ câu số sinh viên' },
               { key: 'form:training-point-proposal', label: 'Đề nghị cộng điểm rèn luyện DRS' }
-            ]
-          },
-          {
-            id: 'monitoring-status',
-            label: 'THEO DÕI LUỒNG PHÊ DUYỆT',
-            children: [
-              { key: 'my-tasks', label: 'Hồ sơ đang chờ phê duyệt' },
-              { key: 'my-forms', label: 'Nhật ký theo dõi tiến độ đơn từ' }
             ]
           }
         ]
@@ -416,6 +416,14 @@ export const NAVIGATION_LOCALIZATION = {
         children: [
           { key: 'profile-bio', label: 'Profile & Bio' },
           { key: 'attendance-log', label: 'Daily Attendance' },
+          {
+            id: 'monitoring-status',
+            label: 'APPROVAL FLOW TRACKING',
+            children: [
+              { key: 'my-tasks', label: 'Pending Approvals' },
+              { key: 'my-forms', label: 'Request Status Log' }
+            ]
+          },
           { key: 'my-assets', label: 'My Assets Checked Out to Me' },
           { key: 'admin-content-permissions', label: 'Content Admin Permissions', adminOnly: true }
         ]
@@ -490,14 +498,6 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'form:annual-student-survey', label: 'Annual Student Survey' },
               { key: 'form:student-pigeon-post', label: 'ISCM Student Pigeon Post' },
               { key: 'form:training-point-proposal', label: 'Training Point Proposal' }
-            ]
-          },
-          {
-            id: 'monitoring-status',
-            label: 'APPROVAL FLOW TRACKING',
-            children: [
-              { key: 'my-tasks', label: 'Pending Approvals' },
-              { key: 'my-forms', label: 'Request Status Log' }
             ]
           }
         ]

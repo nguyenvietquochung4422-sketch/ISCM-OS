@@ -1281,7 +1281,7 @@ function getActiveCategory(selected) {
   if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'wiki-hub-root';
   if (selected.startsWith('contacts-') || selected === 'cat-contacts') return 'contacts-root';
   if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'requests-forms';
-  if (['my-tasks', 'my-forms', 'requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
+  if (['requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
   return 'my-portal';
 }
 
