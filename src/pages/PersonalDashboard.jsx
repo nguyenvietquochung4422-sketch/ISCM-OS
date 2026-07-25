@@ -3,9 +3,8 @@ import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
   ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X,
-  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck,
+  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck, Save,
 } from 'lucide-react';
-import { researchList } from '../data/researchList.js';
 import { FORM_GROUPS, FORM_BY_KEY, FORM_CATEGORIES, ASSET_TYPES, MY_TASKS, MY_FORMS_SEED, MY_ASSETS } from '../data/formPortal.js';
 import { Avatar } from '../components/ui.jsx';
 import AttendanceLogPanel from '../components/personal/AttendanceLogPanel.jsx';
@@ -33,7 +32,6 @@ const MY_PROFILE = {
   mentor: 'N/A',
 };
 
-const CTV_JOINT_CAP = 2;
 const STATUS_FILTER_OPTS = ['All', 'Open', 'Others'];
 
 const CAT_BADGE_STYLE = {
@@ -285,14 +283,6 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
   else if (['wiki-of-g', 'wiki-rp-g', 'wiki-ac-g', 'wiki-cm-g'].includes(selected)) key = 'wiki-guidelines';
   else if (['wiki-oh-r', 'wiki-af-r'].includes(selected)) key = 'wiki-regulations';
 
-  const myResearch = useMemo(
-    () => researchList.filter((r) => r.members?.includes('TuAnh')),
-    []
-  );
-  const jointEngagements = myResearch.filter(
-    (r) => !r.task_name.includes('Main Folder') && !['Training', 'Event'].includes(r.task_type)
-  );
-  const capExceeded = jointEngagements.length > CTV_JOINT_CAP;
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
 
   /* Form detail views */
@@ -803,13 +793,8 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
     'profile-bio': {
       title: lang === 'vi' ? 'HỒ SƠ CỦA TÔI' : 'MY PORTAL', icon: UserCircle2,
       body: (
-        <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <p className="leading-relaxed">
-            {lang === 'vi'
-              ? `Tôi là ${wsData.myProfile.full_name}, ${wsData.myProfile.system_role || '—'} tại ${wsData.myProfile.base_functional_group || 'ISCM'}.`
-              : `I am ${wsData.myProfile.full_name}, ${wsData.myProfile.system_role || '—'} at ${wsData.myProfile.base_functional_group || 'ISCM'}.`}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        <div className="space-y-5 font-sans text-sm text-neutral-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
               <span className="block text-xs text-neutral-400 uppercase">{t.BIO_NAME_LABEL}</span>
               <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.full_name}</span>
@@ -827,15 +812,85 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
               <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.base_functional_group || '—'}</span>
             </div>
           </div>
-          <div className="border border-neutral-200 bg-neutral-50 p-3 flex items-center justify-between rounded-none text-sm">
-            <span className="text-neutral-500 font-medium">{t.BIO_NCKH_LABEL}</span>
-            <span className={`font-bold ${capExceeded ? 'text-red-700' : 'text-emerald-700'}`}>
-              {jointEngagements.length} / {CTV_JOINT_CAP} {capExceeded ? '⚠' : '✓'}
-            </span>
+
+          {/* Contact Information — self-service; goes through the
+              update_my_contact_info RPC so a user can only ever touch their
+              own personal_email/phone/date_of_birth/address, never role or
+              functional group. */}
+          <div className="border-t border-neutral-200 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 mb-3">
+              {lang === 'vi' ? 'Thông tin liên hệ' : 'Contact Information'}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Gmail cá nhân' : 'Personal Email'}
+                </label>
+                <input
+                  type="email"
+                  value={wsData.contactForm.personal_email}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, personal_email: e.target.value }))}
+                  placeholder="you@gmail.com"
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Số điện thoại' : 'Phone'}
+                </label>
+                <input
+                  type="tel"
+                  value={wsData.contactForm.phone}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder={lang === 'vi' ? '090xxxxxxx' : '+84 90 xxx xxxx'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Ngày sinh' : 'Date of Birth'}
+                </label>
+                <input
+                  type="date"
+                  value={wsData.contactForm.date_of_birth}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, date_of_birth: e.target.value }))}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Địa chỉ' : 'Address'}
+                </label>
+                <input
+                  type="text"
+                  value={wsData.contactForm.address}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, address: e.target.value }))}
+                  placeholder={lang === 'vi' ? 'Số nhà, đường, quận/huyện, tỉnh/thành' : 'Street, district, city'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                onClick={wsData.saveContactInfo}
+                disabled={wsData.contactStatus === 'saving'}
+                className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                {wsData.contactStatus === 'saving'
+                  ? (lang === 'vi' ? 'Đang lưu...' : 'Saving...')
+                  : (lang === 'vi' ? 'Lưu' : 'Save')}
+              </button>
+              {wsData.contactStatus === 'saved' && (
+                <span className="text-xs font-semibold text-emerald-700">✓ {lang === 'vi' ? 'Đã lưu' : 'Saved'}</span>
+              )}
+              {wsData.contactStatus === 'error' && (
+                <span className="text-xs font-semibold text-red-700">
+                  {lang === 'vi' ? 'Lưu thất bại. Thử lại?' : 'Save failed. Try again?'}
+                </span>
+              )}
+            </div>
           </div>
-          <button onClick={() => setSelected('form:ask-anything')} className="btn-primary">
-            <Send className="h-3 w-3 mr-1" /> {t.CONTACT_OPS}
-          </button>
         </div>
       ),
     },
@@ -1204,6 +1259,8 @@ export default function PersonalDashboard({ onNavigate }) {
   const { user: authUser } = useAuth();
   const [isTopAdmin, setIsTopAdmin] = useState(false);
   const [dbUser, setDbUser] = useState(null);
+  const [contactForm, setContactForm] = useState({ personal_email: '', phone: '', date_of_birth: '', address: '' });
+  const [contactStatus, setContactStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [selected, setSelected] = useState('profile-bio');
   const [activeCategory, setActiveCategory] = useState('my-portal');
   const [nodeExpanded, setNodeExpanded] = useState({});
@@ -1280,27 +1337,6 @@ export default function PersonalDashboard({ onNavigate }) {
       }
     : MY_PROFILE;
 
-  const wsData = {
-    tasks,
-    openTasks,
-    decideTask,
-    setSelectedItem,
-    myForms,
-    openForms,
-    weekDays,
-    monday,
-    fmtDay,
-    isToday,
-    fmtDateKey,
-    getEventsForDay,
-    fmtTime,
-    upcoming,
-    today,
-    fmtDateLabel,
-    TASK_STATUS_BADGE,
-    myProfile,
-  };
-
   useEffect(() => {
     // Top nav profile redirect selections map to IA views
     const handleSelect = (e) => {
@@ -1334,6 +1370,56 @@ export default function PersonalDashboard({ onNavigate }) {
     supabase.from('users_profiles').select('*').eq('id', authUser.id).single()
       .then(({ data }) => { if (data) setDbUser(data); });
   }, [authUser]);
+
+  // Contact info form mirrors whatever's stored, once it loads.
+  useEffect(() => {
+    if (!dbUser) return;
+    setContactForm({
+      personal_email: dbUser.personal_email || '',
+      phone: dbUser.phone || '',
+      date_of_birth: dbUser.date_of_birth || '',
+      address: dbUser.address || '',
+    });
+  }, [dbUser]);
+
+  const saveContactInfo = async () => {
+    setContactStatus('saving');
+    const { error } = await supabase.rpc('update_my_contact_info', {
+      p_personal_email: contactForm.personal_email,
+      p_phone: contactForm.phone,
+      p_date_of_birth: contactForm.date_of_birth || null,
+      p_address: contactForm.address,
+    });
+    if (error) { setContactStatus('error'); return; }
+    setDbUser((prev) => (prev ? { ...prev, ...contactForm } : prev));
+    setContactStatus('saved');
+    setTimeout(() => setContactStatus('idle'), 2000);
+  };
+
+  const wsData = {
+    tasks,
+    openTasks,
+    decideTask,
+    setSelectedItem,
+    myForms,
+    openForms,
+    weekDays,
+    monday,
+    fmtDay,
+    isToday,
+    fmtDateKey,
+    getEventsForDay,
+    fmtTime,
+    upcoming,
+    today,
+    fmtDateLabel,
+    TASK_STATUS_BADGE,
+    myProfile,
+    contactForm,
+    setContactForm,
+    contactStatus,
+    saveContactInfo,
+  };
 
   const active = usePaneContent(selected, filters, setSelected, lang, wsData);
 

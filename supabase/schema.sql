@@ -48,11 +48,46 @@ create table public.users_profiles (
   base_functional_group text not null,                              -- e.g. 'Nghiên cứu Khoa học', 'Operation & Finance'
   global_system_role    public.system_role not null default 'Researcher',
   avatar_url            text,
+  -- Self-service contact details (Personal Portal). Editable only through
+  -- update_my_contact_info() below — never a direct table UPDATE — so a
+  -- user can't touch full_name/global_system_role/base_functional_group.
+  personal_email        text,
+  phone                 text,
+  date_of_birth         date,
+  address               text,
   created_at            timestamptz not null default now()
 );
 
 comment on table public.users_profiles is
   'ISCM staff profile. base_functional_group = the vertical line of the matrix.';
+
+-- Lets a signed-in user update only their own contact-info columns. The
+-- table's blanket UPDATE grants (see below) mean a plain RLS policy here
+-- would let a user rewrite their own global_system_role, so this goes
+-- through a SECURITY DEFINER function scoped to exactly these 4 columns.
+create or replace function public.update_my_contact_info(
+  p_personal_email text,
+  p_phone text,
+  p_date_of_birth date,
+  p_address text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.users_profiles
+  set personal_email = nullif(trim(p_personal_email), ''),
+      phone = nullif(trim(p_phone), ''),
+      date_of_birth = p_date_of_birth,
+      address = nullif(trim(p_address), '')
+  where id = auth.uid();
+end;
+$$;
+
+revoke all on function public.update_my_contact_info(text, text, date, text) from public;
+grant execute on function public.update_my_contact_info(text, text, date, text) to authenticated;
 
 -- 2.2 projects — workspaces (projects, labs, events) = horizontal matrix line
 create table public.projects (
