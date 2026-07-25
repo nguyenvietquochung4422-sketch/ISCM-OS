@@ -21,6 +21,7 @@ import { parentCodeOf } from '../data/researchCodes.js';
 import { MEMBER_ROLES, DEFAULT_LEADER, roleOf } from '../data/memberRoles.js';
 import { fetchExternalMembers, saveExternalMember } from '../data/externalMembersStore.js';
 import OutsideMembersField from '../components/research/OutsideMembersField.jsx';
+import CoordinatorField from '../components/research/CoordinatorField.jsx';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
 import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
@@ -941,33 +942,21 @@ export default function ResearchSubWorkspace() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Coordinator Directory Selector */}
-                  <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Coordinator / Manager</label>
-                    <select
-                      value={resolveMemberFullName(currentSelectedTask.coordinator_manager) || ''}
-                      onChange={(e) => setDrawerCell('coordinator_manager', e.target.value)}
-                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
-                    >
-                      <option value="">Select Coordinator...</option>
-                      {/* Plenty of coordinators are external collaborators who
-                          aren't on the ISCM roster ("Mr. Steven", "Tony", …).
-                          Without an option carrying their name the select
-                          rendered blank and simply opening the drawer and
-                          saving wiped the field, so keep the stored value. */}
-                      {coordinatorOffRoster && (
-                        <option value={coordinatorOffRoster}>
-                          {coordinatorOffRoster} {lang === 'vi' ? '(ngoài danh sách)' : '(not on roster)'}
-                        </option>
-                      )}
-                      {ISCM_MEMBERS.map((m) => (
-                        <option key={m.id} value={memberOptionValue(m)}>
-                          {m.nameVi} ({m.titleVi})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
+                  {/* Coordinator Directory Selector — ISCM roster + kho nhân
+                      sự công tác (external_members), with an inline add-new
+                      form for a coordinator who isn't ISCM staff. */}
+                  <CoordinatorField
+                    value={resolveMemberFullName(currentSelectedTask.coordinator_manager) || ''}
+                    onChange={(v) => setDrawerCell('coordinator_manager', v)}
+                    offRosterValue={coordinatorOffRoster}
+                    rosterOptions={ISCM_MEMBERS.map((m) => ({
+                      value: memberOptionValue(m),
+                      label: `${m.nameVi} (${m.titleVi})`,
+                    }))}
+                    externalRoster={externalRoster}
+                    onSavePerson={handleSaveExternalPerson}
+                  />
+
                   <div>
                     <label className="text-[10px] font-bold text-neutral-400 uppercase">Status</label>
                     <select
