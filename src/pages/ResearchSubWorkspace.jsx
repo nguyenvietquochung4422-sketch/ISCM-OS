@@ -403,6 +403,14 @@ export default function ResearchSubWorkspace() {
     return ISCM_MEMBERS.some((m) => isMemberMatch(m, raw)) ? null : raw;
   }, [currentSelectedTask?.coordinator_manager]);
 
+  // Same idea for Ordered By — plenty of stored values are an org name
+  // ("Sở KHCN Khánh Hòa/UEH") rather than an ISCM member, so keep it too.
+  const orderedByOffRoster = useMemo(() => {
+    const raw = (currentSelectedTask?.ordered_by || '').trim();
+    if (!raw) return null;
+    return ISCM_MEMBERS.some((m) => isMemberMatch(m, raw)) ? null : raw;
+  }, [currentSelectedTask?.ordered_by]);
+
   // Always land back on the Metadata tab and drop any leftover unsaved
   // buffer when a different task is opened (or the drawer closes).
   useEffect(() => {
@@ -942,13 +950,15 @@ export default function ResearchSubWorkspace() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Coordinator Directory Selector — ISCM roster + kho nhân
-                      sự công tác (external_members), with an inline add-new
-                      form for a coordinator who isn't ISCM staff. */}
+                  {/* Ordered By — same picker as Coordinator/Manager (ISCM
+                      roster + kho nhân sự công tác), since plenty of stored
+                      values are an org rather than an ISCM member. */}
                   <CoordinatorField
-                    value={resolveMemberFullName(currentSelectedTask.coordinator_manager) || ''}
-                    onChange={(v) => setDrawerCell('coordinator_manager', v)}
-                    offRosterValue={coordinatorOffRoster}
+                    label="Ordered By"
+                    placeholder={lang === 'vi' ? 'Chọn đơn vị/người đặt hàng...' : 'Select who ordered...'}
+                    value={resolveMemberFullName(currentSelectedTask.ordered_by) || ''}
+                    onChange={(v) => setDrawerCell('ordered_by', v)}
+                    offRosterValue={orderedByOffRoster}
                     rosterOptions={ISCM_MEMBERS.map((m) => ({
                       value: memberOptionValue(m),
                       label: `${m.nameVi} (${m.titleVi})`,
@@ -986,6 +996,22 @@ export default function ResearchSubWorkspace() {
                     </select>
                   </div>
                 </div>
+
+                {/* Coordinator Directory Selector — ISCM roster + kho nhân
+                    sự công tác (external_members), with an inline add-new
+                    form for a coordinator who isn't ISCM staff. Full width:
+                    the inline add-new form is fairly wide. */}
+                <CoordinatorField
+                  value={resolveMemberFullName(currentSelectedTask.coordinator_manager) || ''}
+                  onChange={(v) => setDrawerCell('coordinator_manager', v)}
+                  offRosterValue={coordinatorOffRoster}
+                  rosterOptions={ISCM_MEMBERS.map((m) => ({
+                    value: memberOptionValue(m),
+                    label: `${m.nameVi} (${m.titleVi})`,
+                  }))}
+                  externalRoster={externalRoster}
+                  onSavePerson={handleSaveExternalPerson}
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

@@ -4,12 +4,14 @@ import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { formatExternalMember } from '../../data/externalMembersStore.js';
 
 /**
- * Coordinator / Manager picker: the ISCM roster plus anyone in the kho nhân
- * sự công tác (external_members) — the same directory the Outside Members
- * field files people into — with an inline "add new" form so a coordinator
- * who isn't ISCM staff doesn't need to be added as a Member first.
+ * Person-picker for a "who" metadata field (Coordinator/Manager, Ordered By):
+ * the ISCM roster plus anyone in the kho nhân sự công tác (external_members)
+ * — the same directory the Outside Members field files people into — with
+ * an inline "add new" form so someone who isn't ISCM staff doesn't need to
+ * be added as a Member first.
  */
 export default function CoordinatorField({
+  label = 'Coordinator / Manager', placeholder = 'Select Coordinator...',
   value, onChange, rosterOptions, offRosterValue, externalRoster = [], onSavePerson,
 }) {
   const { lang } = useLanguage();
@@ -23,7 +25,7 @@ export default function CoordinatorField({
   const canAdd = name.trim() && affiliation.trim() && degree.trim();
 
   const field = 'w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none';
-  const label = 'mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-neutral-400';
+  const smallLabel = 'mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-neutral-400';
 
   const addTyped = () => {
     if (!canAdd) return;
@@ -38,7 +40,7 @@ export default function CoordinatorField({
 
   return (
     <div>
-      <label className="text-[10px] font-bold text-neutral-400 uppercase">Coordinator / Manager</label>
+      <label className="text-[10px] font-bold text-neutral-400 uppercase">{label}</label>
       <select
         value={adding ? '' : value}
         onChange={(e) => {
@@ -48,7 +50,7 @@ export default function CoordinatorField({
         }}
         className={`${field} mt-1`}
       >
-        <option value="">Select Coordinator...</option>
+        <option value="">{placeholder}</option>
         {/* Plenty of coordinators are external collaborators who aren't on
             the ISCM roster ("Mr. Steven", "Tony", …). Without an option
             carrying their name the select rendered blank and simply opening
@@ -74,14 +76,14 @@ export default function CoordinatorField({
           </optgroup>
         )}
         <option value="__add_outside__" className="text-[#8b0000] font-bold">
-          + {vi ? 'Thêm người ngoài ISCM...' : 'Add outside coordinator...'}
+          + {vi ? 'Thêm người ngoài ISCM...' : 'Add outside person...'}
         </option>
       </select>
 
       {adding && (
         <div className="mt-1.5 border border-neutral-200 bg-neutral-50/50 p-2 grid grid-cols-[70px_1fr_1fr_auto] gap-1.5 items-end">
           <div>
-            <label className={label}>{vi ? 'Học vị' : 'Degree'}</label>
+            <label className={smallLabel}>{vi ? 'Học vị' : 'Degree'}</label>
             <input
               type="text"
               value={degree}
@@ -91,7 +93,7 @@ export default function CoordinatorField({
             />
           </div>
           <div>
-            <label className={label}>{vi ? 'Họ tên' : 'Full name'}</label>
+            <label className={smallLabel}>{vi ? 'Họ tên' : 'Full name'}</label>
             <input
               type="text"
               value={name}
@@ -102,7 +104,7 @@ export default function CoordinatorField({
             />
           </div>
           <div>
-            <label className={label}>{vi ? 'Nơi công tác' : 'Affiliation'}</label>
+            <label className={smallLabel}>{vi ? 'Nơi công tác' : 'Affiliation'}</label>
             <input
               type="text"
               value={affiliation}
