@@ -109,8 +109,12 @@ export default function ResearchSubWorkspace() {
     'Project',
     'Event'
   ]);
+  // The one canonical set of Status values actually used across the Research
+  // List — "Completed" was a dead duplicate of "Done" nothing ever used, so
+  // it's dropped rather than kept as a second spelling of the same thing.
   const [statusOptions, setStatusOptions] = useState([
-    'In progress', 'Completed', 'Cancel', 'Not start', 'Failed'
+    'Not start', 'In progress', 'On hold', 'Delay', 'Delay/File Clearance',
+    'Review', 'Submitted/ Termination', 'Done', 'Funded', 'Cancel', 'Failed',
   ]);
   const [source, setSource] = useState('local');
   const [store, setStore] = useState(loadStore);

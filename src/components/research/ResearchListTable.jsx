@@ -13,16 +13,21 @@ import {
 } from '../../data/researchCodes.js';
 import NewResearchRowDialog from './NewResearchRowDialog.jsx';
 
+// The one canonical set of Status values actually used across the Research
+// List — "Completed" was a dead duplicate of "Done" that no row ever used,
+// so it's dropped rather than kept as a second spelling of the same thing.
 const STATUS_CLASSES = {
+  'Not start': 'bg-gray-100 text-gray-600 border-gray-200',
   'In progress': 'bg-blue-50 text-blue-700 border-blue-200',
-  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'On hold': 'bg-gray-100 text-gray-600 border-gray-200',
+  'Delay': 'bg-orange-50 text-orange-700 border-orange-200',
+  'Delay/File Clearance': 'bg-orange-50 text-orange-700 border-orange-200',
+  'Review': 'bg-amber-50 text-amber-700 border-amber-200',
+  'Submitted/ Termination': 'bg-purple-50 text-purple-700 border-purple-200',
   'Done': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   'Funded': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   'Cancel': 'bg-red-50 text-red-700 border-red-200',
   'Failed': 'bg-red-50 text-red-700 border-red-200',
-  'Not start': 'bg-gray-100 text-gray-600 border-gray-200',
-  'On hold': 'bg-gray-100 text-gray-600 border-gray-200',
-  'Review': 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 const TASK_TYPE_CLASSES = {
