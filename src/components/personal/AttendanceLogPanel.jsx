@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock3, AlertCircle, CalendarPlus, FileSpreadsheet, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
+import { Check, Clock3, AlertCircle, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
 import {
-  ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, INSTITUTE_YTD_TOTALS, MY_YTD_ATTENDANCE,
-  RECENT_LOG_SAMPLE, STAFF_ROSTER,
+  ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE,
 } from '../../data/attendanceData.js';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { isLive } from '../../lib/supabaseClient.js';
@@ -13,7 +12,6 @@ import {
 
 /* Daily Attendance Log — integrates iscm daily attendance checklist.xlsx */
 
-const maxTotal = Math.max(...Object.values(INSTITUTE_YTD_TOTALS));
 const REQUESTABLE_TYPES = ATTENDANCE_LEGEND.filter((s) => s.requestable);
 const inputClass = 'w-full rounded-none border border-neutral-300 bg-white px-2.5 py-1.5 font-ibm text-xs text-iscm-charcoal focus:border-iscm-crimson focus:outline-none';
 
@@ -238,9 +236,12 @@ export default function AttendanceLogPanel({ lang = 'vi' }) {
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend + coverage, merged — both were static reference tables saying
+          overlapping things (which statuses exist, what else counts as one). */}
       <div>
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">8 trạng thái chuẩn / Status keywords</p>
+        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
+          {lang === 'vi' ? 'Trạng thái & phạm vi ghi nhận' : 'Status & Coverage'}
+        </p>
         <div className="grid gap-1.5 sm:grid-cols-2">
           {ATTENDANCE_LEGEND.map((s) => (
             <div key={s.key} className="rounded-lg border border-gray-100 bg-iscm-surface/60 p-2">
@@ -248,15 +249,6 @@ export default function AttendanceLogPanel({ lang = 'vi' }) {
               <div className="font-ibm text-[10px] text-gray-500">{lang === 'vi' ? s.descVi : s.desc}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* What this log also covers */}
-      <div>
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
-          {lang === 'vi' ? 'Phạm vi ghi nhận' : 'Also covers'}
-        </p>
-        <div className="grid gap-1.5 sm:grid-cols-2">
           {ATTENDANCE_RECORD_TYPES.map((r) => (
             <div key={r.key} className="rounded-lg border border-gray-100 bg-iscm-surface/60 p-2">
               <div className="font-ibm text-[11px] font-semibold text-iscm-charcoal">{r.label}</div>
@@ -265,54 +257,6 @@ export default function AttendanceLogPanel({ lang = 'vi' }) {
           ))}
         </div>
       </div>
-
-      {/* Institute-wide 2026 snapshot */}
-      <div>
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
-          Institute-wide 2026 YTD ({STAFF_ROSTER.length} nhân sự)
-        </p>
-        <div className="space-y-1.5">
-          {ATTENDANCE_LEGEND.filter((s) => s.key in INSTITUTE_YTD_TOTALS).map((s) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <span className="w-40 shrink-0 truncate font-ibm text-[10px] text-gray-500">{s.label}</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-iscm-crimson"
-                  style={{ width: `${(INSTITUTE_YTD_TOTALS[s.key] / maxTotal) * 100}%` }} />
-              </div>
-              <span className="w-8 shrink-0 text-right font-barlow-condensed text-xs font-semibold text-iscm-charcoal">
-                {INSTITUTE_YTD_TOTALS[s.key]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent log sample */}
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
-          <FileSpreadsheet className="h-3.5 w-3.5 text-iscm-crimson" /> Recent log sample (synced)
-        </p>
-        <div className="overflow-hidden rounded-lg border border-gray-200">
-          <table className="w-full text-left font-ibm text-[11px]">
-            <thead className="bg-iscm-surface text-gray-400">
-              <tr><th className="px-2.5 py-1.5">Date</th><th className="px-2.5 py-1.5">Nhân sự</th><th className="px-2.5 py-1.5">Trạng thái</th></tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {RECENT_LOG_SAMPLE.map((r, i) => (
-                <tr key={i}>
-                  <td className="px-2.5 py-1.5 text-gray-500">{r.day} {r.date}</td>
-                  <td className="px-2.5 py-1.5 font-medium">{r.staff}</td>
-                  <td className="px-2.5 py-1.5 text-iscm-crimson">{r.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <p className="font-ibm text-[10px] text-gray-400">
-        Nguồn: <code>iscm daily attendance checklist.xlsx</code> — Description, 2026_Daily attendance record, Jul sheets.
-      </p>
     </div>
   );
 }
