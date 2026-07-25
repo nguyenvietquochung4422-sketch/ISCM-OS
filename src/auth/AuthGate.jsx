@@ -15,6 +15,40 @@ function GoogleIcon() {
   );
 }
 
+/** Slow-drifting squares behind the card — echoes the red/white bar-chart
+    motif in the ISCM logo. Purely decorative, so hidden from screen readers. */
+const DRIFT_SQUARES = [
+  { top: '12%', left: '8%', size: 46, color: '#990000', opacity: 0.18, duration: 19, delay: -2 },
+  { top: '68%', left: '14%', size: 26, color: '#ffffff', opacity: 0.08, duration: 14, delay: -6 },
+  { top: '20%', left: '85%', size: 34, color: '#ffffff', opacity: 0.1, duration: 22, delay: -10 },
+  { top: '78%', left: '80%', size: 54, color: '#990000', opacity: 0.16, duration: 17, delay: -4 },
+  { top: '46%', left: '92%', size: 20, color: '#990000', opacity: 0.2, duration: 12, delay: -8 },
+  { top: '85%', left: '45%', size: 30, color: '#ffffff', opacity: 0.07, duration: 20, delay: -1 },
+];
+
+function DriftingSquares() {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      {DRIFT_SQUARES.map((s, i) => (
+        <div
+          key={i}
+          className="auth-drift absolute"
+          style={{
+            top: s.top,
+            left: s.left,
+            width: s.size,
+            height: s.size,
+            backgroundColor: s.color,
+            opacity: s.opacity,
+            animationDuration: `${s.duration}s`,
+            animationDelay: `${s.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /**
  * Gates the whole app behind Google sign-in. When Supabase isn't configured
  * (`isLive` false — no VITE_SUPABASE_URL/ANON_KEY) there is no way to sign
@@ -51,6 +85,8 @@ export default function AuthGate({ children }) {
   if (!user) {
     return (
       <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-[#141414] px-4">
+        <DriftingSquares />
+
         {/* brand-red glow that tracks the cursor */}
         <div
           className="pointer-events-none absolute inset-0 transition-[background] duration-300 ease-out"
