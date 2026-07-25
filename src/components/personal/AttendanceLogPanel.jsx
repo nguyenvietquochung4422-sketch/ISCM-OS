@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, Clock3, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
 import {
   ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE,
+  INSTITUTE_YTD_TOTALS, STAFF_ROSTER,
 } from '../../data/attendanceData.js';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { isLive } from '../../lib/supabaseClient.js';
@@ -13,6 +14,7 @@ import {
 /* Daily Attendance Log — integrates iscm daily attendance checklist.xlsx */
 
 const REQUESTABLE_TYPES = ATTENDANCE_LEGEND.filter((s) => s.requestable);
+const maxTotal = Math.max(...Object.values(INSTITUTE_YTD_TOTALS));
 const inputClass = 'w-full rounded-none border border-neutral-300 bg-white px-2.5 py-1.5 font-ibm text-xs text-iscm-charcoal focus:border-iscm-crimson focus:outline-none';
 
 // Requests submitted here are the same "Work from home"/"Leave" requests
@@ -184,6 +186,29 @@ function AttendanceAdminSection({ lang }) {
           ))}
         </ul>
       )}
+
+      {/* Team-wide stats — visible only to admins/permitted accounts, same
+          gate as the approvals above; a regular member only ever sees their
+          own YTD numbers further down the page. */}
+      <div className="border-t border-gray-100 pt-2.5">
+        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
+          {lang === 'vi' ? `Thống kê toàn viện 2026 (${STAFF_ROSTER.length} nhân sự)` : `Institute-wide 2026 YTD (${STAFF_ROSTER.length} staff)`}
+        </p>
+        <div className="space-y-1.5">
+          {ATTENDANCE_LEGEND.filter((s) => s.key in INSTITUTE_YTD_TOTALS).map((s) => (
+            <div key={s.key} className="flex items-center gap-2">
+              <span className="w-40 shrink-0 truncate font-ibm text-[10px] text-gray-500">{s.label}</span>
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-iscm-crimson"
+                  style={{ width: `${(INSTITUTE_YTD_TOTALS[s.key] / maxTotal) * 100}%` }} />
+              </div>
+              <span className="w-8 shrink-0 text-right font-barlow-condensed text-xs font-semibold text-iscm-charcoal">
+                {INSTITUTE_YTD_TOTALS[s.key]}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
