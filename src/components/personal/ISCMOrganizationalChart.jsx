@@ -110,7 +110,7 @@ const DEPARTMENTS = [
       { name: 'Data Driven & UD', pic: 'Võ Dao Chi' },
       { name: 'New Economy - PL', pic: 'Phạm Nguyễn Hoài' },
       { name: 'Governance & Planning', pic: 'Trần Thị Quỳnh Mai' },
-      { name: 'Public Space Lab', pic: 'Daniela Hurtarte' },
+      { name: 'Public Space Living Lab', pic: 'Daniela Hurtarte' },
       { name: 'Net Zero Open - PL', pic: 'Sandhya Rao' },
       { name: 'Immersive Tech (TIL)', pic: 'Đỗ Lê Phúc Tâm' }
     ],

@@ -47,7 +47,7 @@ const getGroupMainCode = (groupName) => {
   switch (groupName) {
     case 'MOVE System': return 'RU1';
     case 'Net Zero Open lab': return 'RU2';
-    case 'Public Space Lab': return 'RU3';
+    case 'Public Space Living Lab': return 'RU3';
     case 'Governance and Planning': return 'RU4';
     case 'Immersive Tech Convergence Center': return 'RU5';
     case 'Smart City': return 'RU6';

@@ -70,7 +70,7 @@ const INITIAL_ASSETS = [
   {
     id: 'SUR-PSA-HCM-002',
     name: 'HCMC District 1 Sidewalk Survey 2026',
-    source: 'Public Space Lab / PSA Project',
+    source: 'Public Space Living Lab / PSA Project',
     crs: 'WGS-84 (EPSG:4326)',
     scope: 'HCMC District 1',
     metadataStatus: 'Complete',
@@ -81,7 +81,7 @@ const INITIAL_ASSETS = [
     status: 'Locked in Core',
     egressState: 'green',
     size: '12.4 MB',
-    submittedBy: 'Public Space Lab',
+    submittedBy: 'Public Space Living Lab',
     submittedDate: '2026-01-15',
     reviewer: 'Lan Ngoc Hoang',
     reviewNote: 'Verified field columns. Approved.',
@@ -165,7 +165,7 @@ const INITIAL_ASSETS = [
   {
     id: 'IOT-PSA-HCM-007',
     name: 'HCMC Hồ Con Rùa Microclimate Sensor Logs',
-    source: 'Public Space Lab / HCR-PDPhung',
+    source: 'Public Space Living Lab / HCR-PDPhung',
     crs: 'WGS-84 (EPSG:4326)',
     scope: 'HCMC District 3',
     metadataStatus: 'Complete',
@@ -176,7 +176,7 @@ const INITIAL_ASSETS = [
     status: 'ETL Processing',
     egressState: 'yellow',
     size: '15.6 MB',
-    submittedBy: 'Public Space Lab',
+    submittedBy: 'Public Space Living Lab',
     submittedDate: '2026-07-05',
     reviewer: 'Dung Lai Phuong',
     reviewNote: 'ETL pipeline running. ETA 2026-07-20.',
@@ -631,7 +631,7 @@ export default function DataCatalog({ mode = 'core', lang }) {
         <select value={labFilter} onChange={(e) => setLabFilter(e.target.value)}
           className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700">
           <option value="All">{lang === 'vi' ? 'Tất cả nguồn Lab' : 'All Lab Origins'}</option>
-          <option value="Public Space Lab">Public Space Lab</option>
+          <option value="Public Space Living Lab">Public Space Living Lab</option>
           <option value="DDUD Lab">DDUD Lab</option>
           <option value="MOVE System Lab">MOVE System Lab</option>
           <option value="Climate Resilience Lab">Climate Resilience Lab</option>

@@ -16,7 +16,7 @@ export const CATEGORY_CODES = {
 // Keyed by any text the lab/research-unit name might appear as across the
 // app (Research List units and the DataCatalog "Lab Origin" filter labels).
 export const LAB_CODES = {
-  'Public Space Lab':                  'PSA',
+  'Public Space Living Lab':           'PSA',
   'DDUD Lab':                          'DDU',
   'Data Driven and Urban Design':      'DDU',
   'MOVE System Lab':                   'MOV',

@@ -98,7 +98,7 @@ export const WIKI_BRANCHES = {
     label: 'Start', emoji: '🚀',
     blurb: 'Orientation branch — the fastest route into ISCM structures and traditions.',
     sections: [
-      { section: 'Research Unit Information', topics: ['Public Space Lab', 'Night Economy Lab', 'Data Driven & Urban Design', 'Immersive Tech Convergence Center', 'MOVE System', 'Smart City', 'Net Zero Open Lab', 'New Economy', 'Governance & Planning'],
+      { section: 'Research Unit Information', topics: ['Public Space Living Lab', 'Night Economy Lab', 'Data Driven & Urban Design', 'Immersive Tech Convergence Center', 'MOVE System', 'Smart City', 'Net Zero Open Lab', 'New Economy', 'Governance & Planning'],
         docs: [{ name: '[2026-01-30][ISCM-RD][Research Unit Directory 2026].pdf', updated: '2026-01-30' }] },
       { section: 'Event Series', topics: ['RTD Annual Conference', 'ISCM Internal Seminar Series', 'RED Series', 'CTD Scholars Awards Night', 'ISCM Anniversary Day'],
         docs: [{ name: '[2026-04-25][RTD-2026][FutureScape Program Overview].pdf', updated: '2026-04-25' }] },
