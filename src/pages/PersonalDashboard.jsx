@@ -903,18 +903,6 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
                   className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-neutral-400 uppercase mb-1">
-                  {lang === 'vi' ? 'Link ảnh đại diện' : 'Avatar Image URL'}
-                </label>
-                <input
-                  type="url"
-                  value={wsData.contactForm.avatar_url}
-                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, avatar_url: e.target.value }))}
-                  placeholder="https://..."
-                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
-                />
-              </div>
             </div>
             <div className="mt-3 flex items-center gap-3">
               <button
