@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock3, AlertCircle, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
+import { Check, Clock3, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
 import {
   ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE,
 } from '../../data/attendanceData.js';
@@ -211,11 +211,6 @@ export default function AttendanceLogPanel({ lang = 'vi' }) {
           <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.okrFinalLog}</div>
           <div className="font-ibm text-[10px] text-white/70">OKR final log</div>
         </div>
-      </div>
-
-      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 font-ibm text-[11px] text-amber-800">
-        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-        Chốt log 17:00 hằng ngày là dữ liệu đầu vào cho OKR quý và kỳ xét thù lao — mọi cập nhật sau 08:30 cần phê duyệt của Quản lý trực tiếp.
       </div>
 
       {/* Personal YTD */}
