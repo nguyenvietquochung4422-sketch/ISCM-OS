@@ -1352,16 +1352,6 @@ export default function PersonalDashboard({ onNavigate }) {
   return (
     <div className="w-full font-sans">
 
-      {/* Page Header */}
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-6 rounded-none">
-        <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-          {lang === 'vi' ? 'CỔNG TÁC NGHIỆP CÁ NHÂN' : 'PERSONAL PORTAL & OPERATIONS'}
-        </h1>
-        <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-          2026 Operational Network · ISCM-UEH
-        </p>
-      </header>
-
       {/* Master-Detail split screen */}
       <div className="grid items-start gap-4 md:grid-cols-10">
         

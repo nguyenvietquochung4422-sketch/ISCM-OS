@@ -724,24 +724,21 @@ export default function ResearchSubWorkspace() {
 
   return (
     <div className="w-full flex flex-col gap-5 h-full relative">
-      <header className="border-l-4 border-[#8b0000] pl-4 py-1 mb-2 flex flex-wrap items-start justify-between gap-3 rounded-none">
-        <div>
-          <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            {lang === 'vi' ? 'KHÔNG GIAN NGHIÊN CỨU KHOA HỌC' : 'Scientific Research Sub-Workspace'}
-          </h1>
-          <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}: <span className="font-semibold text-[#8b0000] font-barlow">{lang === 'vi' ? 'TS. Phạm Nguyễn Hoài' : 'Hoai Nguyen Pham, PhD'}</span>
-          </p>
-        </div>
-      </header>
-
       {/* Two Column Layout: Sidebar + Content Area */}
       <div className="grid gap-6 md:grid-cols-10 items-start">
 
         {/* Left Side: Navigation Directory Sidebar */}
         <aside className="border border-neutral-200 bg-white p-2.5 md:col-span-2 rounded-none flex flex-col min-h-[600px]">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b0000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left font-sans">
-            {lang === 'vi' ? 'NGHIÊN CỨU KHOA HỌC' : 'SCIENTIFIC RESEARCH'}
+          <div className="mb-2 border-b border-neutral-200 bg-neutral-50 px-2 py-1.5 text-left">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b0000] select-none font-sans">
+              {lang === 'vi' ? 'NGHIÊN CỨU KHOA HỌC' : 'SCIENTIFIC RESEARCH'}
+            </div>
+            <div className="mt-1 text-[9px] uppercase tracking-wider text-neutral-500 font-ibm">
+              {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}:{' '}
+              <span className="font-semibold text-[#8b0000] font-barlow normal-case">
+                {lang === 'vi' ? 'TS. Phạm Nguyễn Hoài' : 'Hoai Nguyen Pham, PhD'}
+              </span>
+            </div>
           </div>
 
           <div className="relative mb-3 shrink-0">
