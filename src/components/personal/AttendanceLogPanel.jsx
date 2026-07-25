@@ -218,10 +218,10 @@ export default function AttendanceLogPanel({ lang = 'vi' }) {
         Chốt log 17:00 hằng ngày là dữ liệu đầu vào cho OKR quý và kỳ xét thù lao — mọi cập nhật sau 08:30 cần phê duyệt của Quản lý trực tiếp.
       </div>
 
-      {/* Personal YTD — 'Hùng' column of 2026_Daily attendance record */}
+      {/* Personal YTD */}
       <div>
         <p className="mb-2 flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
-          <UserRound className="h-3.5 w-3.5 text-iscm-crimson" /> My 2026 YTD (cột "Hùng" — đồng bộ từ workbook)
+          <UserRound className="h-3.5 w-3.5 text-iscm-crimson" /> My 2026 YTD
         </p>
         <div className="grid grid-cols-4 gap-1.5">
           {ATTENDANCE_LEGEND.map((s) => (
