@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock3, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
+import { Check, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
 import {
-  ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE,
-  INSTITUTE_YTD_TOTALS, STAFF_ROSTER,
+  ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE,
+  INSTITUTE_YTD_TOTALS, STAFF_ROSTER, DAILY_LOG_ENTRIES,
 } from '../../data/attendanceData.js';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { isLive } from '../../lib/supabaseClient.js';
@@ -15,6 +15,9 @@ import {
 
 const REQUESTABLE_TYPES = ATTENDANCE_LEGEND.filter((s) => s.requestable);
 const maxTotal = Math.max(...Object.values(INSTITUTE_YTD_TOTALS));
+// The Jul 2025 sheet's own staff columns — not STAFF_ROSTER, which is a
+// different (2026) roster snapshot with several different names on it.
+const LOG_STAFF_NAMES = [...new Set(DAILY_LOG_ENTRIES.map((e) => e.staff))].sort((a, b) => a.localeCompare(b, 'vi'));
 const inputClass = 'w-full rounded-none border border-neutral-300 bg-white px-2.5 py-1.5 font-ibm text-xs text-iscm-charcoal focus:border-iscm-crimson focus:outline-none';
 
 // Requests submitted here are the same "Work from home"/"Leave" requests
@@ -132,6 +135,7 @@ function AttendanceAdminSection({ lang }) {
   const [canManage, setCanManage] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [staffFilter, setStaffFilter] = useState('all');
 
   useEffect(() => {
     canManageAttendance().then((ok) => {
@@ -144,6 +148,10 @@ function AttendanceAdminSection({ lang }) {
   if (!canManage) return null;
 
   const pending = requests.filter((r) => r.status === 'Open');
+  const logEntries = DAILY_LOG_ENTRIES
+    .filter((e) => staffFilter === 'all' || e.staff === staffFilter)
+    .slice()
+    .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? -1 : 1));
 
   const handleDecide = async (r, status) => {
     setRequests((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
@@ -209,6 +217,53 @@ function AttendanceAdminSection({ lang }) {
           ))}
         </div>
       </div>
+
+      {/* Detail log — who was what, on which day. Real data: the workbook's
+          "Jul" monthly sheet is the only month with entries actually filled
+          in (every other month sheet is a blank template), so this covers
+          2025-07-01 through 2025-07-30. */}
+      <div className="border-t border-gray-100 pt-2.5">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="font-ibm text-xs font-semibold text-iscm-charcoal">
+            {lang === 'vi' ? 'Chi tiết theo ngày (Jul 2025)' : 'Daily detail log (Jul 2025)'}
+          </p>
+          <select
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            className="border border-neutral-200 bg-white px-2 py-1 font-ibm text-[10px] text-neutral-700 focus:border-iscm-crimson focus:outline-none rounded-none"
+          >
+            <option value="all">{lang === 'vi' ? 'Tất cả nhân sự' : 'All staff'}</option>
+            {LOG_STAFF_NAMES.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="overflow-x-auto border border-neutral-200">
+          <table className="w-full min-w-[420px] table-fixed border-collapse text-left">
+            <thead>
+              <tr className="border-b border-neutral-200 bg-neutral-900 font-barlow text-[10px] font-bold uppercase tracking-wider text-white">
+                <th className="px-3 py-2 w-[22%]">{lang === 'vi' ? 'Ngày' : 'Date'}</th>
+                <th className="px-3 py-2 w-[22%]">{lang === 'vi' ? 'Nhân sự' : 'Staff'}</th>
+                <th className="px-3 py-2 w-[56%]">{lang === 'vi' ? 'Trạng thái' : 'Status'}</th>
+              </tr>
+            </thead>
+            <tbody className="max-h-[320px] divide-y divide-neutral-100 font-ibm text-xs">
+              {logEntries.map((e, i) => (
+                <tr key={i} className="hover:bg-neutral-50/80 transition-colors">
+                  <td className="px-3 py-1.5 text-neutral-500 whitespace-nowrap">{e.day} {e.date}</td>
+                  <td className="px-3 py-1.5 font-medium text-neutral-800">{e.staff}</td>
+                  <td className="px-3 py-1.5 text-iscm-crimson">{e.status}</td>
+                </tr>
+              ))}
+              {logEntries.length === 0 && (
+                <tr><td colSpan={3} className="px-3 py-6 text-center text-neutral-400 italic">
+                  {lang === 'vi' ? 'Không có bản ghi.' : 'No entries.'}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -218,25 +273,6 @@ export default function AttendanceLogPanel({ lang = 'vi' }) {
     <div className="space-y-5">
       <AttendanceRequestForm lang={lang} />
       <AttendanceAdminSection lang={lang} />
-
-      {/* Deadline banner */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg bg-iscm-cta p-3 text-center text-white">
-          <Clock3 className="mx-auto mb-1 h-4 w-4" />
-          <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.officeCheckIn}</div>
-          <div className="font-ibm text-[10px] text-white/70">Office check-in</div>
-        </div>
-        <div className="rounded-lg bg-iscm-crimson p-3 text-center text-white">
-          <Clock3 className="mx-auto mb-1 h-4 w-4" />
-          <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.formLock}</div>
-          <div className="font-ibm text-[10px] text-white/70">Form lock (general)</div>
-        </div>
-        <div className="rounded-lg bg-iscm-charcoal p-3 text-center text-white">
-          <Clock3 className="mx-auto mb-1 h-4 w-4" />
-          <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.okrFinalLog}</div>
-          <div className="font-ibm text-[10px] text-white/70">OKR final log</div>
-        </div>
-      </div>
 
       {/* Personal YTD */}
       <div>
