@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isLive } from '../lib/supabaseClient.js';
+import { supabase, isLive } from '../lib/supabaseClient.js';
 import { useAuth } from './AuthContext.jsx';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 
@@ -56,28 +56,83 @@ function DriftingSquares() {
  * explorable-without-a-backend demo mode.
  */
 export default function AuthGate({ children }) {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle, signOut } = useAuth();
   const { lang } = useLanguage();
 
-  // The glow follows the cursor on the sign-in screen only — the listener
-  // detaches the moment a user is signed in, so it never re-renders the
+  // Only a Google account already provisioned in users_profiles (the same
+  // roster Colleagues reads from) may use the app — everyone else is signed
+  // back out rather than let in as some fallback "guest" persona.
+  const [authCheck, setAuthCheck] = useState('pending'); // 'pending' | 'authorized' | 'denied'
+  useEffect(() => {
+    if (!isLive || loading || !user) { setAuthCheck('pending'); return; }
+    let cancelled = false;
+    supabase
+      .from('users_profiles')
+      .select('id')
+      .ilike('email', user.email)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setAuthCheck(data ? 'authorized' : 'denied');
+      });
+    return () => { cancelled = true; };
+  }, [loading, user]);
+
+  // The glow follows the cursor on the sign-in/denied screens only — the
+  // listener detaches once access is granted, so it never re-renders the
   // rest of the app on every mouse move.
   const [glow, setGlow] = useState({ x: 50, y: 30 });
   useEffect(() => {
-    if (!isLive || loading || user) return;
+    if (!isLive || loading || authCheck === 'authorized') return;
     const handleMove = (e) => {
       setGlow({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 });
     };
     window.addEventListener('mousemove', handleMove);
     return () => window.removeEventListener('mousemove', handleMove);
-  }, [loading, user]);
+  }, [loading, authCheck]);
 
   if (!isLive) return children;
 
-  if (loading) {
+  if (loading || (user && authCheck === 'pending')) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#141414]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-600 border-t-[#990000]" />
+      </div>
+    );
+  }
+
+  if (user && authCheck === 'denied') {
+    return (
+      <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-[#141414] px-4">
+        <DriftingSquares />
+        <div
+          className="pointer-events-none absolute inset-0 transition-[background] duration-300 ease-out"
+          style={{ background: `radial-gradient(circle at ${glow.x}% ${glow.y}%, rgba(153,0,0,0.25), transparent 55%)` }}
+        />
+        <div className="relative w-full max-w-lg border border-neutral-800 bg-neutral-900/95 shadow-2xl">
+          <div className="h-1 w-full bg-[#990000]" />
+          <div className="p-9 text-center">
+            <img
+              src={`${import.meta.env.BASE_URL}logo-nav.png`}
+              alt="ISCM"
+              className="mx-auto h-11 w-auto object-contain"
+            />
+            <h1 className="mt-7 font-barlow text-lg font-bold uppercase tracking-wide text-white">
+              {lang === 'vi' ? 'Không có quyền truy cập' : 'Access Not Authorized'}
+            </h1>
+            <p className="mt-1.5 font-sans text-xs text-neutral-400">
+              {lang === 'vi'
+                ? `Tài khoản ${user.email} chưa nằm trong danh bạ nhân sự ISCM. Liên hệ quản trị viên để được cấp quyền.`
+                : `${user.email} isn't in the ISCM staff directory yet. Contact an administrator to get access.`}
+            </p>
+            <button
+              onClick={signOut}
+              className="mt-7 flex w-full items-center justify-center gap-2.5 rounded-none border border-neutral-200 bg-white px-4 py-2.5 font-sans text-xs font-bold uppercase tracking-wide text-neutral-900 shadow-sm transition-colors hover:bg-neutral-100"
+            >
+              {lang === 'vi' ? 'Đăng xuất, thử tài khoản khác' : 'Sign out, try another account'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

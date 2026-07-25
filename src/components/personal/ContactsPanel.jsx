@@ -50,34 +50,50 @@ export function DepartmentsView() {
 }
 
 /**
- * Live contact details a colleague has filled in on their own Profile & Bio
- * (Personal Portal), keyed by email — phone, avatar, academic title, and
- * ORCID/Scholar link. Anyone signed in can read the whole roster (RLS:
- * "profiles read (authenticated)"), so this overlays real data on top of
- * the bundled staff list rather than replacing it — most staff never touch
- * Contact Information, and the roster itself still needs to list them.
+ * Live profiles from users_profiles, keyed by email — the same table
+ * AuthGate checks a Google sign-in against, so this list IS the "who can
+ * log in" roster. Anyone signed in can read it (RLS: "profiles read
+ * (authenticated)"). Used two ways below: enrich a bundled staff entry with
+ * whatever contact info they've filled in (phone, avatar, academic title,
+ * ORCID/Scholar), and list any already-authorized account that isn't in the
+ * bundled roster at all, so Colleagues never hides someone who can sign in.
  */
-function useLiveProfilesByEmail() {
-  const [byEmail, setByEmail] = useState({});
+function useLiveProfiles() {
+  const [rows, setRows] = useState([]);
   useEffect(() => {
     if (!isLive) return;
     let cancelled = false;
     supabase
       .from('users_profiles')
-      .select('email, phone, avatar_url, academic_title, scholar_url')
+      .select('email, full_name, phone, avatar_url, academic_title, scholar_url, global_system_role')
       .then(({ data, error }) => {
         if (cancelled || error || !data) return;
-        const map = {};
-        data.forEach((row) => { map[(row.email || '').toLowerCase()] = row; });
-        setByEmail(map);
+        setRows(data);
       });
     return () => { cancelled = true; };
   }, []);
-  return byEmail;
+  return rows;
 }
 
 export function ColleaguesView() {
-  const liveByEmail = useLiveProfilesByEmail();
+  const liveRows = useLiveProfiles();
+  const liveByEmail = {};
+  liveRows.forEach((row) => { liveByEmail[(row.email || '').toLowerCase()] = row; });
+
+  const bundledEmails = new Set(users.map((u) => (u.email || '').toLowerCase()).filter(Boolean));
+  // Live accounts not in the bundled roster — already authorized to sign
+  // in, so they belong here too, not just enriching an existing entry.
+  const liveOnly = liveRows
+    .filter((row) => row.email && !bundledEmails.has(row.email.toLowerCase()))
+    .map((row) => ({
+      id: `live-${row.email}`,
+      email: row.email,
+      full_name: row.full_name || row.email,
+      phone: row.phone,
+      base_functional_group: '—',
+      system_role: row.global_system_role,
+    }));
+  const allColleagues = [...users, ...liveOnly];
 
   return (
     <div className="overflow-x-auto border border-neutral-200">
@@ -92,7 +108,7 @@ export function ColleaguesView() {
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100 font-ibm text-xs">
-          {users.map((u) => {
+          {allColleagues.map((u) => {
             const live = liveByEmail[(u.email || '').toLowerCase()];
             const phone = live?.phone || u.phone;
             return (

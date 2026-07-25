@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, ChevronDown, LogIn, LogOut, Menu, X } from 'lucide-react';
 import GlobalSearch from './GlobalSearch.jsx';
-import { users } from '../data/mockData.js';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -74,9 +73,12 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
     if (authUser) markAllNotificationsRead(authUser.id);
   };
 
-  const currentUser = dbUser || users[0];
+  // Demo-mode fallback (no Supabase configured, so no real sign-in is possible) —
+  // a neutral placeholder, never a named staff member from the roster.
+  const DEMO_USER = { full_name: 'Demo User', email: 'demo@iscm.ueh.edu.vn', system_role: 'Guest', base_functional_group: 'ISCM' };
+  const currentUser = dbUser || DEMO_USER;
   // A real Google sign-in (via Supabase Auth) overrides the mock/demo profile above.
-  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name || 'GUEST';
+  const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name;
   const displayEmail = authUser?.email || currentUser.email;
   // DB rows use `global_system_role`; the mock fallback array uses `system_role`.
   // Falls back to 'Guest', never 'Director' — an unknown role must not imply privilege.

@@ -23,10 +23,10 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
-/** Demo persona shown before a real Google sign-in: a generic guest. */
+/** Demo-mode fallback (no Supabase configured, so no real sign-in is possible). */
 const MY_PROFILE = {
-  full_name: 'GUEST',
-  email: 'guest@iscm.ueh.edu.vn',
+  full_name: 'Demo User',
+  email: 'demo@iscm.ueh.edu.vn',
   system_role: 'Guest',
   base_functional_group: 'ISCM',
   mentor: 'N/A',
