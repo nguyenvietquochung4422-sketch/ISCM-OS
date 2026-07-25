@@ -794,6 +794,16 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
       title: lang === 'vi' ? 'HỒ SƠ CỦA TÔI' : 'MY PORTAL', icon: UserCircle2,
       body: (
         <div className="space-y-5 font-sans text-sm text-neutral-800">
+          <div className="flex items-center gap-3">
+            <Avatar name={wsData.myProfile.full_name} src={wsData.contactForm.avatar_url} size="lg" />
+            <div>
+              <span className="block font-bold text-neutral-900">{wsData.myProfile.full_name}</span>
+              {wsData.contactForm.academic_title && (
+                <span className="block text-xs text-neutral-500">{wsData.contactForm.academic_title}</span>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
               <span className="block text-xs text-neutral-400 uppercase">{t.BIO_NAME_LABEL}</span>
@@ -866,6 +876,42 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
                   value={wsData.contactForm.address}
                   onChange={(e) => wsData.setContactForm((p) => ({ ...p, address: e.target.value }))}
                   placeholder={lang === 'vi' ? 'Số nhà, đường, quận/huyện, tỉnh/thành' : 'Street, district, city'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Học vị / Chức danh' : 'Academic Title'}
+                </label>
+                <input
+                  type="text"
+                  value={wsData.contactForm.academic_title}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, academic_title: e.target.value }))}
+                  placeholder={lang === 'vi' ? 'PGS.TS., ThS. ...' : 'Assoc. Prof. Dr., MSc. ...'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  ORCID / Google Scholar
+                </label>
+                <input
+                  type="url"
+                  value={wsData.contactForm.scholar_url}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, scholar_url: e.target.value }))}
+                  placeholder="https://orcid.org/... hoặc scholar.google.com/..."
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Link ảnh đại diện' : 'Avatar Image URL'}
+                </label>
+                <input
+                  type="url"
+                  value={wsData.contactForm.avatar_url}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, avatar_url: e.target.value }))}
+                  placeholder="https://..."
                   className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
                 />
               </div>
@@ -1259,7 +1305,10 @@ export default function PersonalDashboard({ onNavigate }) {
   const { user: authUser } = useAuth();
   const [isTopAdmin, setIsTopAdmin] = useState(false);
   const [dbUser, setDbUser] = useState(null);
-  const [contactForm, setContactForm] = useState({ personal_email: '', phone: '', date_of_birth: '', address: '' });
+  const [contactForm, setContactForm] = useState({
+    personal_email: '', phone: '', date_of_birth: '', address: '',
+    avatar_url: '', academic_title: '', scholar_url: '',
+  });
   const [contactStatus, setContactStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [selected, setSelected] = useState('profile-bio');
   const [activeCategory, setActiveCategory] = useState('my-portal');
@@ -1379,6 +1428,9 @@ export default function PersonalDashboard({ onNavigate }) {
       phone: dbUser.phone || '',
       date_of_birth: dbUser.date_of_birth || '',
       address: dbUser.address || '',
+      avatar_url: dbUser.avatar_url || '',
+      academic_title: dbUser.academic_title || '',
+      scholar_url: dbUser.scholar_url || '',
     });
   }, [dbUser]);
 
@@ -1389,6 +1441,9 @@ export default function PersonalDashboard({ onNavigate }) {
       p_phone: contactForm.phone,
       p_date_of_birth: contactForm.date_of_birth || null,
       p_address: contactForm.address,
+      p_avatar_url: contactForm.avatar_url,
+      p_academic_title: contactForm.academic_title,
+      p_scholar_url: contactForm.scholar_url,
     });
     if (error) { setContactStatus('error'); return; }
     setDbUser((prev) => (prev ? { ...prev, ...contactForm } : prev));

@@ -55,6 +55,8 @@ create table public.users_profiles (
   phone                 text,
   date_of_birth         date,
   address               text,
+  academic_title        text,                                        -- e.g. 'PGS.TS.', 'ThS.'
+  scholar_url           text,                                        -- ORCID or Google Scholar profile link
   created_at            timestamptz not null default now()
 );
 
@@ -64,12 +66,15 @@ comment on table public.users_profiles is
 -- Lets a signed-in user update only their own contact-info columns. The
 -- table's blanket UPDATE grants (see below) mean a plain RLS policy here
 -- would let a user rewrite their own global_system_role, so this goes
--- through a SECURITY DEFINER function scoped to exactly these 4 columns.
+-- through a SECURITY DEFINER function scoped to exactly these columns.
 create or replace function public.update_my_contact_info(
   p_personal_email text,
   p_phone text,
   p_date_of_birth date,
-  p_address text
+  p_address text,
+  p_avatar_url text,
+  p_academic_title text,
+  p_scholar_url text
 )
 returns void
 language plpgsql
@@ -81,13 +86,16 @@ begin
   set personal_email = nullif(trim(p_personal_email), ''),
       phone = nullif(trim(p_phone), ''),
       date_of_birth = p_date_of_birth,
-      address = nullif(trim(p_address), '')
+      address = nullif(trim(p_address), ''),
+      avatar_url = nullif(trim(p_avatar_url), ''),
+      academic_title = nullif(trim(p_academic_title), ''),
+      scholar_url = nullif(trim(p_scholar_url), '')
   where id = auth.uid();
 end;
 $$;
 
-revoke all on function public.update_my_contact_info(text, text, date, text) from public;
-grant execute on function public.update_my_contact_info(text, text, date, text) to authenticated;
+revoke all on function public.update_my_contact_info(text, text, date, text, text, text, text) from public;
+grant execute on function public.update_my_contact_info(text, text, date, text, text, text, text) to authenticated;
 
 -- 2.2 projects — workspaces (projects, labs, events) = horizontal matrix line
 create table public.projects (
