@@ -15,10 +15,11 @@ import GovernanceRegulations from './pages/GovernanceRegulations.jsx';
 import HierarchicalProjects from './pages/HierarchicalProjects.jsx';
 import ApprovalEngine from './pages/ApprovalEngine.jsx';
 import EquipmentTracking from './pages/EquipmentTracking.jsx';
-import IscmOverviewStructure from './pages/IscmOverviewStructure.jsx';
+import Home from './pages/Home.jsx';
+import { PLACEHOLDER_TITLES } from './data/overviewSubmenus.js';
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState('personal-dashboard');
+  const [activeModule, setActiveModule] = useState('home');
   const [workspaceProjectId, setWorkspaceProjectId] = useState('a1111111-1111-1111-1111-111111111111'); // default project UUID
 
   /** "Không gian của tôi" / search result opens workspace */
@@ -37,7 +38,7 @@ export default function App() {
   };
 
   const renderPlaceholder = (route) => {
-    const sectionName = route.replace('placeholder-', '').toUpperCase();
+    const sectionName = PLACEHOLDER_TITLES[route] || route.replace('placeholder-', '').toUpperCase();
     return (
       <div className="mx-auto max-w-xl text-center py-20 space-y-4">
         <div className="text-4xl">🛠️</div>
@@ -66,6 +67,7 @@ export default function App() {
         onOpenWorkspace={handleOpenWorkspace}
         onOpenAsset={handleOpenSearchResult}
       >
+      {activeModule === 'home' && <Home />}
       {activeModule === 'personal-dashboard' && <PersonalDashboard />}
       {activeModule === 'executive-calendar' && <ExecutiveCalendar />}
       {activeModule === 'executive-dashboard' && <ExecutiveDashboard onNavigate={setActiveModule} />}
@@ -76,10 +78,6 @@ export default function App() {
       {activeModule === 'hierarchical-projects' && <HierarchicalProjects />}
       {activeModule === 'approval-engine' && <ApprovalEngine />}
       {activeModule === 'equipment-tracking' && <EquipmentTracking />}
-      {/* ISCM Organizational Structure (placeholder-dl3) is hidden for now —
-          both its menu entries and this route. The page itself is kept so it
-          can be put back by restoring these two lines. */}
-      {/* {activeModule === 'placeholder-dl3' && <IscmOverviewStructure />} */}
 
       {/* Governance & Policy Regulations (CR1, CR2, CR3) */}
       {(activeModule === 'placeholder-cr1' || 

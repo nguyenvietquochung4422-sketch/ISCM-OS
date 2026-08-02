@@ -5,68 +5,17 @@
 
 export const FORM_CATEGORIES = [
   { id: 'All', label: 'All' },
-  { id: 'HR', label: 'HR Services' },
-  { id: 'IT', label: 'IT Services' },
-  { id: 'FA', label: 'FA Services' },
-  { id: 'RM', label: 'Research Forms' },
-  { id: 'AF', label: 'AF Services' }
+  { id: 'IT', label: 'IT Services' }
 ];
 
 export const FORM_GROUPS = [
   {
-    id: 'hr-admin', label: 'Human Resources & Admin',
-    forms: [
-      { key: 'resignation', label: 'Resignation', cat: 'HR', desc: 'Initiate offboarding and data handover.', special: 'resignation' },
-      { key: 'recruitment-request', label: 'Recruitment request', cat: 'HR', desc: 'Request recruitment of new CTV/Interns.' },
-      { key: 'training-register', label: 'Training register', cat: 'HR', desc: 'Register for internal courses or seminars.', special: 'training' },
-      { key: 'ask-anything', label: 'Ask anything', cat: 'HR', desc: 'Send general HR & administrative inquiries.' },
-      { key: 'travel-auth', label: 'Travel authorization', cat: 'HR', desc: 'Request authorization for fieldwork/travel.' },
-      { key: 'benefit-hr', label: 'Benefit and HR', cat: 'HR', desc: 'Inquire or register for HR benefits.' },
-      { key: 'member-partner-info', label: 'Member & Partner Information Form', cat: 'HR', desc: 'Register or update member info.' },
-      { key: 'team-eval', label: 'Team Evaluation Form', cat: 'HR', desc: 'Submit peer & team assessments.' },
-      { key: 'quarterly-perf-eval', label: 'Quarterly Performance Evaluation', cat: 'HR', desc: 'Submit Q2 OKR & performance review.' }
-    ]
-  },
-  {
     id: 'it-product', label: 'Product Operation & Tech',
     forms: [
-      { key: 'purchase-permission', label: 'Purchase permission', cat: 'IT', desc: 'Get pre-approval for technical purchases.' },
       { key: 'order-equipment', label: 'Order Equipment Form', cat: 'IT', desc: 'Order standard laptop or lab peripherals.' },
-      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' }
-    ]
-  },
-  {
-    id: 'finance', label: 'Finance and Accounting',
-    forms: [
-      { key: 'payment-request', label: 'Payment request', cat: 'FA', desc: 'Submit Track 1/Track 2 payment claims.', special: 'payment' },
-      { key: 'expense-report', label: 'Expense report request', cat: 'FA', desc: 'Submit post-activity expense statement.' }
-    ]
-  },
-  {
-    id: 'it-comms', label: 'Communication & Orders',
-    forms: [
-      { key: 'order-design', label: 'Order Design', cat: 'IT', desc: 'Request branding/graphic assets design.' },
-      { key: 'order-support-comm', label: 'Order Support Communication', cat: 'IT', desc: 'Request PR support / article publishing.' },
-      { key: 'order-gift', label: 'Order ISCM Gift', cat: 'IT', desc: 'Requisition ISCM corporate gifts.' }
-    ]
-  },
-  {
-    id: 'research-rm', label: 'Research Forms',
-    forms: [
-      { key: 'quarterly-research-reg', label: 'Quarterly Research Registration', cat: 'RM', desc: 'Register quarterly research outputs.' },
-      { key: 'internal-seminar-reg', label: 'Internal Seminar Registration', cat: 'RM', desc: 'Register to present at internal seminar.' },
-      { key: 'quarterly-progress-report', label: 'Quarterly Progress Report', cat: 'RM', desc: 'Update progress of research projects.' },
-      { key: 'fundraising-proposal-progress', label: 'Fundraising Proposal Progress', cat: 'RM', desc: 'Track external funding proposals.' },
-      { key: 'publications-submission', label: 'Publications Submission Form', cat: 'RM', desc: 'Submit Scopus/accredited publication details.' }
-    ]
-  },
-  {
-    id: 'admin-af', label: 'Administration Services',
-    forms: [
-      { key: 'cctv-history', label: 'Check CCTV history', cat: 'AF', desc: 'Request review of campus security footage.' },
-      { key: 'annual-student-survey', label: 'Annual Student Survey', cat: 'AF', desc: 'Deploy annual program feedback survey.' },
-      { key: 'student-pigeon-post', label: 'ISCM Student Pigeon Post', cat: 'AF', desc: 'Access student-to-admin letter channel.' },
-      { key: 'training-point-proposal', label: 'Training Point Proposal', cat: 'AF', desc: 'Propose extra-curricular student credits.' }
+      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' },
+      { key: 'order-gift', label: 'Order ISCM Gift', cat: 'IT', desc: 'Requisition ISCM corporate gifts.' },
+      { key: 'order-support-comm', label: 'Order Support Communication', cat: 'IT', desc: 'Request PR support / article publishing.' }
     ]
   }
 ];

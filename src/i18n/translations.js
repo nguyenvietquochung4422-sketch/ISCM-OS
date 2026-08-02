@@ -41,7 +41,6 @@ export const translations = {
     'cat.myPortal':          'MY PORTAL',
     'cat.requests':          'YÊU CẦU & BIỂU MẪU',
     'cat.wiki':              'KHO TRI THỨC',
-    'cat.contacts':          'DANH BẠ',
     'cat.supports':          'HỖ TRỢ',
 
     // --- Workspace hub ---
@@ -114,7 +113,6 @@ export const translations = {
     'cat.myPortal':          'MY PORTAL',
     'cat.requests':          'REQUESTS & E-FORMS',
     'cat.wiki':              'WIKI HUB',
-    'cat.contacts':          'CONTACTS',
     'cat.supports':          'SUPPORTS',
 
     // --- Workspace hub ---

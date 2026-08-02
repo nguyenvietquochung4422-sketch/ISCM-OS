@@ -2,12 +2,13 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
-  ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X,
-  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck, Save,
+  ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X, Search,
+  MonitorSmartphone, BookOpen, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck, Save,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY, FORM_CATEGORIES, ASSET_TYPES, MY_TASKS, MY_FORMS_SEED, MY_ASSETS } from '../data/formPortal.js';
 import { Avatar } from '../components/ui.jsx';
 import AttendanceLogPanel from '../components/personal/AttendanceLogPanel.jsx';
+import MyCalendarView from '../components/personal/MyCalendarView.jsx';
 import TaskReceiptPanel from '../components/personal/TaskReceiptPanel.jsx';
 import { FormPortalGrid, FormDetail, loadSubmissions } from '../components/personal/FormPortalPanel.jsx';
 import { MyTasksPanel, MyFormsPanel } from '../components/personal/RequestQueues.jsx';
@@ -16,12 +17,16 @@ import MyAssetsPanel from '../components/personal/MyAssetsPanel.jsx';
 import WikiHubPanel from '../components/personal/WikiHubPanel.jsx';
 import ISCMOrganizationalChart from '../components/personal/ISCMOrganizationalChart.jsx';
 import ContentPermissionsPanel from '../components/personal/ContentPermissionsPanel.jsx';
-import { SupportContactsView, DepartmentsView, ColleaguesView } from '../components/personal/ContactsPanel.jsx';
+import MemberInfoAdminPanel from '../components/personal/MemberInfoAdminPanel.jsx';
+import InstituteAttendancePanel from '../components/personal/InstituteAttendancePanel.jsx';
+import InstituteCalendarPanel from '../components/personal/InstituteCalendarPanel.jsx';
+import LibraryAdminPanel from '../components/personal/LibraryAdminPanel.jsx';
 import { CreateRequestView, MyRequestsView } from '../components/personal/SupportsPanel.jsx';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
+import { WS_EVENTS } from '../data/calendarEvents.js';
 
 /** Demo-mode fallback (no Supabase configured, so no real sign-in is possible). */
 const MY_PROFILE = {
@@ -35,151 +40,10 @@ const MY_PROFILE = {
 const STATUS_FILTER_OPTS = ['All', 'Open', 'Others'];
 
 const CAT_BADGE_STYLE = {
-  HR: 'border border-blue-200 bg-blue-50 text-blue-800',
   IT: 'border border-emerald-200 bg-emerald-50 text-emerald-800',
-  FA: 'border border-amber-200 bg-amber-50 text-amber-800',
-  RM: 'border border-purple-200 bg-purple-50 text-purple-800',
-  AF: 'border border-slate-300 bg-slate-100 text-slate-700',
 };
 
 /* ---------------- Helper Viewport Components for Workspace tabs ---------------- */
-
-function MyCalendarView({ lang, t, weekDays, monday, fmtDay, isToday, fmtDateKey, getEventsForDay, fmtTime, upcoming, today, fmtDateLabel }) {
-  return (
-    <div className="space-y-4">
-      {/* Weekly Calendar Table */}
-      <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-        {/* Calendar header */}
-        <div className="px-5 py-2.5 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CalendarRange className="h-3.5 w-3.5 text-[#990000]" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white">
-              {t.WEEKLY_SCHEDULE} — {monday.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} – {weekDays[4].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-            </span>
-          </div>
-          <span className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold">Thứ 2 → Thứ 6</span>
-        </div>
-
-        {/* Week grid */}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left border-collapse">
-            <thead>
-              <tr>
-                {weekDays.map((d) => (
-                  <th key={fmtDateKey(d)}
-                    className={`px-3 py-2 text-[13px] font-bold uppercase tracking-wider border-b border-neutral-300 text-center ${
-                      isToday(d) ? 'bg-[#990000] text-white' : 'bg-neutral-50 text-neutral-800'
-                    }`}
-                  >
-                    {fmtDay(d)}
-                    {isToday(d) && <span className="block text-[10px] font-normal opacity-80">{lang === 'vi' ? 'Hôm nay' : 'Today'}</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="align-top">
-                {weekDays.map((d) => {
-                  const dayEvents = getEventsForDay(d);
-                  return (
-                    <td key={fmtDateKey(d)}
-                      className={`px-1.5 py-2 border-r border-neutral-200 last:border-r-0 min-h-[140px] align-top ${
-                        isToday(d) ? 'bg-neutral-50/50' : ''
-                      }`}
-                    >
-                      {dayEvents.length === 0 ? (
-                        <p className="text-center text-[10px] text-neutral-300 mt-4">—</p>
-                      ) : (
-                        <div className="space-y-1">
-                          {dayEvents.map((ev) => (
-                            <div key={ev.id}
-                              className={`border px-2 py-1.5 text-[11px] cursor-default ${ev.tagColor} rounded-none`}
-                            >
-                              <p className="font-bold leading-tight line-clamp-2 text-left">{ev.title}</p>
-                              <p className="opacity-70 mt-0.5 text-[10px] text-left">{fmtTime(ev.start)}–{fmtTime(ev.end)}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Grid below: Today Details & Upcoming Events */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        {/* Today's detail schedule */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-5 py-2 bg-neutral-50 border-b border-neutral-200 text-left">
-            <span className="text-xs font-bold uppercase tracking-wide text-neutral-800">
-              {t.SCHEDULE_DETAILS}
-            </span>
-          </div>
-          {(() => {
-            const todayEvents = getEventsForDay(today);
-            if (todayEvents.length === 0) return (
-              <p className="px-5 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-            );
-            return (
-              <div className="divide-y divide-neutral-200">
-                {todayEvents.map((ev) => (
-                  <div key={ev.id} className="flex items-start gap-4 px-5 py-2.5">
-                    <div className="shrink-0 text-center w-14">
-                      <span className="block text-sm font-bold text-neutral-900">{fmtTime(ev.start)}</span>
-                      <span className="block text-[11px] text-neutral-400">{fmtTime(ev.end)}</span>
-                    </div>
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-sm font-bold text-neutral-800 leading-snug">{ev.title}</p>
-                      <p className="text-xs text-neutral-400 mt-0.5">{ev.location}</p>
-                    </div>
-                    <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* Upcoming Events highlight */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-[#990000] text-white flex items-center gap-2">
-            <CalendarClock className="h-3.5 w-3.5 shrink-0 text-white" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white">{t.UPCOMING_EVENTS}</span>
-          </div>
-          <div className="overflow-y-auto max-h-[220px] divide-y divide-neutral-200">
-            {upcoming.length === 0 && (
-              <p className="px-4 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-            )}
-            {upcoming.map((ev) => (
-              <div key={ev.id} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-neutral-50 transition-colors">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                <div className="min-w-0 flex-1 text-left">
-                  <p className="text-xs font-bold text-neutral-800 leading-snug">{ev.title}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
-                    {fmtDateLabel(ev.start)} · {fmtTime(ev.start)}–{fmtTime(ev.end)}
-                  </p>
-                  <p className="text-[10px] text-neutral-400 truncate">{ev.location}</p>
-                  <span className={`inline-block mt-1 px-1 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="px-4 py-1.5 border-t border-neutral-200 bg-neutral-50 text-left">
-            <p className="text-[9px] text-neutral-400 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 bg-emerald-600 inline-block" />
-              {t.SYNC_SUCCESS}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function MyAssignedTasksView() {
   return (
@@ -272,6 +136,90 @@ function MyRequestsWidgetView({ myForms, openForms, setSelectedItem, lang, t, TA
   );
 }
 
+/* ---------------- Wiki Hub — read straight from SIDEBAR_TREE ---------------- */
+
+/** Every wiki-hub-root branch's children, straight off the same SIDEBAR_TREE
+    the left nav renders — used for both flat-list branches (Templates/Media/
+    Reference) and as the data source for WikiTreeOutline below. */
+function findWikiBranchChildren(t, branchId) {
+  const wikiRoot = t.SIDEBAR_TREE.find((n) => n.id === 'wiki-hub-root');
+  const branch = wikiRoot?.children?.find((n) => n.id === branchId);
+  return branch?.children || [];
+}
+
+/** Inline outline for any wiki-hub-root branch, read straight from the same
+    SIDEBAR_TREE the left nav uses — so what shows here always matches what's
+    in the sidebar. Just names (group headers + doc titles), no dates/badges. */
+function WikiTreeOutline({ t, branchId, onOpen }) {
+  const children = findWikiBranchChildren(t, branchId);
+  return (
+    <div className="space-y-3 font-sans">
+      {children.map((node) =>
+        node.children ? (
+          <div key={node.id}>
+            <span className="block font-bold text-neutral-900 text-xs mb-1">{node.label}</span>
+            <div className="ml-2 border border-neutral-200 divide-y divide-neutral-100">
+              {node.children.map((doc) => (
+                <button
+                  key={doc.key}
+                  onClick={() => onOpen(doc.key)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 hover:text-[#990000] transition-colors"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                  <span className="truncate">{doc.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <button
+            key={node.key}
+            onClick={() => onOpen(node.key)}
+            className="w-full flex items-center gap-2 border border-neutral-200 bg-white px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 hover:text-[#990000] transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            <span className="truncate">{node.label}</span>
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+function WikiDocList({ lang, items, onOpen }) {
+  const [query, setQuery] = useState('');
+  const filtered = items.filter((i) => !query.trim() || i.label.toLowerCase().includes(query.trim().toLowerCase()));
+  return (
+    <div className="space-y-3 font-sans">
+      <div className="relative max-w-sm">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={lang === 'vi' ? 'Tìm tài liệu...' : 'Search documents...'}
+          className="w-full rounded-none border border-neutral-300 bg-white py-1.5 pl-8 pr-2.5 text-xs focus:border-neutral-900 focus:outline-none"
+        />
+      </div>
+      <div className="border border-neutral-200 divide-y divide-neutral-100">
+        {filtered.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => onOpen(item.key)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 hover:text-[#990000] transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            <span className="truncate">{item.label}</span>
+          </button>
+        ))}
+        {filtered.length === 0 && (
+          <div className="p-6 text-center text-xs text-neutral-400">{lang === 'vi' ? 'Không tìm thấy.' : 'No matches.'}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Right-viewport content resolution ---------------- */
 
 function usePaneContent(selected, filters, setSelected, lang, wsData) {
@@ -279,7 +227,6 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
   if (selected === 'my-portal') key = 'profile-bio';
   else if (selected === 'requests-forms') key = 'cat-forms';
   else if (selected === 'wiki-hub-root') key = 'cat-wiki';
-  else if (selected === 'contacts-root') key = 'cat-contacts';
   else if (['wiki-of-g', 'wiki-rp-g', 'wiki-ac-g', 'wiki-cm-g'].includes(selected)) key = 'wiki-guidelines';
   else if (['wiki-oh-r', 'wiki-af-r'].includes(selected)) key = 'wiki-regulations';
 
@@ -935,44 +882,33 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
       icon: ShieldCheck,
       body: <ContentPermissionsPanel />,
     },
-    
+    'admin-member-info': {
+      title: lang === 'vi' ? 'THÔNG TIN THÀNH VIÊN' : 'MEMBER INFORMATION',
+      icon: UsersRound,
+      body: <MemberInfoAdminPanel />,
+    },
+    'admin-attendance': {
+      title: lang === 'vi' ? 'CHẤM CÔNG TOÀN VIỆN' : 'INSTITUTE ATTENDANCE',
+      icon: CalendarClock,
+      body: <InstituteAttendancePanel lang={lang} />,
+    },
+    'admin-calendar': {
+      title: lang === 'vi' ? 'LỊCH TOÀN VIỆN' : 'INSTITUTE CALENDAR',
+      icon: CalendarRange,
+      body: <InstituteCalendarPanel />,
+    },
+    'admin-library': {
+      title: lang === 'vi' ? 'QUẢN TRỊ THƯ VIỆN' : 'LIBRARY ADMIN',
+      icon: BookOpen,
+      body: <LibraryAdminPanel lang={lang} />,
+    },
+
     // Overview sections
     'cat-forms': {
-      title: lang === 'vi' ? 'HỆ THỐNG BIỂU MẪU ĐIỆN TỬ' : 'REQUESTS & E-FORMS', icon: FileText,
+      title: lang === 'vi' ? 'VẬN HÀNH & TÀI CHÍNH' : 'OPERATION & FINANCE', icon: FileText,
       body: (
-        <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="border border-neutral-200 bg-white p-3 text-center rounded-none">
-              <span className="block text-base">📥</span>
-              <span className="block font-sans text-xs font-bold text-neutral-800 mt-1">{t.MY_TASKS_WIDGET}</span>
-              <span className="block text-[10px] text-neutral-400">{t.PENDING_APPROVALS}</span>
-              <button
-                onClick={() => setSelected('my-tasks')}
-                className="mt-2 text-xs text-[#990000] font-bold hover:underline"
-              >
-                {lang === 'vi' ? 'Xem Luồng Phê Duyệt →' : 'View Approval Queue →'}
-              </button>
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 text-center rounded-none">
-              <span className="block text-base">📤</span>
-              <span className="block font-sans text-xs font-bold text-neutral-800 mt-1">{t.MY_REQUESTS_WIDGET}</span>
-              <span className="block text-[10px] text-neutral-400">{lang === 'vi' ? 'Yêu cầu đã gửi' : 'Submitted Requests'}</span>
-              <button
-                onClick={() => setSelected('my-forms')}
-                className="mt-2 text-xs text-[#990000] font-bold hover:underline"
-              >
-                {lang === 'vi' ? 'Theo Dõi Trạng Thái →' : 'Track Request Status →'}
-              </button>
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 text-center rounded-none">
-              <span className="block text-base">📂</span>
-              <span className="block font-sans text-xs font-bold text-neutral-800 mt-1">{lang === 'vi' ? 'Quy Tắc Đặt Tên' : 'Naming Standard'}</span>
-              <span className="block text-xs text-red-700 font-bold mt-0.5">[Date][Project][Title]</span>
-              <span className="block text-[10px] text-neutral-400 mt-0.5">Strict compliance validation</span>
-            </div>
-          </div>
-
-          <div className="border-t border-neutral-200 pt-3">
+        <div className="space-y-8 font-sans text-sm text-neutral-800">
+          <div className="space-y-4">
             <div className="flex items-center justify-between mb-3">
               <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
                 {lang === 'vi' ? 'TẤT CẢ DỊCH VỤ BIỂU MẪU' : 'ALL E-FORM SERVICES'}
@@ -980,6 +916,66 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
               <span className="text-xs text-neutral-400">Category Filter: {filters.formCategory}</span>
             </div>
             <FormPortalGrid categoryFilter={filters.formCategory} onOpenForm={(k) => setSelected(`form:${k}`)} />
+          </div>
+
+          <div className="space-y-4 border-t border-neutral-200 pt-6">
+            <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
+              {lang === 'vi' ? 'TRUNG TÂM TRI THỨC DÙNG CHUNG' : 'WIKI HUB'}
+            </span>
+            <div className="p-3 bg-neutral-100 border border-neutral-200 flex items-center justify-between rounded-none">
+              <div>
+                <span className="block font-bold text-neutral-900 text-sm">ISCM Wiki Commons</span>
+                <span className="block text-xs text-neutral-500 mt-0.5">
+                  {lang === 'vi'
+                    ? 'Truy cập cẩm nang hướng dẫn, quy định bắt buộc, hệ thống mẫu biểu và chính sách chiến lược.'
+                    : 'Access policies, regulations, guidelines, templates, and tool starter guides.'}
+                </span>
+              </div>
+              <span className="badge border border-neutral-300 bg-white text-neutral-800 font-bold text-xs">2026 Core Docs</span>
+            </div>
+
+            <div className="space-y-5">
+              <div className="border border-neutral-200 bg-white p-3 rounded-none">
+                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📘 {lang === 'vi' ? 'Cẩm nang Guidelines' : 'Guidelines'}</span>
+                <WikiTreeOutline t={t} branchId="wiki-guidelines-branch" onOpen={setSelected} />
+              </div>
+              <div className="border border-neutral-200 bg-white p-3 rounded-none">
+                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📕 {lang === 'vi' ? 'Chính sách Policies' : 'Policies'}</span>
+                <WikiTreeOutline t={t} branchId="wiki-policies-branch" onOpen={setSelected} />
+              </div>
+              <div className="border border-neutral-200 bg-white p-3 rounded-none">
+                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📙 {lang === 'vi' ? 'Quy chế Regulations' : 'Regulations'}</span>
+                <WikiTreeOutline t={t} branchId="wiki-regulations-branch" onOpen={setSelected} />
+              </div>
+              <div className="border border-neutral-200 bg-white p-3 rounded-none">
+                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🗂️ {lang === 'vi' ? 'Văn bản mẫu' : 'Templates'}</span>
+                <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-templates-branch')} onOpen={setSelected} />
+              </div>
+              <div className="border border-neutral-200 bg-white p-3 rounded-none">
+                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🎨 {lang === 'vi' ? 'Ấn phẩm Thương hiệu' : 'Brand Media'}</span>
+                <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-media-branch')} onOpen={setSelected} />
+              </div>
+              <div className="border border-neutral-200 bg-white p-3 rounded-none">
+                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📚 {lang === 'vi' ? 'Danh mục Tra cứu' : 'Reference'}</span>
+                <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-reference-branch')} onOpen={setSelected} />
+              </div>
+            </div>
+
+            <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
+              <span className="block font-bold text-neutral-950 uppercase text-xs tracking-wider mb-2">
+                {lang === 'vi' ? 'Chính Sách Cốt Lõi 2026' : '2026 Core Policy Highlights'}
+              </span>
+              <ul className="space-y-2 text-sm text-neutral-600">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-neutral-400 font-bold">•</span>
+                  <span><strong>Financial Routing Policy:</strong> Segregate payments strictly into Track 1 (UEH Standard Budgets: Flow 1 &amp; 2) and Track 2 (Internal ISCM Funds: Flow 3 &amp; 4).</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-neutral-400 font-bold">•</span>
+                  <span><strong>Lab Asset Management:</strong> Real-time reservation logs required for high-spec laptops, drones, spatial rigs, and VR units in the Book Catalog.</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       ),
@@ -992,7 +988,7 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
             <div>
               <span className="block font-bold text-neutral-900 text-sm">ISCM Wiki Commons</span>
               <span className="block text-xs text-neutral-500 mt-0.5">
-                {lang === 'vi' 
+                {lang === 'vi'
                   ? 'Truy cập cẩm nang hướng dẫn, quy định bắt buộc, hệ thống mẫu biểu và chính sách chiến lược.'
                   : 'Access policies, regulations, guidelines, templates, and tool starter guides.'}
               </span>
@@ -1000,21 +996,31 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
             <span className="badge border border-neutral-300 bg-white text-neutral-800 font-bold text-xs">2026 Core Docs</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[
-              ['wiki-guidelines', lang === 'vi' ? '📘 Cẩm nang Guidelines' : '📘 Guidelines', 'Standard operating manuals'],
-              ['wiki-policies', lang === 'vi' ? '📕 Chính sách Policies' : '📕 Policies', 'Institutional mandates'],
-              ['wiki-regulations', lang === 'vi' ? '📙 Quy chế Regulations' : '📙 Regulations', 'Legal & administrative limits'],
-            ].map(([k, label, desc]) => (
-              <button
-                key={k}
-                onClick={() => setSelected(k)}
-                className="p-3 border border-neutral-200 bg-white text-left hover:border-[#990000] transition-all rounded-none"
-              >
-                <span className="block font-bold text-neutral-900 text-sm">{label}</span>
-                <span className="block text-xs text-neutral-400 mt-1 leading-tight">{desc}</span>
-              </button>
-            ))}
+          <div className="space-y-5">
+            <div className="border border-neutral-200 bg-white p-3 rounded-none">
+              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📘 {lang === 'vi' ? 'Cẩm nang Guidelines' : 'Guidelines'}</span>
+              <WikiTreeOutline t={t} branchId="wiki-guidelines-branch" onOpen={setSelected} />
+            </div>
+            <div className="border border-neutral-200 bg-white p-3 rounded-none">
+              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📕 {lang === 'vi' ? 'Chính sách Policies' : 'Policies'}</span>
+              <WikiTreeOutline t={t} branchId="wiki-policies-branch" onOpen={setSelected} />
+            </div>
+            <div className="border border-neutral-200 bg-white p-3 rounded-none">
+              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📙 {lang === 'vi' ? 'Quy chế Regulations' : 'Regulations'}</span>
+              <WikiTreeOutline t={t} branchId="wiki-regulations-branch" onOpen={setSelected} />
+            </div>
+            <div className="border border-neutral-200 bg-white p-3 rounded-none">
+              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🗂️ {lang === 'vi' ? 'Văn bản mẫu' : 'Templates'}</span>
+              <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-templates-branch')} onOpen={setSelected} />
+            </div>
+            <div className="border border-neutral-200 bg-white p-3 rounded-none">
+              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🎨 {lang === 'vi' ? 'Ấn phẩm Thương hiệu' : 'Brand Media'}</span>
+              <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-media-branch')} onOpen={setSelected} />
+            </div>
+            <div className="border border-neutral-200 bg-white p-3 rounded-none">
+              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📚 {lang === 'vi' ? 'Danh mục Tra cứu' : 'Reference'}</span>
+              <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-reference-branch')} onOpen={setSelected} />
+            </div>
           </div>
 
           <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
@@ -1035,56 +1041,22 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
         </div>
       ),
     },
-    'cat-contacts': {
-      title: lang === 'vi' ? 'DANH BẠ THÔNG TIN TOÀN VIỆN' : 'CONTACTS', icon: Users2,
-      body: (
-        <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[
-              ['contacts-support', lang === 'vi' ? '☎️ Liên hệ Khẩn cấp' : '☎️ Support Contacts', 'IT Helpdesk, admin hotline'],
-              ['contacts-departments', lang === 'vi' ? '🏢 Cơ cấu phòng ban' : '🏢 Departments', 'RU1-RU8 Research Labs structure'],
-              ['contacts-colleagues', lang === 'vi' ? '👥 Danh bạ nhân sự' : '👥 Colleagues', 'Core Network Directory & roster'],
-            ].map(([k, label, desc]) => (
-              <button
-                key={k}
-                onClick={() => setSelected(k)}
-                className="p-3.5 border border-neutral-200 bg-white text-center hover:border-[#990000] transition-all rounded-none"
-              >
-                <span className="block font-bold text-neutral-900 text-sm">{label}</span>
-                <span className="block text-xs text-neutral-400 mt-1 leading-tight">{desc}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
-            <span className="block font-bold text-neutral-950 uppercase text-xs tracking-wider mb-1">
-              {lang === 'vi' ? 'Mạng Lưới Đối Tác Chiến Lược' : 'Strategic Partnerships Directory'}
-            </span>
-            <p className="text-xs text-neutral-500 mb-3 font-sans">
-              {lang === 'vi'
-                ? 'Mạng lưới đối tác liên kết của ISCM phân tách theo phân nhóm Academia (Học thuật), Industry (Doanh nghiệp), và Authority (Chính quyền).'
-                : 'Mạng lưới đối tác liên kết của ISCM phân tách theo phân nhóm Academia, Industry, và Authority.'}
-            </p>
-            <button
-              onClick={() => setSelected('contacts-colleagues')}
-              className="btn-primary text-[10px] py-1 px-3"
-            >
-              {lang === 'vi' ? 'Tra cứu Danh bạ Nhân sự' : 'Search Personnel Directory'}
-            </button>
-          </div>
-        </div>
-      ),
-    },
-
     // Wiki leaf view backups
     'wiki-guidelines': { title: lang === 'vi' ? '📘 Cẩm nang Hướng dẫn Thực hiện' : '📘 Guidelines', icon: BookOpen, body: <WikiHubPanel branch="guidelines" /> },
     'wiki-policies': { title: lang === 'vi' ? '📕 Chính sách Chiến lược' : '📕 Policies', icon: BookOpen, body: <WikiHubPanel branch="policies" /> },
     'wiki-regulations': { title: lang === 'vi' ? '📙 Quy chế / Nội quy bắt buộc' : '📙 Regulations', icon: BookOpen, body: <WikiHubPanel branch="regulations" /> },
-    
-    // Contacts view backups
-    'contacts-support': { title: lang === 'vi' ? 'Liên hệ khẩn' : 'Support Contacts', icon: Phone, body: <SupportContactsView /> },
-    'contacts-departments': { title: lang === 'vi' ? 'Cơ cấu phòng ban' : 'Departments', icon: Building2, body: <DepartmentsView /> },
-    'contacts-colleagues': { title: lang === 'vi' ? 'Danh bạ nhân sự' : 'Colleagues', icon: Users2, body: <ColleaguesView /> },
+    'wiki-templates': {
+      title: lang === 'vi' ? '🗂️ Tổng kho Văn bản mẫu' : '🗂️ Templates', icon: BookOpen,
+      body: <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-templates-branch')} onOpen={setSelected} />,
+    },
+    'wiki-media': {
+      title: lang === 'vi' ? '🎨 Ấn phẩm Thương hiệu' : '🎨 Brand Media', icon: BookOpen,
+      body: <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-media-branch')} onOpen={setSelected} />,
+    },
+    'wiki-reference': {
+      title: lang === 'vi' ? '📚 Hệ thống Danh mục Tra cứu' : '📚 Reference', icon: BookOpen,
+      body: <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-reference-branch')} onOpen={setSelected} />,
+    },
 
     // Request queues
     'my-tasks': { title: t.TASKS_TITLE, icon: Inbox, body: <MyTasksPanel statusFilter={filters.tasksStatus} /> },
@@ -1196,7 +1168,7 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
                   isActive ? '!bg-[#990000] !text-white !font-bold' : ''
                 }`}
               >
-                <span className="truncate">{node.label}</span>
+                <span className="min-w-0 break-words">{node.label}</span>
                 {node.badge && (
                   <span className={`text-[8px] font-bold px-1 py-0.2 scale-90 rounded-none shrink-0 ${CAT_BADGE_STYLE[node.badge] || 'border border-neutral-300 bg-neutral-50 text-neutral-600'}`}>
                     {node.badge}
@@ -1228,7 +1200,7 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
                 onClick={() => onToggle(node.id)}
                 className={`w-full text-left font-sans flex items-center justify-between py-1.5 px-2 border-b border-transparent transition-colors text-[11px] ${branchStyleClass}`}
               >
-                <span className="truncate">{node.label}</span>
+                <span className="min-w-0 break-words">{node.label}</span>
                 <Chevron className="h-3 w-3 shrink-0 text-neutral-400" />
               </button>
             </div>
@@ -1255,15 +1227,6 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
 
 /* ====== MY WORKSPACE — Calendar synced full layout ====== */
 
-const WS_EVENTS = [
-  { id: 'e1', title: 'Họp giao ban điều hành Tuần', start: '2026-07-06T09:00', end: '2026-07-06T11:00', location: 'StudioLab A, T1, ISCM', tag: 'Internal', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e2', title: 'Ký kết MOU với Grab Vietnam', start: '2026-07-07T14:30', end: '2026-07-07T15:30', location: 'Hội thảo CTD', tag: 'Partnership', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e3', title: 'Thẩm định đề xuất HCMC Walkability Atlas', start: '2026-07-09T10:00', end: '2026-07-09T12:00', location: 'Meeting Room C, ISCM OS', tag: 'Research', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e4', title: 'ISCM-UEH Academic Seminar', start: '2026-07-10T13:30', end: '2026-07-10T16:00', location: 'Hội trường CTD', tag: 'Seminar', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e5', title: 'Board Meeting — Director Level', start: '2026-07-10T09:00', end: '2026-07-10T10:30', location: 'Văn phòng Giám đốc, T3', tag: 'Admin', tagColor: 'bg-[#990000] text-white border-[#990000]' },
-  { id: 'e6', title: 'All-hands Core Team Sync', start: '2026-07-06T13:00', end: '2026-07-06T14:00', location: 'Online (Google Meet)', tag: 'Internal', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-];
-
 const TASK_STATUS_BADGE = {
   Open:     'bg-neutral-100 text-neutral-800 border border-neutral-300',
   Approved: 'bg-[#990000] text-white border border-[#990000]',
@@ -1278,10 +1241,10 @@ const TASK_STATUS_BADGE = {
 
 /* Helper to identify category group of any selected key */
 function getActiveCategory(selected) {
-  if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'wiki-hub-root';
-  if (selected.startsWith('contacts-') || selected === 'cat-contacts') return 'contacts-root';
-  if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'requests-forms';
-  if (['requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
+  if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'operation-finance';
+  if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'operation-finance';
+  if (['requests-forms', 'cat-forms'].includes(selected)) return 'operation-finance';
+  if (['admin-content-permissions', 'admin-member-info', 'admin-attendance', 'admin-calendar', 'admin-library'].includes(selected)) return 'admin';
   return 'my-portal';
 }
 
@@ -1381,7 +1344,6 @@ export default function PersonalDashboard({ onNavigate }) {
         if (e.detail === 'my-portal') setSelected('profile-bio');
         else if (e.detail === 'cat-forms') setSelected('cat-forms');
         else if (e.detail === 'cat-wiki') setSelected('cat-wiki');
-        else if (e.detail === 'cat-contacts') setSelected('contacts-colleagues');
         else setSelected(e.detail);
       }
     };
@@ -1489,8 +1451,18 @@ export default function PersonalDashboard({ onNavigate }) {
           <div className="max-h-[680px] overflow-y-auto pr-1">
             {categoryNode && (
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left">
-                  {categoryNode.label}
+                <div className="border-b border-neutral-200 bg-neutral-50 px-2 py-1.5 mb-2 select-none text-left">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000]">
+                    {categoryNode.label}
+                  </div>
+                  {activeCategory === 'operation-finance' && (
+                    <div className="mt-1 text-[9px] uppercase tracking-wider text-neutral-500 font-ibm">
+                      {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}:{' '}
+                      <span className="font-semibold text-[#990000] font-barlow normal-case">
+                        {lang === 'vi' ? 'ThS. KTS. Trần Thị Quỳnh Mai' : 'Mai Quynh Thi Tran, M.Arch'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {categoryNode.children && (
                   <TreeLevel

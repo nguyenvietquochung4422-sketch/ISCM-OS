@@ -5,6 +5,7 @@ import { supabase, isLive } from '../lib/supabaseClient.js';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
+import { OVERVIEW_SUBMENUS } from '../data/overviewSubmenus.js';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, subscribeToNotifications } from '../lib/notifications.js';
 
 function timeAgo(iso, lang) {
@@ -27,6 +28,14 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
   
   // Profile state
   const [dbUser, setDbUser] = useState(null);
+
+  // Real role check — gates the "ADMIN" entry in the profile dropdown, same
+  // RPC PersonalDashboard.jsx uses to gate the My Portal > Admin nav branch.
+  const [isTopAdmin, setIsTopAdmin] = useState(false);
+  useEffect(() => {
+    if (!isLive || !authUser) { setIsTopAdmin(false); return; }
+    supabase.rpc('is_top_admin').then(({ data, error }) => setIsTopAdmin(!error && Boolean(data)));
+  }, [authUser]);
 
   useEffect(() => {
     if (!isLive || !authUser) { setDbUser(null); return; }
@@ -80,9 +89,6 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
   // A real Google sign-in (via Supabase Auth) overrides the mock/demo profile above.
   const displayName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || currentUser.full_name;
   const displayEmail = authUser?.email || currentUser.email;
-  // DB rows use `global_system_role`; the mock fallback array uses `system_role`.
-  // Falls back to 'Guest', never 'Director' — an unknown role must not imply privilege.
-  const displayRole = currentUser.global_system_role || currentUser.system_role || 'Guest';
 
   const openAt = (key) => {
     clearTimeout(closeTimer.current);
@@ -129,7 +135,7 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
         
         {/* Brand logo block */}
         <button
-          onClick={() => navigateTo('personal-dashboard')}
+          onClick={() => navigateTo('home')}
           className="flex h-full px-4 shrink-0 items-center justify-center bg-transparent hover:bg-neutral-800 transition-colors -ml-4 mr-4"
           title="ISCM Control Panel"
         >
@@ -138,28 +144,47 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
 
         {/* Main Nav Tree (Desktop) */}
         <nav className="hidden lg:flex items-stretch h-full flex-1" onMouseLeave={scheduleClose}>
-          
+
+          {/* ADMIN — direct link, admin accounts only */}
+          {isTopAdmin && (
+            <button
+              onClick={() => navigateTo('personal-dashboard', 'admin-content-permissions')}
+              className={topBtnClass('admin-link', false)}
+            >
+              {t.USER_ADMIN}
+            </button>
+          )}
+
+          {/* MY PORTAL — direct link */}
+          <button
+            onClick={() => navigateTo('personal-dashboard', 'my-portal')}
+            className={topBtnClass('my-portal-link', false)}
+          >
+            {t.USER_PORTAL}
+          </button>
+
           {/* GROUP MANAGEMENT Dropdown */}
           <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('group')}>
             <button
               onClick={() => (openMenu === 'group' ? setOpenMenu(null) : openAt('group'))}
-              className={topBtnClass('group', ['research-sub-workspace', 'placeholder-cl1', 'placeholder-cl2', 'placeholder-cl4', 'placeholder-cl5', 'placeholder-cl6'].includes(active))}
+              className={topBtnClass('group', ['research-sub-workspace', 'placeholder-cl2', 'placeholder-cl4', 'placeholder-cl5', 'placeholder-cl6'].includes(active))}
             >
               {t.GROUP_MANAGEMENT}
               <ChevronDown className="h-3 w-3" />
             </button>
             {openMenu === 'group' && (
-              <div 
+              <div
                 className={`${dropdownClass} w-96 left-0`}
                 onMouseEnter={() => openAt('group')}
               >
                 <ul className="space-y-0.5">
                   <li>
                     <button
-                      onClick={() => navigateTo('placeholder-cl1')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
+                      onClick={() => navigateTo('personal-dashboard', 'cat-forms')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800 flex items-center justify-between"
                     >
-                      {t.OP_FINANCE}
+                      <span>{t.OP_FINANCE}</span>
+                      <span className="text-[9px] uppercase border border-neutral-900 px-1 py-0.2 scale-90 font-bold text-neutral-900 bg-neutral-100">Active</span>
                     </button>
                   </li>
                   <li>
@@ -204,36 +229,35 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('overview')}>
             <button
               onClick={() => (openMenu === 'overview' ? setOpenMenu(null) : openAt('overview'))}
-              className={topBtnClass('overview', ['placeholder-dl2', 'placeholder-dl4'].includes(active))}
+              className={topBtnClass('overview', active.startsWith('placeholder-dl2') || active.startsWith('placeholder-dl4'))}
             >
               {t.ISCM_OVERVIEW}
               <ChevronDown className="h-3 w-3" />
             </button>
             {openMenu === 'overview' && (
-              <div 
-                className={`${dropdownClass} w-96 left-0`}
+              <div
+                className={`${dropdownClass} w-[560px] left-0 grid grid-cols-2 gap-1 p-2`}
                 onMouseEnter={() => openAt('overview')}
               >
-                <ul className="space-y-0.5">
-                  <li>
-                    <button
-                      onClick={() => navigateTo('placeholder-dl2')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.UEH_UNITS}
-                    </button>
-                  </li>
-                  {/* ISCM Organizational Structure (placeholder-dl3) is hidden
-                      from the site for now — the page itself is untouched. */}
-                  <li>
-                    <button
-                      onClick={() => navigateTo('placeholder-dl4')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
-                    >
-                      {t.ISCM_UNITS}
-                    </button>
-                  </li>
-                </ul>
+                {OVERVIEW_SUBMENUS.map((group) => (
+                  <div key={group.id}>
+                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#990000] border-b border-neutral-100 mb-1">
+                      {lang === 'vi' ? group.labelVi : group.labelEn}
+                    </div>
+                    <ul className="space-y-0.5">
+                      {group.items.map((item) => (
+                        <li key={item.key}>
+                          <button
+                            onClick={() => navigateTo(item.key)}
+                            className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-semibold text-neutral-800"
+                          >
+                            {lang === 'vi' ? item.labelVi : item.labelEn}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -311,72 +335,30 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
             </div>
           )}
 
-          {/* User profile dropdown trigger */}
-          <button
-            onClick={() => setOpenMenu(openMenu === 'profile-dropdown' ? null : 'profile-dropdown')}
-            className="hidden xl:flex flex-col justify-center h-full px-4 border-l border-neutral-800 text-right hover:bg-neutral-800 transition-colors focus:outline-none"
-            title="Open Profile Navigation"
-          >
-            <span className="font-sans text-[11px] font-bold text-white uppercase leading-none">{displayName}</span>
-            <span className="font-sans text-[9px] text-neutral-400 mt-1 leading-none truncate max-w-[150px]">{displayEmail}</span>
-          </button>
-
-          {openMenu === 'profile-dropdown' && (
-            <div className={`${dropdownClass} w-64 right-12 top-14 text-left`}>
-              <div className="px-3 py-2 border-b border-neutral-100 mb-1">
-                <span className="block font-sans text-xs font-bold text-neutral-900 uppercase">
-                  {displayName}
-                </span>
-                <span className="block font-sans text-[9px] text-neutral-400 uppercase tracking-widest mt-0.5">
-                  {displayRole}
-                </span>
-              </div>
-              <ul className="space-y-0.5 text-xs text-neutral-700">
-                {[
-                  { label: t.USER_PORTAL, key: 'my-portal' },
-                  { label: t.USER_FORMS, key: 'cat-forms' },
-                  { label: t.USER_WIKI, key: 'cat-wiki' },
-                  { label: t.USER_CONTACTS, key: 'cat-contacts' }
-                ].map((item) => (
-                  <li key={item.key}>
-                    <button
-                      onClick={() => {
-                        navigateTo('personal-dashboard');
-                        setTimeout(() => {
-                          window.dispatchEvent(new CustomEvent('select-dashboard', { detail: item.key }));
-                        }, 50);
-                        closeAll();
-                      }}
-                      className="w-full text-left rounded-none px-3 py-1.5 hover:bg-[#990000] hover:text-white transition-colors font-semibold"
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <ul className="space-y-0.5 text-xs text-neutral-700 mt-1 pt-1 border-t border-neutral-100">
-                {authUser ? (
-                  <li>
-                    <button
-                      onClick={() => { signOut(); closeAll(); }}
-                      className="w-full flex items-center gap-1.5 text-left rounded-none px-3 py-1.5 hover:bg-[#990000] hover:text-white transition-colors font-semibold"
-                    >
-                      <LogOut className="h-3 w-3" /> {t.LOGOUT}
-                    </button>
-                  </li>
-                ) : (
-                  <li>
-                    <button
-                      onClick={() => { signInWithGoogle(); closeAll(); }}
-                      className="w-full flex items-center gap-1.5 text-left rounded-none px-3 py-1.5 hover:bg-[#990000] hover:text-white transition-colors font-semibold"
-                    >
-                      <LogIn className="h-3 w-3" /> {t.SIGN_IN_GOOGLE}
-                    </button>
-                  </li>
-                )}
-              </ul>
+          {/* User identity + direct sign-out (no dropdown) */}
+          <div className="hidden xl:flex items-center h-full pl-4 border-l border-neutral-800">
+            <div className="flex flex-col justify-center text-right">
+              <span className="font-sans text-[11px] font-bold text-white uppercase leading-none">{displayName}</span>
+              <span className="font-sans text-[9px] text-neutral-400 mt-1 leading-none truncate max-w-[150px]">{displayEmail}</span>
             </div>
-          )}
+            {authUser ? (
+              <button
+                onClick={signOut}
+                title={t.LOGOUT}
+                className="ml-3 flex items-center justify-center h-8 w-8 rounded-none border border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-[#990000] hover:text-white hover:bg-neutral-700 transition-colors shrink-0"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={signInWithGoogle}
+                title={t.SIGN_IN_GOOGLE}
+                className="ml-3 flex items-center justify-center h-8 w-8 rounded-none border border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-[#990000] hover:text-white hover:bg-neutral-700 transition-colors shrink-0"
+              >
+                <LogIn className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
           {/* Mobile responsive toggle */}
           <button 
@@ -392,8 +374,14 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
       {mobileOpen && (
         <div className="absolute inset-x-0 top-14 max-h-[85vh] overflow-y-auto bg-white border-t border-neutral-200 p-4 shadow-lg lg:hidden flex flex-col gap-4 text-neutral-900">
           <div>
+            {isTopAdmin && (
+              <button onClick={() => navigateTo('personal-dashboard', 'admin-content-permissions')} className="block w-full text-left px-2 py-1 text-xs font-bold text-neutral-900 hover:bg-neutral-50">{t.USER_ADMIN}</button>
+            )}
+            <button onClick={() => navigateTo('personal-dashboard', 'my-portal')} className="block w-full text-left px-2 py-1 text-xs font-bold text-neutral-900 hover:bg-neutral-50">{t.USER_PORTAL}</button>
+          </div>
+          <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.GROUP_MANAGEMENT}</div>
-            <button onClick={() => navigateTo('placeholder-cl1')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.OP_FINANCE}</button>
+            <button onClick={() => navigateTo('personal-dashboard', 'cat-forms')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.OP_FINANCE}</button>
             <button onClick={() => navigateTo('placeholder-cl2')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ACADEMIA}</button>
             <button onClick={() => navigateTo('research-sub-workspace')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.RESEARCH}</button>
             <button onClick={() => navigateTo('placeholder-cl4')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.COMMUNITY}</button>
@@ -401,8 +389,20 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.ISCM_OVERVIEW}</div>
-            <button onClick={() => navigateTo('placeholder-dl2')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.UEH_UNITS}</button>
-            <button onClick={() => navigateTo('placeholder-dl4')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.ISCM_UNITS}</button>
+            {OVERVIEW_SUBMENUS.map((group) => (
+              <div key={group.id} className="mb-2">
+                <div className="text-[9px] font-bold uppercase text-neutral-400 mt-1">{lang === 'vi' ? group.labelVi : group.labelEn}</div>
+                {group.items.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => navigateTo(item.key)}
+                    className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+                  >
+                    {lang === 'vi' ? item.labelVi : item.labelEn}
+                  </button>
+                ))}
+              </div>
+            ))}
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.ISCM_CORE}</div>

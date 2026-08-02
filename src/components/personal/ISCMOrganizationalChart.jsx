@@ -1,16 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   UserCheck, Wallet, GraduationCap, FlaskConical, UsersRound,
-  Megaphone, Handshake, Workflow, Cpu, Hammer, Search, ChevronRight, X,
+  Handshake, Workflow, Cpu, Hammer, Search, ChevronRight, X, Mail,
   Layers, Activity, Star, ChevronDown
 } from 'lucide-react';
 import { ISCM_MEMBERS, MEMBER_GROUPS, memberInitials } from '../../data/iscmMembers.js';
+import { fetchMembers } from '../../data/iscmMembersStore.js';
+import { fetchRoleAssignments } from '../../data/orgRoleAssignments.js';
 
 const DEPARTMENTS = [
   {
     id: 'director',
-    nameVi: 'Director & Management Board',
-    nameEn: 'Director & Management Board',
+    nameVi: 'Viện trưởng (Director)',
+    nameEn: 'Director',
     roleVi: 'Điều hành tối cao',
     roleEn: 'Supreme Director',
     pic: 'Trịnh Tú Anh',
@@ -19,7 +21,21 @@ const DEPARTMENTS = [
     descVi: 'Nắm quyền điều hành tối cao tại ISCM; trực tiếp phân công, bổ nhiệm các vị trí: Head, Lead, Manager, Coordinator, Host.',
     descEn: 'Supreme executive authority at ISCM; directly assigns and appoints Head, Lead, Manager, Coordinator, Host positions.',
     members: [
-      { roleVi: 'Viện trưởng / Director', name: 'Trịnh Tú Anh' },
+      { roleVi: 'Viện trưởng / Director', name: 'Trịnh Tú Anh' }
+    ]
+  },
+  {
+    id: 'vice-director',
+    nameVi: 'Viện phó (Vice Director)',
+    nameEn: 'Vice Director',
+    roleVi: 'Điều hành cấp phó',
+    roleEn: 'Deputy Executive',
+    pic: 'Trần Thị Quỳnh Mai',
+    icon: UserCheck,
+    color: 'border-[#990000]/70 bg-red-50/60 text-[#990000]',
+    descVi: 'Hỗ trợ Viện trưởng điều hành; trực tiếp phụ trách khối Operation & Finance và các chương trình đào tạo liên quan.',
+    descEn: 'Supports the Director in overall governance; directly oversees Operation & Finance and related academic programs.',
+    members: [
       { roleVi: 'Viện phó / Vice Director', name: 'Trần Thị Quỳnh Mai' }
     ]
   },
@@ -41,7 +57,14 @@ const DEPARTMENTS = [
       { nameVi: 'All Equipment (Thiết bị)', nameEn: 'All Equipment', pic: 'Thái Anh Vũ', descVi: 'Trực tiếp quản lý vận hành, kiểm kê, cấp phát và bảo trì toàn bộ thiết bị trong các dự án.', descEn: 'Directly manage operations, inventory, allocation and maintenance of all project equipment.' },
       { nameVi: 'Document: International', nameEn: 'Document: International', pic: 'Lê Phan Trường An', descVi: 'Soạn thảo, trình duyệt Tờ trình/Kế hoạch trên Smart Office; thanh toán quốc tế; booking phòng/xe/khách sạn; cấp điểm rèn luyện.', descEn: 'Draft/approve proposals on Smart Office; international payments; book room/car/hotel; student training points.' },
       { nameVi: 'Document: Domestic', nameEn: 'Document: Domestic', pic: 'Thái Anh Vũ', descVi: 'Soạn thảo, trình duyệt Tờ trình/Kế hoạch trên Smart Office; thanh toán nội địa cho các sự kiện trong nước.', descEn: 'Draft/approve proposals on Smart Office; domestic payments for local events.' },
-      { nameVi: 'Booklist', nameEn: 'Booklist', pic: 'O&F Team', descVi: 'Vận hành hệ thống sách vật lý & sách điện tử; phối hợp biên tập, trình bày ấn phẩm sách, tạp chí.', descEn: 'Operate physical and digital book system; coordinate editing and presentation of publications.' }
+      { nameVi: 'Booklist', nameEn: 'Booklist', pic: 'O&F Team', descVi: 'Vận hành hệ thống sách vật lý & sách điện tử; phối hợp biên tập, trình bày ấn phẩm sách, tạp chí.', descEn: 'Operate physical and digital book system; coordinate editing and presentation of publications.' },
+      { nameVi: 'PR & Communication (Truyền thông)', nameEn: 'PR & Communication', pic: 'Lê Thị Thủy Tiên', descVi: 'Quản trị thương hiệu và lan tỏa ảnh hưởng tri thức toàn cầu của Viện; quản lý báo chí, thiết kế ấn phẩm và mạng xã hội.', descEn: 'Brand management and global dissemination of the Institute\'s academic influence; manage media relations, design publications and social networks.', isPRBranch: true }
+    ],
+    prActivities: [
+      { name: 'Branding & Media Relations', pic: 'Lê Thị Thủy Tiên' },
+      { name: 'Content & Social Media', pic: 'Phạm Võ Hồng Dung / Bùi Thảo Nguyên' },
+      { name: 'IT Digital & Web', pic: 'Lê Thị Thủy Tiên' },
+      { name: 'Design Team', pic: 'Design Team' }
     ],
     members: [
       { roleVi: 'Head (Trưởng bộ phận)', name: 'Trần Thị Quỳnh Mai' },
@@ -50,7 +73,9 @@ const DEPARTMENTS = [
       { roleVi: 'Facility V (Cơ sở V)', name: 'Lê Phan Trường An' },
       { roleVi: 'All Equipment (Thiết bị)', name: 'Thái Anh Vũ' },
       { roleVi: 'Document International', name: 'Lê Phan Trường An' },
-      { roleVi: 'Document Domestic', name: 'Thái Anh Vũ' }
+      { roleVi: 'Document Domestic', name: 'Thái Anh Vũ' },
+      { roleVi: 'PR & Communication Head', name: 'Lê Thị Thủy Tiên' },
+      { roleVi: 'Content & Social Media', name: 'Phạm Võ Hồng Dung / Bùi Thảo Nguyên' }
     ]
   },
   {
@@ -142,29 +167,6 @@ const DEPARTMENTS = [
       { roleVi: 'Curator', name: 'Huỳnh Văn Khang' },
       { roleVi: 'Student Product', name: 'Trần Vĩnh Tài' },
       { roleVi: 'Alumni Network', name: 'Phạm Nguyễn Hoài' }
-    ]
-  },
-  {
-    id: 'pr',
-    nameVi: 'PR & Communication (Truyền thông)',
-    nameEn: 'PR & Communication',
-    roleVi: 'Trưởng bộ phận (Head)',
-    roleEn: 'Head of Department',
-    pic: 'Lê Thị Thủy Tiên',
-    icon: Megaphone,
-    color: 'border-indigo-600 bg-indigo-50 text-indigo-800',
-    descVi: 'Quản trị thương hiệu và lan tỏa ảnh hưởng tri thức toàn cầu của Viện; quản lý báo chí, thiết kế ấn phẩm và mạng xã hội.',
-    descEn: 'Brand management and global dissemination of the Institute\'s academic influence; manage media relations, design publications and social networks.',
-    subgroups: [
-      { nameVi: 'Branding & Media Relations', nameEn: 'Branding & Media Relations', pic: 'Lê Thị Thủy Tiên', descVi: 'Thực thi chiến lược định vị thương hiệu; quảng bá các dự án hợp tác; quản trị khủng hoảng thông tin.', descEn: 'Implement brand positioning strategy; promote collaborative projects; manage information risks.' },
-      { nameVi: 'Content & Social Media', nameEn: 'Content & Social Media', pic: 'Phạm Võ Hồng Dung / Bùi Thảo Nguyên', descVi: 'Xây dựng nội dung sáng tạo cho các chiến dịch tuyển sinh, event; quản trị trực tiếp các trang mạng xã hội.', descEn: 'Create content for enrollment campaigns and events; directly manage social media channels.' },
-      { nameVi: 'IT Digital & Web', nameEn: 'IT Digital & Web', pic: 'Lê Thị Thủy Tiên', descVi: 'Thiết kế giao diện (UI/UX) và quản trị vận hành Website ISCM; quản lý kho dữ liệu số (hình ảnh, video).', descEn: 'Design UI/UX and operate the ISCM Website; manage digital media library (photos, videos).' },
-      { nameVi: 'Design Team', nameEn: 'Design Team', pic: 'Design Team', descVi: 'Thiết kế trọn gói bộ nhận diện sự kiện (Key visual, Backdrop, Standee, Brochure, Office Kit).', descEn: 'Provide end-to-end event branding designs (Key visual, Backdrop, Standee, Brochure, Office Kit).' }
-    ],
-    members: [
-      { roleVi: 'Head (Trưởng bộ phận)', name: 'Lê Thị Thủy Tiên' },
-      { roleVi: 'Content & Social Media', name: 'Phạm Võ Hồng Dung / Bùi Thảo Nguyên' },
-      { roleVi: 'IT Digital', name: 'Lê Thị Thủy Tiên' }
     ]
   },
   {
@@ -319,17 +321,24 @@ const MEMBER_GROUP_TONE = {
  *  nhóm và đồng bộ với ô tìm kiếm chung của trang. */
 function MemberDirectorySection({ lang, searchTerm }) {
   const [group, setGroup] = useState('all');
+  const [members, setMembers] = useState(ISCM_MEMBERS);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMembers().then((data) => { if (!cancelled) setMembers(data); });
+    return () => { cancelled = true; };
+  }, []);
 
   const query = searchTerm.trim().toLowerCase();
-  const filtered = useMemo(() => ISCM_MEMBERS.filter((m) => {
+  const filtered = useMemo(() => members.filter((m) => {
     if (group !== 'all' && m.group !== group) return false;
     if (!query) return true;
-    return [m.nameVi, m.nameEn, m.titleVi, m.titleEn, m.fieldVi, m.fieldEn, ...(m.duties ?? [])]
+    return [m.nameVi, m.nameEn, m.titleVi, m.titleEn, m.fieldVi, m.fieldEn, m.email, ...(m.duties ?? [])]
       .some((f) => f && f.toLowerCase().includes(query));
-  }), [group, query]);
+  }), [members, group, query]);
 
-  const staffCount = ISCM_MEMBERS.filter((m) => m.group !== 'intern').length;
-  const internCount = ISCM_MEMBERS.filter((m) => m.group === 'intern').length;
+  const staffCount = members.filter((m) => m.group !== 'intern').length;
+  const internCount = members.filter((m) => m.group === 'intern').length;
 
   const renderCard = (m) => (
     <div key={m.id} className="flex items-start gap-2.5 border border-neutral-200 bg-neutral-50 p-2.5 card-scale">
@@ -341,6 +350,16 @@ function MemberDirectorySection({ lang, searchTerm }) {
         <p className="text-[10px] font-semibold text-[#990000]">{lang === 'vi' ? m.titleVi : m.titleEn}</p>
         {(lang === 'vi' ? m.fieldVi : m.fieldEn) && (
           <p className="text-[10px] leading-snug text-neutral-500">{lang === 'vi' ? m.fieldVi : m.fieldEn}</p>
+        )}
+        {m.email && (
+          <a
+            href={`mailto:${m.email}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-0.5 flex items-center gap-1 text-[10px] text-neutral-500 hover:text-[#990000] hover:underline"
+          >
+            <Mail className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{m.email}</span>
+          </a>
         )}
         {/* Chức vụ phụ trách vận hành (P.I.C) theo "Chức năng & Nhiệm vụ các bộ phận" */}
         {m.duties?.length > 0 && (
@@ -377,7 +396,7 @@ function MemberDirectorySection({ lang, searchTerm }) {
       {/* Bộ lọc theo nhóm */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {MEMBER_GROUPS.map((g) => {
-          const count = g.key === 'all' ? ISCM_MEMBERS.length : ISCM_MEMBERS.filter((m) => m.group === g.key).length;
+          const count = g.key === 'all' ? members.length : members.filter((m) => m.group === g.key).length;
           return (
             <button
               key={g.key}
@@ -430,9 +449,51 @@ function MemberDirectorySection({ lang, searchTerm }) {
 export default function ISCMOrganizationalChart({ lang = 'vi' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState(null);
-  const [viewMode, setViewMode] = useState('members'); // 'members' | 'chart' | 'matrix'
+  const [viewMode, setViewMode] = useState('chart'); // 'members' | 'chart' | 'matrix'
   const [hoveredPic, setHoveredPic] = useState(null);
   const [selectedPic, setSelectedPic] = useState(null);
+  const [roleOverrides, setRoleOverrides] = useState({});
+
+  useEffect(() => {
+    fetchRoleAssignments().then(setRoleOverrides);
+  }, []);
+
+  // Admin-editable "who holds this role" (org-structure assignments) layered
+  // on top of the hardcoded chart shape — same DEPARTMENTS below, just with
+  // dept.pic / subgroup.pic / nested-item.pic swapped for whatever's saved
+  // in Supabase. Nested arrays map to role_key prefix 'item:<deptId>:<x>:<idx>'.
+  const NESTED_FIELDS = { programDirectors: 'program', researchUnits: 'unit', prActivities: 'pr', colabProjects: 'project' };
+  const departments = useMemo(() => {
+    return DEPARTMENTS.map((dept) => {
+      const deptOverride = roleOverrides[`dept:${dept.id}`];
+      let next = deptOverride ? { ...dept, pic: deptOverride.picName } : dept;
+
+      if (next.subgroups) {
+        let subgroupsChanged = false;
+        const subgroups = next.subgroups.map((sub, idx) => {
+          const subOverride = roleOverrides[`sub:${dept.id}:${idx}`];
+          if (!subOverride) return sub;
+          subgroupsChanged = true;
+          return { ...sub, pic: subOverride.picName };
+        });
+        if (subgroupsChanged) next = { ...next, subgroups };
+      }
+
+      Object.entries(NESTED_FIELDS).forEach(([field, suffix]) => {
+        if (!next[field]) return;
+        let fieldChanged = false;
+        const items = next[field].map((item, idx) => {
+          const override = roleOverrides[`item:${dept.id}:${suffix}:${idx}`];
+          if (!override) return item;
+          fieldChanged = true;
+          return { ...item, pic: override.picName };
+        });
+        if (fieldChanged) next = { ...next, [field]: items };
+      });
+
+      return next;
+    });
+  }, [roleOverrides]);
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return SIMULATED_USERS;
@@ -460,11 +521,15 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
       p.name.toLowerCase().includes(query) || 
       p.pic.toLowerCase().includes(query)
     );
-    const unitMatch = dept.researchUnits?.some(u => 
-      u.name.toLowerCase().includes(query) || 
+    const unitMatch = dept.researchUnits?.some(u =>
+      u.name.toLowerCase().includes(query) ||
       u.pic.toLowerCase().includes(query)
     );
-    return nameMatch || picMatch || subgroupMatch || programMatch || unitMatch;
+    const prMatch = dept.prActivities?.some(a =>
+      a.name.toLowerCase().includes(query) ||
+      a.pic.toLowerCase().includes(query)
+    );
+    return nameMatch || picMatch || subgroupMatch || programMatch || unitMatch || prMatch;
   };
 
   const matchesSubgroup = (sub) => {
@@ -485,12 +550,13 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
   // Find all departments a person is involved in
   const getInvolvedDepts = (picName) => {
     if (!picName) return [];
-    return DEPARTMENTS.filter(d => 
+    return departments.filter(d =>
       d.pic.toLowerCase().includes(picName.toLowerCase()) ||
       d.members.some(m => m.name.toLowerCase().includes(picName.toLowerCase())) ||
       d.subgroups?.some(s => s.pic.toLowerCase().includes(picName.toLowerCase())) ||
       d.programDirectors?.some(p => p.pic.toLowerCase().includes(picName.toLowerCase())) ||
-      d.researchUnits?.some(u => u.pic.toLowerCase().includes(picName.toLowerCase()))
+      d.researchUnits?.some(u => u.pic.toLowerCase().includes(picName.toLowerCase())) ||
+      d.prActivities?.some(a => a.pic.toLowerCase().includes(picName.toLowerCase()))
     ).map(d => d.id);
   };
 
@@ -613,11 +679,12 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
 
       {/* VIEWPORT 1: Global Tree Flowchart with Nested Branches directly in the tree diagram */}
       {viewMode === 'chart' && (
-        <div className="border border-neutral-200 p-6 bg-neutral-50/50 relative overflow-x-auto min-w-[1000px] select-none">
-          
+        <div className="overflow-x-auto">
+        <div className="border border-neutral-200 p-6 bg-neutral-50/50 relative min-w-[2000px] select-none">
+
           {/* Level 0: Ban Giám đốc */}
           <div className="flex justify-center mb-8 relative">
-            {DEPARTMENTS.slice(0, 1).map((dept) => {
+            {departments.slice(0, 1).map((dept) => {
               const isMatch = matchesSearch(dept);
               const isHoverHighlight = activeHoveredDepts.includes(dept.id);
               const Icon = dept.icon;
@@ -630,40 +697,76 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                   }`}
                 >
                   <Icon className="h-6 w-6 mx-auto mb-2 text-[#990000]" />
-                  <h3 className="font-bold text-sm uppercase font-barlow tracking-wider">
+                  <h3 className="font-bold text-sm uppercase font-barlow tracking-wider whitespace-nowrap">
                     {lang === 'vi' ? dept.nameVi : dept.nameEn}
                   </h3>
-                  <p className="text-xs font-semibold text-neutral-500 mt-1">
-                    {lang === 'vi' ? dept.roleVi : dept.roleEn}: <span className="font-bold text-neutral-900">{dept.pic}</span>
+                  <p className="text-xs font-semibold text-neutral-500 mt-1.5">
+                    {lang === 'vi' ? dept.roleVi : dept.roleEn}
                   </p>
+                  <p className="text-xs font-bold text-neutral-900 whitespace-nowrap">{dept.pic}</p>
                 </button>
               );
             })}
           </div>
 
-          {/* Connect level 0 to level 1 */}
+          {/* Connect Director to Vice Director */}
+          <div className="flex justify-center -my-2 relative z-0">
+            <div className="w-0.5 h-6 bg-neutral-300" />
+          </div>
+
+          {/* Level 0.5: Vice Director — reports to Director, sits above the department row */}
+          <div className="flex justify-center mb-8 relative">
+            {departments.slice(1, 2).map((dept) => {
+              const isMatch = matchesSearch(dept);
+              const isHoverHighlight = activeHoveredDepts.includes(dept.id);
+              const Icon = dept.icon;
+              return (
+                <button
+                  key={dept.id}
+                  onClick={() => setSelectedDept(dept)}
+                  className={`w-64 border-2 p-3 text-center cursor-pointer transition-all duration-300 transform card-scale relative z-10 ${dept.color} ${
+                    isMatch || isHoverHighlight ? 'glow-red border-[#990000] ring-4 ring-[#990000]/10 scale-105' : ''
+                  }`}
+                >
+                  <Icon className="h-5 w-5 mx-auto mb-1.5 text-[#990000]" />
+                  <h3 className="font-bold text-xs uppercase font-barlow tracking-wider whitespace-nowrap">
+                    {lang === 'vi' ? dept.nameVi : dept.nameEn}
+                  </h3>
+                  <p className="text-xs font-semibold text-neutral-500 mt-1.5">
+                    {lang === 'vi' ? dept.roleVi : dept.roleEn}
+                  </p>
+                  <p className="text-xs font-bold text-neutral-900 whitespace-nowrap">{dept.pic}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Connect Vice Director to the department row */}
           <div className="relative h-12 flex justify-center -my-8 z-0">
-            <svg className="w-full h-full absolute inset-0 text-neutral-300 pointer-events-none" style={{ minWidth: '1000px' }}>
+            <svg className="w-full h-full absolute inset-0 text-neutral-300 pointer-events-none" style={{ minWidth: '2000px' }}>
               <line x1="50%" y1="0" x2="50%" y2="50%" stroke="currentColor" strokeWidth="2" />
-              <line x1="16.6%" y1="50%" x2="83.3%" y2="50%" stroke="currentColor" strokeWidth="2" />
-              
-              <line x1="16.6%" y1="50%" x2="16.6%" y2="100%" stroke="currentColor" strokeWidth="2" />
-              <line x1="33.3%" y1="50%" x2="33.3%" y2="100%" stroke="currentColor" strokeWidth="2" />
-              <line x1="50%" y1="50%" x2="50%" y2="100%" stroke="currentColor" strokeWidth="2" />
-              <line x1="66.6%" y1="50%" x2="66.6%" y2="100%" stroke="currentColor" strokeWidth="2" />
-              <line x1="83.3%" y1="50%" x2="83.3%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="6.25%" y1="50%" x2="93.75%" y2="50%" stroke="currentColor" strokeWidth="2" />
+
+              <line x1="6.25%" y1="50%" x2="6.25%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="18.75%" y1="50%" x2="18.75%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="31.25%" y1="50%" x2="31.25%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="43.75%" y1="50%" x2="43.75%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="56.25%" y1="50%" x2="56.25%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="68.75%" y1="50%" x2="68.75%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="81.25%" y1="50%" x2="81.25%" y2="100%" stroke="currentColor" strokeWidth="2" />
+              <line x1="93.75%" y1="50%" x2="93.75%" y2="100%" stroke="currentColor" strokeWidth="2" />
 
               {activePic && (
                 <>
                   <line x1="50%" y1="0" x2="50%" y2="50%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
-                  <line x1="16.6%" y1="50%" x2="83.3%" y2="50%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
+                  <line x1="6.25%" y1="50%" x2="93.75%" y2="50%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
                   {activeHoveredDepts.map(id => {
-                    let pct = "50%";
-                    if (id === 'of') pct = "16.6%";
-                    if (id === 'academia') pct = "33.3%";
-                    if (id === 'research') pct = "50%";
-                    if (id === 'community') pct = "66.6%";
-                    if (id === 'pr') pct = "83.3%";
+                    const PCT = {
+                      of: '6.25%', academia: '18.75%', research: '31.25%', community: '43.75%',
+                      partnership: '56.25%', colab: '68.75%', tech_hub: '81.25%', maker_space: '93.75%',
+                    };
+                    const pct = PCT[id];
+                    if (!pct) return null;
                     return (
                       <line key={id} x1={pct} y1="50%" x2={pct} y2="100%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
                     );
@@ -673,10 +776,10 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
             </svg>
           </div>
 
-          {/* Level 1: Core Departments columns with NESTED sub-branches */}
-          <div className="grid grid-cols-5 gap-4 mt-8 relative z-10 items-start">
-            
-            {DEPARTMENTS.slice(1, 6).map((dept) => {
+          {/* Level 1: All departments, single row, with NESTED sub-branches */}
+          <div className="grid grid-cols-8 gap-3 mt-8 relative z-10 items-start">
+
+            {departments.slice(2).map((dept) => {
               const isMatch = matchesSearch(dept);
               const isHoverHighlight = activeHoveredDepts.includes(dept.id);
               const Icon = dept.icon;
@@ -689,15 +792,16 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                       isMatch || isHoverHighlight ? 'border-[#990000] ring-4 ring-[#990000]/10 scale-[1.02] shadow-md' : 'border-neutral-200 shadow-sm'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 border-b border-neutral-100 pb-1 mb-1">
-                      <span className="font-bold text-[10px] uppercase font-barlow tracking-wider text-neutral-900 truncate">
+                    <div className="flex items-start justify-between gap-1 border-b border-neutral-100 pb-1 mb-1">
+                      <span className="font-bold text-[10px] uppercase font-barlow tracking-wider text-neutral-900 leading-tight">
                         {lang === 'vi' ? dept.nameVi.split('(')[0] : dept.nameEn.split('(')[0]}
                       </span>
-                      <Icon className="h-3.5 w-3.5 shrink-0 text-[#990000]" />
+                      <Icon className="h-3.5 w-3.5 shrink-0 text-[#990000] mt-0.5" />
                     </div>
                     <p className="text-[9px] text-neutral-500 leading-snug">
-                      Head: <span className="font-bold text-neutral-800">{dept.pic}</span>
+                      {lang === 'vi' ? dept.roleVi : dept.roleEn}
                     </p>
+                    <p className="text-[9px] font-bold text-neutral-800 whitespace-nowrap">{dept.pic}</p>
                   </button>
 
                   {/* Connecting line dropping to subgroups */}
@@ -708,12 +812,12 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                     {dept.subgroups?.map((sub, idx) => {
                       const isSubMatch = matchesSubgroup(sub);
                       const isSubHovered = activePic && sub.pic.toLowerCase().includes(activePic.toLowerCase());
-                      
+
                       return (
                         <div key={idx} className="relative">
                           {/* Horizontal branch line */}
                           <span className="absolute -left-3.5 top-3.5 w-3.5 h-0.5 bg-neutral-300" />
-                          
+
                           {/* Subgroup Card */}
                           <button
                             onClick={() => setSelectedDept(dept)}
@@ -736,13 +840,13 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                                 {dept.programDirectors?.map((prog, pIdx) => {
                                   const isProgMatch = matchesDirectItem(prog);
                                   const isProgHovered = activePic && prog.pic.toLowerCase().includes(activePic.toLowerCase());
-                                  
+
                                   return (
-                                    <div key={pIdx} className={`text-[8px] flex justify-between items-center py-0.5 px-1 ${
+                                    <div key={pIdx} className={`text-[8px] py-0.5 px-1 ${
                                       isProgMatch || isProgHovered ? 'bg-[#990000]/10 text-[#990000] font-bold' : 'text-neutral-500'
                                     }`}>
-                                      <span className="truncate">{prog.name.split('(')[0]}</span>
-                                      <span className="font-bold shrink-0">{prog.pic}</span>
+                                      <div>{prog.name.split('(')[0]}</div>
+                                      <div className="font-bold whitespace-nowrap">{prog.pic}</div>
                                     </div>
                                   );
                                 })}
@@ -755,113 +859,37 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                                 {dept.researchUnits?.map((unit, uIdx) => {
                                   const isUnitMatch = matchesDirectItem(unit);
                                   const isUnitHovered = activePic && unit.pic.toLowerCase().includes(activePic.toLowerCase());
-                                  
+
                                   return (
-                                    <div key={uIdx} className={`text-[8px] flex justify-between items-center py-0.5 px-1 ${
+                                    <div key={uIdx} className={`text-[8px] py-0.5 px-1 ${
                                       isUnitMatch || isUnitHovered ? 'bg-[#990000]/10 text-[#990000] font-bold' : 'text-neutral-500'
                                     }`}>
-                                      <span className="truncate">{unit.name.split('(')[0]}</span>
-                                      <span className="font-bold shrink-0">{unit.pic}</span>
+                                      <div>{unit.name.split('(')[0]}</div>
+                                      <div className="font-bold whitespace-nowrap">{unit.pic}</div>
                                     </div>
                                   );
                                 })}
                               </div>
                             )}
 
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                            {/* Double nested PR & Communication activities, folded into O&F */}
+                            {sub.isPRBranch && (
+                              <div className="border-l border-neutral-200 pl-2 ml-1 mt-1.5 space-y-1 relative w-full">
+                                {dept.prActivities?.map((act, aIdx) => {
+                                  const isActMatch = matchesDirectItem(act);
+                                  const isActHovered = activePic && act.pic.toLowerCase().includes(activePic.toLowerCase());
 
-          </div>
-
-          {/* Connect core row down to hubs */}
-          <div className="relative h-12 flex justify-center z-0">
-            <svg className="w-full h-full absolute inset-0 text-neutral-300 pointer-events-none" style={{ minWidth: '1000px' }}>
-              <line x1="50%" y1="0" x2="50%" y2="100%" stroke="currentColor" strokeWidth="2" />
-              <line x1="25%" y1="50%" x2="75%" y2="50%" stroke="currentColor" strokeWidth="2" />
-              <line x1="25%" y1="50%" x2="25%" y2="100%" stroke="currentColor" strokeWidth="2" />
-              <line x1="75%" y1="50%" x2="75%" y2="100%" stroke="currentColor" strokeWidth="2" />
-
-              {activePic && (
-                <>
-                  <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
-                  <line x1="25%" y1="50%" x2="75%" y2="50%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
-                  {activeHoveredDepts.map(id => {
-                    let pct = null;
-                    if (id === 'colab') pct = "25%";
-                    if (id === 'tech_hub') pct = "50%";
-                    if (id === 'maker_space') pct = "75%";
-                    if (!pct) return null;
-                    return (
-                      <line key={id} x1={pct} y1="50%" x2={pct} y2="100%" stroke="#990000" strokeWidth="2.5" className="animated-line" />
-                    );
-                  })}
-                </>
-              )}
-            </svg>
-          </div>
-
-          {/* Level 2: Specialized Hubs row with NESTED sub-branches */}
-          <div className="grid grid-cols-3 gap-4 mt-2 relative z-10 w-11/12 mx-auto items-start">
-            
-            {DEPARTMENTS.slice(7).map((dept) => {
-              const isMatch = matchesSearch(dept);
-              const isHoverHighlight = activeHoveredDepts.includes(dept.id);
-              const Icon = dept.icon;
-              return (
-                <div key={dept.id} className="space-y-4">
-                  {/* Parent Hub Node */}
-                  <button
-                    onClick={() => setSelectedDept(dept)}
-                    className={`w-full border-2 p-3 text-left cursor-pointer transition-all duration-300 transform bg-white hover:border-[#990000]/60 ${
-                      isMatch || isHoverHighlight ? 'border-[#990000] ring-4 ring-[#990000]/10 scale-[1.02] shadow-md' : 'border-neutral-200 shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 border-b border-neutral-100 pb-1 mb-1">
-                      <span className="font-bold text-[10px] uppercase font-barlow tracking-wider text-neutral-900 truncate">
-                        {lang === 'vi' ? dept.nameVi : dept.nameEn}
-                      </span>
-                      <Icon className="h-3.5 w-3.5 shrink-0 text-[#990000]" />
-                    </div>
-                    <p className="text-[9px] text-neutral-500 leading-snug">
-                      Lead: <span className="font-bold text-neutral-800">{dept.pic}</span>
-                    </p>
-                  </button>
-
-                  {/* Connecting line dropping to subgroups */}
-                  <div className="w-0.5 h-4 bg-neutral-300 mx-auto -my-4" />
-
-                  {/* Sub-branches listing tree */}
-                  <div className="border-l border-neutral-300 ml-3.5 pl-3.5 space-y-2.5 py-1.5 relative">
-                    {dept.subgroups?.map((sub, idx) => {
-                      const isSubMatch = matchesSubgroup(sub);
-                      const isSubHovered = activePic && sub.pic.toLowerCase().includes(activePic.toLowerCase());
-                      
-                      return (
-                        <div key={idx} className="relative">
-                          {/* Horizontal branch line */}
-                          <span className="absolute -left-3.5 top-3.5 w-3.5 h-0.5 bg-neutral-300" />
-                          
-                          {/* Subgroup Card */}
-                          <button
-                            onClick={() => setSelectedDept(dept)}
-                            className={`w-full text-left bg-white border p-2 flex flex-col transition-all cursor-pointer ${
-                              isSubMatch || isSubHovered
-                                ? 'border-[#990000] bg-[#990000]/5 ring-2 ring-[#990000]/10'
-                                : 'border-neutral-200 hover:border-neutral-400'
-                            }`}
-                          >
-                            <span className="font-bold text-[9px] text-neutral-800 leading-tight">
-                              {lang === 'vi' ? sub.nameVi.split('(')[0] : sub.nameEn.split('(')[0]}
-                            </span>
-                            <span className="text-[8px] font-bold text-[#990000] mt-0.5 font-barlow uppercase">
-                              P.I.C: {sub.pic}
-                            </span>
+                                  return (
+                                    <div key={aIdx} className={`text-[8px] py-0.5 px-1 ${
+                                      isActMatch || isActHovered ? 'bg-[#990000]/10 text-[#990000] font-bold' : 'text-neutral-500'
+                                    }`}>
+                                      <div>{act.name.split('(')[0]}</div>
+                                      <div className="font-bold whitespace-nowrap">{act.pic}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
 
                             {/* Double nested Colab Projects for UEH CoLab */}
                             {sub.isColabBranch && (
@@ -869,13 +897,13 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                                 {dept.colabProjects?.map((proj, pIdx) => {
                                   const isProjMatch = matchesDirectItem(proj);
                                   const isProjHovered = activePic && proj.pic.toLowerCase().includes(activePic.toLowerCase());
-                                  
+
                                   return (
-                                    <div key={pIdx} className={`text-[8px] flex justify-between items-center py-0.5 px-1 ${
+                                    <div key={pIdx} className={`text-[8px] py-0.5 px-1 ${
                                       isProjMatch || isProjHovered ? 'bg-[#990000]/10 text-[#990000] font-bold' : 'text-neutral-500'
                                     }`}>
-                                      <span className="truncate">{proj.name.split('(')[0]}</span>
-                                      <span className="font-bold shrink-0">{proj.pic}</span>
+                                      <div>{proj.name.split('(')[0]}</div>
+                                      <div className="font-bold whitespace-nowrap">{proj.pic}</div>
                                     </div>
                                   );
                                 })}
@@ -887,19 +915,20 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                       );
                     })}
                   </div>
-
                 </div>
               );
             })}
+
           </div>
 
+        </div>
         </div>
       )}
 
       {/* VIEWPORT 2: Detailed Matrix Grid (Fully Expanded Dashboard Cards) */}
       {viewMode === 'matrix' && (
         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
-          {DEPARTMENTS.map((dept) => {
+          {departments.map((dept) => {
             const isMatch = matchesSearch(dept);
             const isHoverHighlight = activeHoveredDepts.includes(dept.id);
             const Icon = dept.icon;

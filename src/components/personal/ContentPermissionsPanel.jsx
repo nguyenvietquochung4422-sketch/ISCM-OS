@@ -21,11 +21,11 @@ const SELF_OWNED_KEYS = new Set(['profile-bio', 'my-assets', 'my-tasks', 'my-for
 const ENFORCED_KEYS = new Set(['form:order-book', 'attendance-log']);
 
 // Whole branches that are pure reference/read-only content — Wiki Hub docs
-// and the Contacts directory aren't submitted or edited through the app by
-// anyone, and ISCM Core is just a set of view-only dashboards. None of them
-// have (or need) a request/approval workflow, so they're skipped entirely
-// rather than listed as "not yet enforced" placeholders.
-const EXCLUDED_BRANCH_IDS = new Set(['wiki-hub-root', 'contacts-root', 'iscm-core-root']);
+// aren't submitted or edited through the app by anyone, and ISCM Core is
+// just a set of view-only dashboards. Neither has (or needs) a
+// request/approval workflow, so they're skipped entirely rather than
+// listed as "not yet enforced" placeholders.
+const EXCLUDED_BRANCH_IDS = new Set(['wiki-hub-root', 'iscm-core-root']);
 
 /** Flatten the sidebar nav tree into a flat list of manageable content leaves. */
 function flattenContentItems(nodes, out = []) {

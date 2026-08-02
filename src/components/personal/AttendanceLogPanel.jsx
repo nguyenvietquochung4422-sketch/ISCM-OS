@@ -1,23 +1,16 @@
-import { useEffect, useState } from 'react';
-import { Check, CalendarPlus, Lock, Send, ShieldCheck, UserRound, X } from 'lucide-react';
-import {
-  ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE,
-  INSTITUTE_YTD_TOTALS, STAFF_ROSTER, DAILY_LOG_ENTRIES,
-} from '../../data/attendanceData.js';
+import { useState } from 'react';
+import { CalendarPlus, Lock, Send, UserRound } from 'lucide-react';
+import { ATTENDANCE_LEGEND, ATTENDANCE_RECORD_TYPES, MY_YTD_ATTENDANCE } from '../../data/attendanceData.js';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { isLive } from '../../lib/supabaseClient.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import {
-  canManageAttendance, submitAttendanceRequestRemote, fetchAllAttendanceRequests, decideAttendanceRequestRemote,
-} from '../../data/attendanceAdmin.js';
+import { submitAttendanceRequestRemote } from '../../data/attendanceAdmin.js';
 
-/* Daily Attendance Log — integrates iscm daily attendance checklist.xlsx */
+/* Daily Attendance Log — integrates iscm daily attendance checklist.xlsx.
+   Personal tracking only; the institute-wide admin view lives in
+   InstituteAttendancePanel.jsx under My Portal > Admin. */
 
 const REQUESTABLE_TYPES = ATTENDANCE_LEGEND.filter((s) => s.requestable);
-const maxTotal = Math.max(...Object.values(INSTITUTE_YTD_TOTALS));
-// The Jul 2025 sheet's own staff columns — not STAFF_ROSTER, which is a
-// different (2026) roster snapshot with several different names on it.
-const LOG_STAFF_NAMES = [...new Set(DAILY_LOG_ENTRIES.map((e) => e.staff))].sort((a, b) => a.localeCompare(b, 'vi'));
 const inputClass = 'w-full rounded-none border border-neutral-300 bg-white px-2.5 py-1.5 font-ibm text-xs text-iscm-charcoal focus:border-iscm-crimson focus:outline-none';
 
 // Requests submitted here are the same "Work from home"/"Leave" requests
@@ -123,156 +116,10 @@ function AttendanceRequestForm({ lang }) {
   );
 }
 
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('vi-VN');
-}
-
-// Visible only to admins/permitted accounts — the approval side of the
-// requests submitted above, for everyone's WFH/leave/absence/late requests,
-// not just the signed-in account's own.
-function AttendanceAdminSection({ lang }) {
-  const [canManage, setCanManage] = useState(false);
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [staffFilter, setStaffFilter] = useState('all');
-
-  useEffect(() => {
-    canManageAttendance().then((ok) => {
-      setCanManage(ok);
-      if (ok) fetchAllAttendanceRequests().then((r) => { setRequests(r); setLoading(false); });
-      else setLoading(false);
-    });
-  }, []);
-
-  if (!canManage) return null;
-
-  const pending = requests.filter((r) => r.status === 'Open');
-  const logEntries = DAILY_LOG_ENTRIES
-    .filter((e) => staffFilter === 'all' || e.staff === staffFilter)
-    .slice()
-    .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? -1 : 1));
-
-  const handleDecide = async (r, status) => {
-    setRequests((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
-    await decideAttendanceRequestRemote(r, status);
-  };
-
-  return (
-    <div className="space-y-2.5 rounded-lg border border-gray-200 bg-white p-3.5">
-      <p className="flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
-        <ShieldCheck className="h-3.5 w-3.5 text-iscm-crimson" />
-        {lang === 'vi' ? 'Duyệt yêu cầu chấm công' : 'Attendance requests to approve'}
-        {pending.length > 0 && (
-          <span className="rounded-full bg-iscm-crimson px-1.5 py-0.5 text-[9px] font-bold text-white">{pending.length}</span>
-        )}
-      </p>
-      {loading ? (
-        <p className="font-ibm text-[11px] text-gray-400">{lang === 'vi' ? 'Đang tải...' : 'Loading...'}</p>
-      ) : pending.length === 0 ? (
-        <p className="font-ibm text-[11px] text-gray-400">{lang === 'vi' ? 'Không có yêu cầu chờ duyệt.' : 'No pending requests.'}</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {pending.map((r) => (
-            <li key={r.id} className="flex flex-col gap-1.5 border border-gray-100 bg-iscm-surface/60 p-2.5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="font-ibm text-xs font-semibold text-iscm-charcoal">{r.status_label}</p>
-                <p className="font-ibm text-[10px] text-gray-500">
-                  {r.requester?.full_name || r.requester_id} · {fmtDate(r.request_date)}
-                </p>
-                {r.note && <p className="font-ibm text-[10px] italic text-gray-400">{r.note}</p>}
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <button onClick={() => handleDecide(r, 'Approved')} className="flex items-center gap-1 border border-emerald-300 bg-emerald-50 px-2 py-1 font-ibm text-[10px] font-bold uppercase text-emerald-700 hover:bg-emerald-100">
-                  <Check className="h-3 w-3" /> {lang === 'vi' ? 'Duyệt' : 'Approve'}
-                </button>
-                <button onClick={() => handleDecide(r, 'Rejected')} className="flex items-center gap-1 border border-red-300 bg-red-50 px-2 py-1 font-ibm text-[10px] font-bold uppercase text-red-700 hover:bg-red-100">
-                  <X className="h-3 w-3" /> {lang === 'vi' ? 'Từ chối' : 'Reject'}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Team-wide stats — visible only to admins/permitted accounts, same
-          gate as the approvals above; a regular member only ever sees their
-          own YTD numbers further down the page. */}
-      <div className="border-t border-gray-100 pt-2.5">
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
-          {lang === 'vi' ? `Thống kê toàn viện 2026 (${STAFF_ROSTER.length} nhân sự)` : `Institute-wide 2026 YTD (${STAFF_ROSTER.length} staff)`}
-        </p>
-        <div className="space-y-1.5">
-          {ATTENDANCE_LEGEND.filter((s) => s.key in INSTITUTE_YTD_TOTALS).map((s) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <span className="w-40 shrink-0 truncate font-ibm text-[10px] text-gray-500">{s.label}</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-iscm-crimson"
-                  style={{ width: `${(INSTITUTE_YTD_TOTALS[s.key] / maxTotal) * 100}%` }} />
-              </div>
-              <span className="w-8 shrink-0 text-right font-barlow-condensed text-xs font-semibold text-iscm-charcoal">
-                {INSTITUTE_YTD_TOTALS[s.key]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Detail log — who was what, on which day. Real data: the workbook's
-          "Jul" monthly sheet is the only month with entries actually filled
-          in (every other month sheet is a blank template), so this covers
-          2025-07-01 through 2025-07-30. */}
-      <div className="border-t border-gray-100 pt-2.5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="font-ibm text-xs font-semibold text-iscm-charcoal">
-            {lang === 'vi' ? 'Chi tiết theo ngày (Jul 2025)' : 'Daily detail log (Jul 2025)'}
-          </p>
-          <select
-            value={staffFilter}
-            onChange={(e) => setStaffFilter(e.target.value)}
-            className="border border-neutral-200 bg-white px-2 py-1 font-ibm text-[10px] text-neutral-700 focus:border-iscm-crimson focus:outline-none rounded-none"
-          >
-            <option value="all">{lang === 'vi' ? 'Tất cả nhân sự' : 'All staff'}</option>
-            {LOG_STAFF_NAMES.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="overflow-x-auto border border-neutral-200">
-          <table className="w-full min-w-[420px] table-fixed border-collapse text-left">
-            <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-900 font-barlow text-[10px] font-bold uppercase tracking-wider text-white">
-                <th className="px-3 py-2 w-[22%]">{lang === 'vi' ? 'Ngày' : 'Date'}</th>
-                <th className="px-3 py-2 w-[22%]">{lang === 'vi' ? 'Nhân sự' : 'Staff'}</th>
-                <th className="px-3 py-2 w-[56%]">{lang === 'vi' ? 'Trạng thái' : 'Status'}</th>
-              </tr>
-            </thead>
-            <tbody className="max-h-[320px] divide-y divide-neutral-100 font-ibm text-xs">
-              {logEntries.map((e, i) => (
-                <tr key={i} className="hover:bg-neutral-50/80 transition-colors">
-                  <td className="px-3 py-1.5 text-neutral-500 whitespace-nowrap">{e.day} {e.date}</td>
-                  <td className="px-3 py-1.5 font-medium text-neutral-800">{e.staff}</td>
-                  <td className="px-3 py-1.5 text-iscm-crimson">{e.status}</td>
-                </tr>
-              ))}
-              {logEntries.length === 0 && (
-                <tr><td colSpan={3} className="px-3 py-6 text-center text-neutral-400 italic">
-                  {lang === 'vi' ? 'Không có bản ghi.' : 'No entries.'}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AttendanceLogPanel({ lang = 'vi' }) {
   return (
     <div className="space-y-5">
       <AttendanceRequestForm lang={lang} />
-      <AttendanceAdminSection lang={lang} />
 
       {/* Personal YTD */}
       <div>

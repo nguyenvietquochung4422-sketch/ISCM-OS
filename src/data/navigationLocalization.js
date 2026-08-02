@@ -17,15 +17,12 @@ export const NAVIGATION_LOCALIZATION = {
     PARTNERSHIP: 'Hợp tác chiến lược',
 
     ISCM_OVERVIEW: 'TỔNG QUAN ISCM',
-    UEH_UNITS: 'UEH & Các đơn vị thành viên',
     ISCM_ORGANIZATION: 'Cơ cấu tổ chức ISCM',
-    ISCM_UNITS: 'ISCM & Các đối tác ngoại khối',
 
     // Profile Trigger & General
+    USER_ADMIN: 'Admin',
     USER_PORTAL: 'Hồ sơ của tôi',
-    USER_FORMS: 'Biểu mẫu',
-    USER_WIKI: 'Tri thức dùng chung',
-    USER_CONTACTS: 'Danh bạ',
+    USER_OF: 'Vận hành & Tài chính',
     LOGOUT: 'Đăng xuất',
     SIGN_IN_GOOGLE: 'Đăng nhập bằng Google',
     LANGUAGE_LABEL: 'Vi',
@@ -58,14 +55,12 @@ export const NAVIGATION_LOCALIZATION = {
     BIO_NAME_LABEL: 'Họ và tên',
     BIO_ROLE_LABEL: 'Vai trò hệ thống',
     BIO_NCKH_LABEL: 'Số lượng tham gia đề tài',
-    CONTACT_OPS: 'Liên hệ Hỗ trợ',
     ATTENDANCE_TITLE: 'Chấm công hàng ngày',
     ASSETS_TITLE: 'Tài sản & Thiết bị đang mượn',
     TASKS_TITLE: 'Nhiệm vụ chờ phê duyệt',
     FORMS_TITLE: 'Trạng thái đơn từ',
     FORM_PORTAL_TITLE: 'Cổng biểu mẫu điện tử',
     WIKI_PORTAL_TITLE: 'Cơ sở tri thức dùng chung',
-    CONTACTS_PORTAL_TITLE: 'Danh bạ thông tin toàn viện',
 
     // Sidebar Tree Structure
     SIDEBAR_TREE: [
@@ -74,6 +69,7 @@ export const NAVIGATION_LOCALIZATION = {
         label: 'HỒ SƠ CỦA TÔI',
         children: [
           { key: 'profile-bio', label: 'Hồ sơ & Tiểu sử khoa học' },
+          { key: 'ws-calendar', label: 'Lịch cá nhân' },
           { key: 'attendance-log', label: 'Chấm công hàng ngày' },
           {
             id: 'monitoring-status',
@@ -83,82 +79,33 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'my-forms', label: 'Nhật ký theo dõi tiến độ đơn từ' }
             ]
           },
-          { key: 'my-assets', label: 'Tài sản & Thiết bị đang mượn' },
-          { key: 'admin-content-permissions', label: 'Phân quyền quản trị nội dung', adminOnly: true }
+          { key: 'my-assets', label: 'Tài sản & Thiết bị đang mượn' }
         ]
       },
       {
-        id: 'requests-forms',
-        label: 'HỆ THỐNG BIỂU MẪU ĐIỆN TỬ',
+        id: 'admin',
+        label: 'ADMIN',
+        adminOnly: true,
         children: [
-          {
-            id: 'hr-services',
-            label: 'NHÂN SỰ & HÀNH CHÍNH',
-            badge: 'HR',
-            children: [
-              { key: 'form:resignation', label: 'Đơn xin thôi việc' },
-              { key: 'form:recruitment-request', label: 'Đề xuất tuyển dụng CTV/Thực tập sinh' },
-              { key: 'form:training-register', label: 'Đăng ký đào tạo nội bộ' },
-              { key: 'form:ask-anything', label: 'Câu hỏi hỗ trợ chung' },
-              { key: 'form:travel-auth', label: 'Cấp phép đi thực địa/Công tác' },
-              { key: 'form:benefit-hr', label: 'Chế độ đãi ngộ' },
-              { key: 'form:member-partner-info', label: 'Khai báo thành viên & Đối tác' },
-              { key: 'form:team-eval', label: 'Đánh giá làm việc nhóm' },
-              { key: 'form:quarterly-perf-eval', label: 'Đánh giá hiệu suất định kỳ theo Quý' }
-            ]
-          },
-          {
-            id: 'it-services',
-            label: 'VẬN HÀNH SẢN PHẨM & THIẾT BỊ',
-            badge: 'IT',
-            children: [
-              { key: 'form:purchase-permission', label: 'Xin chủ trương mua sắm công nghệ' },
-              { key: 'form:order-equipment', label: 'Đăng ký mượn thiết bị phòng Lab' },
-              { key: 'form:order-book', label: 'Yêu cầu mượn sách/Tài liệu khoa học' }
-            ]
-          },
-          {
-            id: 'fa-services',
-            label: 'TÀI CHÍNH & KẾ TOÁN',
-            badge: 'FA',
-            children: [
-              { key: 'form:payment-request', label: 'Yêu cầu chi trả/Thanh toán' },
-              { key: 'form:expense-report', label: 'Báo cáo quyết toán hoàn ứng' }
-            ]
-          },
-          {
-            id: 'comms-services',
-            label: 'TRUYỀN THÔNG & THIẾT KẾ',
-            badge: 'IT',
-            children: [
-              { key: 'form:order-design', label: 'Đăng ký đặt hàng thiết kế' },
-              { key: 'form:order-support-comm', label: 'Đăng ký hỗ trợ truyền thông' },
-              { key: 'form:order-gift', label: 'Đăng ký cấp phát quà tặng đối ngoại' }
-            ]
-          },
-          {
-            id: 'rm-services',
-            label: 'KHAI BÁO NGHIÊN CỨU KHOA HỌC',
-            badge: 'RM',
-            children: [
-              { key: 'form:quarterly-research-reg', label: 'Đăng ký đề tài/Dự án mới' },
-              { key: 'form:internal-seminar-reg', label: 'Đăng ký tham gia Internal Seminar' },
-              { key: 'form:quarterly-progress-report', label: 'Khai báo tiến độ nghiên cứu định kỳ' },
-              { key: 'form:fundraising-proposal-progress', label: 'Theo dõi tiến độ hồ sơ gọi Quỹ' },
-              { key: 'form:publications-submission', label: 'Khai báo công bố khoa học quốc tế mới' }
-            ]
-          },
-          {
-            id: 'af-services',
-            label: 'DỊCH VỤ QUẢN TRỊ CƠ SỞ',
-            badge: 'AF',
-            children: [
-              { key: 'form:cctv-history', label: 'Xin trích xuất camera an ninh' },
-              { key: 'form:annual-student-survey', label: 'Khảo sát sinh viên thường niên' },
-              { key: 'form:student-pigeon-post', label: 'Hòm thư bồ câu số sinh viên' },
-              { key: 'form:training-point-proposal', label: 'Đề nghị cộng điểm rèn luyện DRS' }
-            ]
-          }
+          { key: 'admin-content-permissions', label: 'Phân quyền quản trị nội dung' },
+          { key: 'admin-member-info', label: 'Thông tin thành viên' },
+          { key: 'admin-attendance', label: 'Chấm công toàn viện' },
+          { key: 'admin-calendar', label: 'Lịch toàn viện' },
+          { key: 'admin-library', label: 'Quản trị thư viện' }
+        ]
+      },
+      {
+        id: 'operation-finance',
+        label: 'VẬN HÀNH & TÀI CHÍNH (O&F)',
+        children: [
+      {
+        id: 'requests-forms',
+        label: 'BIỂU MẪU',
+        children: [
+          { key: 'form:order-equipment', label: 'Đăng ký mượn thiết bị phòng Lab' },
+          { key: 'form:order-book', label: 'Yêu cầu mượn sách/Tài liệu khoa học' },
+          { key: 'form:order-gift', label: 'Đăng ký cấp phát quà tặng đối ngoại' },
+          { key: 'form:order-support-comm', label: 'Đăng ký hỗ trợ truyền thông' }
         ]
       },
       {
@@ -314,17 +261,9 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'wiki-doc:Tạp chí uy tín Urban Studies', label: 'Tạp chí uy tín Urban Studies' },
               { key: 'wiki-doc:Tạp chí được Hội đồng Giáo sư Nhà nước công nhận', label: 'Tạp chí được Hội đồng Giáo sư Nhà nước công nhận' }
             ]
-          },
-          { key: 'wiki-doc:Cẩm nang hội nhập nhân sự mới', label: 'Bắt đầu nhanh' }
+          }
         ]
-      },
-      {
-        id: 'contacts-root',
-        label: 'DANH BẠ THÔNG TIN TOÀN VIỆN',
-        children: [
-          { key: 'contacts-support', label: 'Liên hệ khẩn' },
-          { key: 'contacts-departments', label: 'Cơ cấu phòng ban' },
-          { key: 'contacts-colleagues', label: 'Danh bạ nhân sự' }
+      }
         ]
       }
     ],
@@ -358,15 +297,12 @@ export const NAVIGATION_LOCALIZATION = {
     PARTNERSHIP: 'Partnership',
 
     ISCM_OVERVIEW: 'ISCM OVERVIEW',
-    UEH_UNITS: 'UEH & Other Units',
     ISCM_ORGANIZATION: 'ISCM Organizational Structure',
-    ISCM_UNITS: 'ISCM & Other Units',
 
     // Profile Trigger & General
+    USER_ADMIN: 'ADMIN',
     USER_PORTAL: 'MY PORTAL',
-    USER_FORMS: 'REQUESTS & E-FORMS',
-    USER_WIKI: 'WIKI HUB',
-    USER_CONTACTS: 'CONTACTS',
+    USER_OF: 'OPERATION & FINANCE',
     LOGOUT: 'Log Out',
     SIGN_IN_GOOGLE: 'Sign in with Google',
     LANGUAGE_LABEL: 'En',
@@ -399,14 +335,12 @@ export const NAVIGATION_LOCALIZATION = {
     BIO_NAME_LABEL: 'Full Name',
     BIO_ROLE_LABEL: 'System Role',
     BIO_NCKH_LABEL: 'NCKH Joint Engagements',
-    CONTACT_OPS: 'Contact Support',
     ATTENDANCE_TITLE: 'Daily Attendance',
     ASSETS_TITLE: 'My Assets',
     TASKS_TITLE: 'My Tasks',
     FORMS_TITLE: 'My Request Status',
     FORM_PORTAL_TITLE: 'Form Portal Dashboard',
     WIKI_PORTAL_TITLE: 'Knowledge Commons Dashboard',
-    CONTACTS_PORTAL_TITLE: 'Directory Dashboard',
 
     // Sidebar Tree Structure
     SIDEBAR_TREE: [
@@ -415,6 +349,7 @@ export const NAVIGATION_LOCALIZATION = {
         label: 'MY PORTAL',
         children: [
           { key: 'profile-bio', label: 'Profile & Bio' },
+          { key: 'ws-calendar', label: 'My Calendar' },
           { key: 'attendance-log', label: 'Daily Attendance' },
           {
             id: 'monitoring-status',
@@ -424,82 +359,33 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'my-forms', label: 'Request Status Log' }
             ]
           },
-          { key: 'my-assets', label: 'My Assets Checked Out to Me' },
-          { key: 'admin-content-permissions', label: 'Content Admin Permissions', adminOnly: true }
+          { key: 'my-assets', label: 'My Assets Checked Out to Me' }
         ]
       },
       {
-        id: 'requests-forms',
-        label: 'REQUESTS & E-FORMS',
+        id: 'admin',
+        label: 'ADMIN',
+        adminOnly: true,
         children: [
-          {
-            id: 'hr-services',
-            label: 'HUMAN RESOURCES & ADMIN',
-            badge: 'HR',
-            children: [
-              { key: 'form:resignation', label: 'Resignation' },
-              { key: 'form:recruitment-request', label: 'Recruitment request' },
-              { key: 'form:training-register', label: 'Training register' },
-              { key: 'form:ask-anything', label: 'Ask anything' },
-              { key: 'form:travel-auth', label: 'Travel authorization' },
-              { key: 'form:benefit-hr', label: 'Benefit and HR' },
-              { key: 'form:member-partner-info', label: 'Member & Partner Information Form' },
-              { key: 'form:team-eval', label: 'Team Evaluation Form' },
-              { key: 'form:quarterly-perf-eval', label: 'Quarterly Performance Evaluation' }
-            ]
-          },
-          {
-            id: 'it-services',
-            label: 'PRODUCT OPERATION & TECH',
-            badge: 'IT',
-            children: [
-              { key: 'form:purchase-permission', label: 'Purchase permission' },
-              { key: 'form:order-equipment', label: 'Order Equipment Form' },
-              { key: 'form:order-book', label: 'Order Book/Documents Form' }
-            ]
-          },
-          {
-            id: 'fa-services',
-            label: 'FINANCE AND ACCOUNTING',
-            badge: 'FA',
-            children: [
-              { key: 'form:payment-request', label: 'Payment request' },
-              { key: 'form:expense-report', label: 'Expense report request' }
-            ]
-          },
-          {
-            id: 'comms-services',
-            label: 'COMMUNICATION & ORDERS',
-            badge: 'IT',
-            children: [
-              { key: 'form:order-design', label: 'Order Design' },
-              { key: 'form:order-support-comm', label: 'Order Support Communication' },
-              { key: 'form:order-gift', label: 'Order ISCM Gift' }
-            ]
-          },
-          {
-            id: 'rm-services',
-            label: 'RESEARCH FORMS',
-            badge: 'RM',
-            children: [
-              { key: 'form:quarterly-research-reg', label: 'Quarterly Research Registration' },
-              { key: 'form:internal-seminar-reg', label: 'Internal Seminar Registration' },
-              { key: 'form:quarterly-progress-report', label: 'Quarterly Progress Report' },
-              { key: 'form:fundraising-proposal-progress', label: 'Fundraising Proposal Progress' },
-              { key: 'form:publications-submission', label: 'Publications Submission Form' }
-            ]
-          },
-          {
-            id: 'af-services',
-            label: 'ADMINISTRATION SERVICES',
-            badge: 'AF',
-            children: [
-              { key: 'form:cctv-history', label: 'Check CCTV history' },
-              { key: 'form:annual-student-survey', label: 'Annual Student Survey' },
-              { key: 'form:student-pigeon-post', label: 'ISCM Student Pigeon Post' },
-              { key: 'form:training-point-proposal', label: 'Training Point Proposal' }
-            ]
-          }
+          { key: 'admin-content-permissions', label: 'Content Admin Permissions' },
+          { key: 'admin-member-info', label: 'Member Information' },
+          { key: 'admin-attendance', label: 'Institute Attendance' },
+          { key: 'admin-calendar', label: 'Institute Calendar' },
+          { key: 'admin-library', label: 'Library Admin' }
+        ]
+      },
+      {
+        id: 'operation-finance',
+        label: 'OPERATION & FINANCE (O&F)',
+        children: [
+      {
+        id: 'requests-forms',
+        label: 'E-FORMS',
+        children: [
+          { key: 'form:order-equipment', label: 'Order Equipment Form' },
+          { key: 'form:order-book', label: 'Order Book/Documents Form' },
+          { key: 'form:order-gift', label: 'Order ISCM Gift' },
+          { key: 'form:order-support-comm', label: 'Order Support Communication' }
         ]
       },
       {
@@ -655,17 +541,9 @@ export const NAVIGATION_LOCALIZATION = {
               { key: 'wiki-doc:Reputable journal-conference in Urban Studies', label: 'Reputable journal-conference in Urban Studies' },
               { key: 'wiki-doc:Scientific journals accredited by State Council', label: 'Scientific journals accredited by State Council' }
             ]
-          },
-          { key: 'wiki-doc:Onboarding Quickstart Kit', label: 'Start' }
+          }
         ]
-      },
-      {
-        id: 'contacts-root',
-        label: 'CONTACTS',
-        children: [
-          { key: 'contacts-support', label: 'Support Contacts' },
-          { key: 'contacts-departments', label: 'Departments' },
-          { key: 'contacts-colleagues', label: 'Colleagues' }
+      }
         ]
       }
     ],

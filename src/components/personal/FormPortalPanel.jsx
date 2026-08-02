@@ -9,8 +9,7 @@ import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import { saveSubmission } from '../../data/formSubmissions.js';
 import { LIBRARY_ITEMS, LOAN_DAYS } from '../../data/libraryData.js';
 import { physicalAvailable, createBorrowRequest } from '../../data/libraryStore.js';
-import { submitBorrowRequestRemote, canManageLibrary, fetchItemLocation, upsertItemLocation } from '../../data/libraryAdmin.js';
-import LibraryAdminPanel from './LibraryAdminPanel.jsx';
+import { submitBorrowRequestRemote, fetchItemLocation, upsertItemLocation } from '../../data/libraryAdmin.js';
 import { supabase, isLive } from '../../lib/supabaseClient.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 
@@ -490,8 +489,6 @@ const LIBRARY_PAGE_SIZE = 15;
 
 function LibraryBlock({ onValid, onData, lang, form }) {
   const { user: authUser } = useAuth();
-  const [canManage, setCanManage] = useState(false);
-  const [view, setView] = useState('catalog'); // 'catalog' | 'admin'
   const [cart, setCart] = useState([]); // [{ itemId, itemTitle }]
   const [pickupDate, setPickupDate] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -503,11 +500,6 @@ function LibraryBlock({ onValid, onData, lang, form }) {
   const [page, setPage] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartStep, setCartStep] = useState('review'); // 'review' | 'details'
-
-  useEffect(() => {
-    if (!isLive || !authUser) { setCanManage(false); return; }
-    canManageLibrary().then(setCanManage);
-  }, [authUser]);
 
   const types = useMemo(() => ['All', ...new Set(LIBRARY_ITEMS.map((i) => i.category))], []);
   const filteredItems = useMemo(() => {
@@ -577,27 +569,6 @@ function LibraryBlock({ onValid, onData, lang, form }) {
 
   return (
     <div className="space-y-3">
-      {canManage && (
-        <div className="flex gap-1.5 border-b border-neutral-200 pb-2">
-          <button type="button" onClick={() => setView('catalog')}
-            className={`border px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              view === 'catalog' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-600 hover:border-neutral-900'
-            }`}>
-            {lang === 'vi' ? 'Danh mục' : 'Catalog'}
-          </button>
-          <button type="button" onClick={() => setView('admin')}
-            className={`border px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              view === 'admin' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-600 hover:border-neutral-900'
-            }`}>
-            {lang === 'vi' ? 'Quản trị thư viện' : 'Library admin'}
-          </button>
-        </div>
-      )}
-
-      {view === 'admin' ? (
-        <LibraryAdminPanel lang={lang} />
-      ) : (
-        <>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
         <input
@@ -788,8 +759,6 @@ function LibraryBlock({ onValid, onData, lang, form }) {
           ? 'Bản điện tử được cấp quyền truy cập ngay khi bấm, không cần vào giỏ. Sách bản cứng: thêm vào giỏ, bấm icon "Giỏ mượn" ở trên để xem lại/xoá bớt và điền ngày nhận, rồi bấm "Gửi yêu cầu" bên dưới để gửi một lượt; sau khi duyệt sẽ hiện tại Hồ Sơ Của Tôi → Tài sản & Thiết bị đang mượn.'
           : 'Digital items grant access the moment you click them — no cart needed. For physical books: add them to the cart, click the "Cart" icon above to review/remove items and fill in a pickup date, then click "Submit request" below to send them all at once; once approved they appear under My Portal → My Assets Checked Out to Me.'}
       </p>
-        </>
-      )}
     </div>
   );
 }

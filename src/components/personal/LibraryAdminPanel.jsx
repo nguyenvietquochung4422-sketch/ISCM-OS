@@ -3,9 +3,10 @@ import { Check, Clock, MapPin, X } from 'lucide-react';
 import { LIBRARY_ITEMS } from '../../data/libraryData.js';
 import {
   fetchAllRequests, fetchAllCheckouts, decideRequestRemote, returnCheckoutRemote,
-  fetchAllLocations, upsertItemLocation,
+  fetchAllLocations, upsertItemLocation, canManageLibrary,
 } from '../../data/libraryAdmin.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { isLive } from '../../lib/supabaseClient.js';
 
 const TABS = [
   { key: 'requests', vi: 'Yêu cầu mượn', en: 'Borrow requests' },
@@ -26,6 +27,7 @@ function fmtWhen(iso) {
 
 export default function LibraryAdminPanel({ lang }) {
   const { user: authUser } = useAuth();
+  const [authorized, setAuthorized] = useState(null); // null=checking, true/false
   const [tab, setTab] = useState('requests');
   const [requests, setRequests] = useState([]);
   const [checkouts, setCheckouts] = useState([]);
@@ -43,7 +45,34 @@ export default function LibraryAdminPanel({ lang }) {
     setLoading(false);
   };
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    if (!isLive || !authUser) { setAuthorized(false); return; }
+    canManageLibrary().then(setAuthorized);
+  }, [authUser]);
+
+  useEffect(() => { if (authorized) reload(); }, [authorized]);
+
+  if (!isLive) {
+    return (
+      <div className="font-sans text-xs text-neutral-500 p-4 border border-neutral-200 bg-neutral-50">
+        {lang === 'vi' ? 'Tính năng này cần kết nối Supabase (chế độ demo không hỗ trợ).' : 'This feature requires a live Supabase connection (not available in demo mode).'}
+      </div>
+    );
+  }
+
+  if (authorized === null) {
+    return <div className="font-sans text-xs text-neutral-400 p-4">{lang === 'vi' ? 'Đang kiểm tra quyền...' : 'Checking permissions...'}</div>;
+  }
+
+  if (authorized === false) {
+    return (
+      <div className="font-sans text-xs text-red-700 p-4 border border-red-200 bg-red-50">
+        {lang === 'vi'
+          ? 'Bạn không có quyền truy cập mục này. Chỉ Admin, Director, Vice Director, hoặc tài khoản được cấp quyền quản lý thư viện mới xem được.'
+          : 'You do not have access to this page. Only Admin, Director, Vice Director, or an account granted library-management rights can view this.'}
+      </div>
+    );
+  }
 
   const handleDecide = async (req, status) => {
     setRequests((prev) => prev.map((r) => (r.id === req.id ? { ...r, status } : r)));

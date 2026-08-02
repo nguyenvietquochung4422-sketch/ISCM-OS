@@ -4,7 +4,7 @@
  */
 
 export const FUNCTIONAL_GROUPS = [
-  'Operation & Finance', 'PR & Communication', 'Partnership',
+  'Operation & Finance', 'Partnership',
   'Đào tạo Học thuật', 'Nghiên cứu Khoa học', 'Gắn kết Cộng đồng',
 ];
 
@@ -21,7 +21,7 @@ export const users = [
 
   // — Giám đốc chương trình / Quản lý bộ phận —
   { id: 'm03', email: 'hiendt@ueh.edu.vn',    full_name: 'Đặng Thế Hiển',       phone: '', base_functional_group: 'Đào tạo Học thuật',   system_role: 'Group Head' },
-  { id: 'm08', email: 'tienltt@ueh.edu.vn',   full_name: 'Lê Thị Thủy Tiên',    phone: '', base_functional_group: 'PR & Communication',  system_role: 'Group Head' },
+  { id: 'm08', email: 'tienltt@ueh.edu.vn',   full_name: 'Lê Thị Thủy Tiên',    phone: '', base_functional_group: 'Operation & Finance', system_role: 'Group Head' },
 
   // — Giảng viên —
   { id: 'm09', email: 'tamdlp@ueh.edu.vn',    full_name: 'Đỗ Lê Phúc Tâm',      phone: '', base_functional_group: 'Đào tạo Học thuật',   system_role: 'Researcher' },
@@ -40,10 +40,10 @@ export const users = [
   { id: 'm24', email: 'taitv@ueh.edu.vn',     full_name: 'Trần Vĩnh Tài',       phone: '', base_functional_group: 'Gắn kết Cộng đồng',   system_role: 'Assistant' },
 
   // — Thực tập sinh —
-  { id: 'i01', email: 'hdungworkspace@gmail.com', full_name: 'Phạm Võ Hồng Dung',  phone: '', base_functional_group: 'PR & Communication',  system_role: 'Assistant' },
-  { id: 'i02', email: 'btnguyen1505@gmail.com',   full_name: 'Bùi Thảo Nguyên',    phone: '', base_functional_group: 'PR & Communication',  system_role: 'Assistant' },
-  { id: 'i03', email: 'hctien.ng@gmail.com',      full_name: 'Nguyễn Hà Cẩm Tiên', phone: '', base_functional_group: 'PR & Communication',  system_role: 'Assistant' },
-  { id: 'i04', email: 'luongthithuyan476@gmail.com', full_name: 'Lương Thị Thuý An', phone: '', base_functional_group: 'PR & Communication', system_role: 'Assistant' },
+  { id: 'i01', email: 'hdungworkspace@gmail.com', full_name: 'Phạm Võ Hồng Dung',  phone: '', base_functional_group: 'Operation & Finance', system_role: 'Assistant' },
+  { id: 'i02', email: 'btnguyen1505@gmail.com',   full_name: 'Bùi Thảo Nguyên',    phone: '', base_functional_group: 'Operation & Finance', system_role: 'Assistant' },
+  { id: 'i03', email: 'hctien.ng@gmail.com',      full_name: 'Nguyễn Hà Cẩm Tiên', phone: '', base_functional_group: 'Operation & Finance', system_role: 'Assistant' },
+  { id: 'i04', email: 'luongthithuyan476@gmail.com', full_name: 'Lương Thị Thuý An', phone: '', base_functional_group: 'Operation & Finance', system_role: 'Assistant' },
   { id: 'i07', email: 'thiennguyen.31231021200@st.ueh.edu.vn', full_name: 'Nguyễn Ngọc Thiện',    phone: '', base_functional_group: 'Nghiên cứu Khoa học', system_role: 'Assistant' },
   { id: 'i09', email: 'thunguyen.31241022253@st.ueh.edu.vn',   full_name: 'Nguyễn Lương Minh Thư', phone: '', base_functional_group: 'Nghiên cứu Khoa học', system_role: 'Assistant' },
   { id: 'i10', email: 'htttiendat@gmail.com',     full_name: 'Hoàng Trương Tiến Đạt', phone: '', base_functional_group: 'Nghiên cứu Khoa học', system_role: 'Assistant' },
