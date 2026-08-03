@@ -59,31 +59,34 @@ export default function AuthGate({ children }) {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
   const { lang } = useLanguage();
 
-  // Only a Google account already provisioned in users_profiles (the same
-  // roster Colleagues reads from) may use the app — everyone else is signed
-  // back out rather than let in as some fallback "guest" persona.
-  const [authCheck, setAuthCheck] = useState('pending'); // 'pending' | 'authorized' | 'denied'
+  // Any Google account can sign in now — a users_profiles row is created
+  // automatically (access_status defaults to 'pending'). Actual use of the
+  // app still requires an admin to flip that row to 'approved' from the
+  // Access Requests panel; 'denied' and unresolved 'pending' both sign the
+  // person back out rather than let them in as some fallback persona.
+  const [authCheck, setAuthCheck] = useState('checking'); // 'checking' | 'approved' | 'awaiting' | 'denied'
   useEffect(() => {
-    if (!isLive || loading || !user) { setAuthCheck('pending'); return; }
+    if (!isLive || loading || !user) { setAuthCheck('checking'); return; }
     let cancelled = false;
     supabase
       .from('users_profiles')
-      .select('id')
-      .ilike('email', user.email)
+      .select('access_status')
+      .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        setAuthCheck(data ? 'authorized' : 'denied');
+        if (!data) { setAuthCheck('awaiting'); return; } // trigger hasn't landed yet — treat as pending
+        setAuthCheck(data.access_status === 'approved' ? 'approved' : data.access_status === 'denied' ? 'denied' : 'awaiting');
       });
     return () => { cancelled = true; };
   }, [loading, user]);
 
-  // The glow follows the cursor on the sign-in/denied screens only — the
+  // The glow follows the cursor on the sign-in/gate screens only — the
   // listener detaches once access is granted, so it never re-renders the
   // rest of the app on every mouse move.
   const [glow, setGlow] = useState({ x: 50, y: 30 });
   useEffect(() => {
-    if (!isLive || loading || authCheck === 'authorized') return;
+    if (!isLive || loading || authCheck === 'approved') return;
     const handleMove = (e) => {
       setGlow({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 });
     };
@@ -93,7 +96,7 @@ export default function AuthGate({ children }) {
 
   if (!isLive) return children;
 
-  if (loading || (user && authCheck === 'pending')) {
+  if (loading || (user && authCheck === 'checking')) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#141414]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-600 border-t-[#990000]" />
@@ -101,7 +104,7 @@ export default function AuthGate({ children }) {
     );
   }
 
-  if (user && authCheck === 'denied') {
+  if (user && (authCheck === 'denied' || authCheck === 'awaiting')) {
     return (
       <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-[#141414] px-4">
         <DriftingSquares />
@@ -118,12 +121,18 @@ export default function AuthGate({ children }) {
               className="mx-auto h-11 w-auto object-contain"
             />
             <h1 className="mt-7 font-barlow text-lg font-bold uppercase tracking-wide text-white">
-              {lang === 'vi' ? 'Không có quyền truy cập' : 'Access Not Authorized'}
+              {authCheck === 'denied'
+                ? (lang === 'vi' ? 'Không có quyền truy cập' : 'Access Not Authorized')
+                : (lang === 'vi' ? 'Đang chờ quản trị viên duyệt' : 'Awaiting Admin Approval')}
             </h1>
             <p className="mt-1.5 font-sans text-xs text-neutral-400">
-              {lang === 'vi'
-                ? `Tài khoản ${user.email} chưa nằm trong danh bạ nhân sự ISCM. Liên hệ quản trị viên để được cấp quyền.`
-                : `${user.email} isn't in the ISCM staff directory yet. Contact an administrator to get access.`}
+              {authCheck === 'denied'
+                ? (lang === 'vi'
+                    ? `Yêu cầu truy cập của ${user.email} đã bị từ chối. Liên hệ quản trị viên nếu đây là nhầm lẫn.`
+                    : `${user.email}'s access request was denied. Contact an administrator if this is a mistake.`)
+                : (lang === 'vi'
+                    ? `Đã ghi nhận yêu cầu truy cập cho ${user.email}. Quản trị viên cần duyệt trước khi bạn dùng được ISCM OS.`
+                    : `Your access request for ${user.email} has been recorded. An administrator needs to approve it before you can use ISCM OS.`)}
             </p>
             <button
               onClick={signOut}

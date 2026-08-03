@@ -87,8 +87,8 @@ export const NAVIGATION_LOCALIZATION = {
         label: 'ADMIN',
         adminOnly: true,
         children: [
+          { key: 'admin-access-requests', label: 'Yêu cầu truy cập' },
           { key: 'admin-content-permissions', label: 'Phân quyền quản trị nội dung' },
-          { key: 'admin-member-info', label: 'Thông tin thành viên' },
           { key: 'admin-attendance', label: 'Chấm công toàn viện' },
           { key: 'admin-calendar', label: 'Lịch toàn viện' },
           { key: 'admin-library', label: 'Quản trị thư viện' }
@@ -367,8 +367,8 @@ export const NAVIGATION_LOCALIZATION = {
         label: 'ADMIN',
         adminOnly: true,
         children: [
+          { key: 'admin-access-requests', label: 'Access Requests' },
           { key: 'admin-content-permissions', label: 'Content Admin Permissions' },
-          { key: 'admin-member-info', label: 'Member Information' },
           { key: 'admin-attendance', label: 'Institute Attendance' },
           { key: 'admin-calendar', label: 'Institute Calendar' },
           { key: 'admin-library', label: 'Library Admin' }

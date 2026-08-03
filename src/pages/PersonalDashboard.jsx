@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
   ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X, Search,
-  MonitorSmartphone, BookOpen, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck, Save,
+  MonitorSmartphone, BookOpen, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck, Save, UserCheck,
 } from 'lucide-react';
 import { FORM_GROUPS, FORM_BY_KEY, FORM_CATEGORIES, ASSET_TYPES, MY_TASKS, MY_FORMS_SEED, MY_ASSETS } from '../data/formPortal.js';
 import { Avatar } from '../components/ui.jsx';
@@ -17,7 +17,7 @@ import MyAssetsPanel from '../components/personal/MyAssetsPanel.jsx';
 import WikiHubPanel from '../components/personal/WikiHubPanel.jsx';
 import ISCMOrganizationalChart from '../components/personal/ISCMOrganizationalChart.jsx';
 import ContentPermissionsPanel from '../components/personal/ContentPermissionsPanel.jsx';
-import MemberInfoAdminPanel from '../components/personal/MemberInfoAdminPanel.jsx';
+import AccessRequestsPanel from '../components/personal/AccessRequestsPanel.jsx';
 import InstituteAttendancePanel from '../components/personal/InstituteAttendancePanel.jsx';
 import InstituteCalendarPanel from '../components/personal/InstituteCalendarPanel.jsx';
 import LibraryAdminPanel from '../components/personal/LibraryAdminPanel.jsx';
@@ -877,15 +877,15 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
     },
     'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel lang={lang} /> },
     'my-assets': { title: t.ASSETS_TITLE, icon: MonitorSmartphone, body: <MyAssetsPanel typeFilter={filters.assetType} /> },
+    'admin-access-requests': {
+      title: lang === 'vi' ? 'YÊU CẦU TRUY CẬP' : 'ACCESS REQUESTS',
+      icon: UserCheck,
+      body: <AccessRequestsPanel />,
+    },
     'admin-content-permissions': {
       title: lang === 'vi' ? 'PHÂN QUYỀN QUẢN TRỊ NỘI DUNG' : 'CONTENT ADMIN PERMISSIONS',
       icon: ShieldCheck,
       body: <ContentPermissionsPanel />,
-    },
-    'admin-member-info': {
-      title: lang === 'vi' ? 'THÔNG TIN THÀNH VIÊN' : 'MEMBER INFORMATION',
-      icon: UsersRound,
-      body: <MemberInfoAdminPanel />,
     },
     'admin-attendance': {
       title: lang === 'vi' ? 'CHẤM CÔNG TOÀN VIỆN' : 'INSTITUTE ATTENDANCE',
@@ -1244,7 +1244,7 @@ function getActiveCategory(selected) {
   if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'operation-finance';
   if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'operation-finance';
   if (['requests-forms', 'cat-forms'].includes(selected)) return 'operation-finance';
-  if (['admin-content-permissions', 'admin-member-info', 'admin-attendance', 'admin-calendar', 'admin-library'].includes(selected)) return 'admin';
+  if (['admin-access-requests', 'admin-content-permissions', 'admin-attendance', 'admin-calendar', 'admin-library'].includes(selected)) return 'admin';
   return 'my-portal';
 }
 

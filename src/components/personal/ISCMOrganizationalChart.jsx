@@ -2,11 +2,260 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   UserCheck, Wallet, GraduationCap, FlaskConical, UsersRound,
   Handshake, Workflow, Cpu, Hammer, Search, ChevronRight, X, Mail,
-  Layers, Activity, Star, ChevronDown
+  Layers, Activity, Star, ChevronDown, Pencil, Plus, Trash2
 } from 'lucide-react';
 import { ISCM_MEMBERS, MEMBER_GROUPS, memberInitials } from '../../data/iscmMembers.js';
 import { fetchMembers } from '../../data/iscmMembersStore.js';
-import { fetchRoleAssignments } from '../../data/orgRoleAssignments.js';
+import { fetchExternalMembers } from '../../data/externalMembersStore.js';
+import { fetchRoleAssignments, fetchAllRoleRows, saveRoleAssignment } from '../../data/orgRoleAssignments.js';
+import { fetchCustomItems, addCustomItem, deleteCustomItem } from '../../data/orgCustomItems.js';
+import { supabase, isLive } from '../../lib/supabaseClient.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { MemberEditForm, ExternalMembersTab } from './MemberInfoAdminPanel.jsx';
+
+/* pic fields on DEPARTMENTS store plain names (no academic title prefix);
+   iscm_members.nameVi carries the title, so strip it before offering a
+   member as a P.I.C candidate — same convention as MemberInfoAdminPanel. */
+const VI_TITLE_RE = /^((?:GS|PGS|TS|ThS|KTS|CN|KS)\.\s*)+/i;
+function plainNameVi(nameVi) {
+  return (nameVi || '').replace(VI_TITLE_RE, '').trim();
+}
+
+/** Click-to-reassign popover for one org-chart role slot — lists ISCM
+    members + external members, checkbox-toggle (instant save, supports
+    "A / B" compound roles), same pattern as MemberInfoAdminPanel's
+    RoleChecklist but inverted (one role → pick people, not one person →
+    pick roles). */
+function QuickAssignPopover({ vi, roleKey, roleLabel, onClose, onSaved }) {
+  const [members, setMembers] = useState([]);
+  const [externals, setExternals] = useState([]);
+  const [currentNames, setCurrentNames] = useState([]);
+  const [currentIsExternal, setCurrentIsExternal] = useState(false);
+  const [query, setQuery] = useState('');
+  const [pendingKey, setPendingKey] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchMembers(), fetchExternalMembers(), fetchAllRoleRows()]).then(([m, ext, rows]) => {
+      if (cancelled) return;
+      setMembers(m);
+      setExternals(ext);
+      const row = rows.find((r) => r.role_key === roleKey);
+      setCurrentNames((row?.pic_name || '').split('/').map((s) => s.trim()).filter(Boolean));
+      setCurrentIsExternal(Boolean(row?.is_external));
+      setLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [roleKey]);
+
+  const people = useMemo(() => {
+    const internal = members.map((m) => ({ key: `m:${m.id}`, memberId: m.id, displayName: plainNameVi(m.nameVi), isExternal: false }));
+    const external = externals.map((e) => ({ key: `e:${e.full_name}`, memberId: null, displayName: e.full_name, isExternal: true }));
+    return [...internal, ...external];
+  }, [members, externals]);
+
+  const filtered = people.filter((p) => !query.trim() || p.displayName.toLowerCase().includes(query.trim().toLowerCase()));
+
+  const toggle = async (person) => {
+    const already = currentNames.includes(person.displayName);
+    const nextNames = already
+      ? currentNames.filter((n) => n !== person.displayName)
+      : [...currentNames, person.displayName];
+    setPendingKey(person.key);
+    try {
+      await saveRoleAssignment({
+        roleKey, roleLabel,
+        picName: nextNames.join(' / '),
+        isExternal: already ? currentIsExternal : (currentIsExternal || person.isExternal),
+        memberId: !already && nextNames.length === 1 ? person.memberId : null,
+      });
+      setCurrentNames(nextNames);
+      onSaved();
+    } finally {
+      setPendingKey(null);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4 normal-case text-left"
+      onClick={onClose}
+    >
+    <div
+      className="w-full max-w-xs border border-neutral-300 bg-white shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="p-2 border-b border-neutral-200 bg-neutral-50">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-500 mb-1 truncate">{roleLabel}</p>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-neutral-400" />
+          <input
+            autoFocus type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder={vi ? 'Tìm người...' : 'Search people...'}
+            className="w-full border border-neutral-300 bg-white py-1 pl-6 pr-2 text-[11px] focus:border-neutral-900 focus:outline-none"
+          />
+        </div>
+      </div>
+      <div className="max-h-52 overflow-y-auto divide-y divide-neutral-100">
+        {!loaded ? (
+          <div className="p-3 text-[11px] text-neutral-400">{vi ? 'Đang tải...' : 'Loading...'}</div>
+        ) : filtered.map((p) => {
+          const checked = currentNames.includes(p.displayName);
+          return (
+            <label key={p.key} className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] hover:bg-neutral-50 cursor-pointer">
+              <input
+                type="checkbox" checked={checked} disabled={pendingKey === p.key}
+                onChange={() => toggle(p)} className="accent-[#990000]"
+              />
+              <span className="min-w-0 flex-1 truncate text-neutral-700">{p.displayName}</span>
+            </label>
+          );
+        })}
+        {loaded && filtered.length === 0 && (
+          <div className="p-3 text-center text-[11px] text-neutral-400">{vi ? 'Không tìm thấy.' : 'No matches.'}</div>
+        )}
+      </div>
+      <div className="flex justify-end p-1.5 border-t border-neutral-200 bg-neutral-50">
+        <button type="button" onClick={onClose} className="text-[10px] font-bold uppercase tracking-wide text-neutral-500 hover:text-neutral-900 px-2 py-1">
+          {vi ? 'Đóng' : 'Close'}
+        </button>
+      </div>
+    </div>
+    </div>
+  );
+}
+
+/** Wraps a P.I.C name with a pencil affordance (admins only) that opens
+    QuickAssignPopover for the given role_key — click a name, fix it. */
+function EditablePic({ vi, isAdmin, roleKey, roleLabel, onChanged, children }) {
+  const [open, setOpen] = useState(false);
+  if (!isAdmin) return children;
+  return (
+    <span className="relative inline-flex items-center gap-1">
+      {children}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        className="shrink-0 text-neutral-300 hover:text-[#990000] transition-colors"
+        title={vi ? 'Sửa người phụ trách' : 'Edit P.I.C'}
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+      {open && (
+        <QuickAssignPopover
+          vi={vi} roleKey={roleKey} roleLabel={roleLabel}
+          onClose={() => setOpen(false)}
+          onSaved={onChanged}
+        />
+      )}
+    </span>
+  );
+}
+
+/** "+ Add" affordance for a nested list (subgroups / programDirectors /
+    researchUnits / prActivities / colabProjects) — lets an admin add a new
+    branch the source file never defined, stored in org_custom_items and
+    merged into `departments` alongside the hardcoded shape. */
+function AddCustomItemForm({ vi, deptId, field, bilingual, onAdded }) {
+  const [open, setOpen] = useState(false);
+  const [nameVi, setNameVi] = useState('');
+  const [nameEn, setNameEn] = useState('');
+  const [descVi, setDescVi] = useState('');
+  const [descEn, setDescEn] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => { setNameVi(''); setNameEn(''); setDescVi(''); setDescEn(''); };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!nameVi.trim()) return;
+    setSaving(true);
+    try {
+      await addCustomItem({ deptId, field, nameVi, nameEn, descVi, descEn });
+      reset();
+      setOpen(false);
+      onAdded();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1 border border-dashed border-neutral-300 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-neutral-400 hover:border-[#990000] hover:text-[#990000] transition-colors w-full justify-center"
+      >
+        <Plus className="h-3 w-3" /> {vi ? 'Thêm mục' : 'Add item'}
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-1.5 border border-neutral-200 bg-neutral-50 p-2">
+      <input
+        autoFocus type="text" value={nameVi} onChange={(e) => setNameVi(e.target.value)}
+        placeholder={bilingual ? (vi ? 'Tên (VI) *' : 'Name (VI) *') : (vi ? 'Tên mục *' : 'Item name *')}
+        className="w-full border border-neutral-300 bg-white px-2 py-1 text-[11px] focus:border-neutral-900 focus:outline-none"
+      />
+      {bilingual && (
+        <>
+          <input
+            type="text" value={nameEn} onChange={(e) => setNameEn(e.target.value)}
+            placeholder={vi ? 'Tên (EN)' : 'Name (EN)'}
+            className="w-full border border-neutral-300 bg-white px-2 py-1 text-[11px] focus:border-neutral-900 focus:outline-none"
+          />
+          <textarea
+            rows={2} value={descVi} onChange={(e) => setDescVi(e.target.value)}
+            placeholder={vi ? 'Mô tả (VI)' : 'Description (VI)'}
+            className="w-full border border-neutral-300 bg-white px-2 py-1 text-[11px] focus:border-neutral-900 focus:outline-none"
+          />
+          <textarea
+            rows={2} value={descEn} onChange={(e) => setDescEn(e.target.value)}
+            placeholder={vi ? 'Mô tả (EN)' : 'Description (EN)'}
+            className="w-full border border-neutral-300 bg-white px-2 py-1 text-[11px] focus:border-neutral-900 focus:outline-none"
+          />
+        </>
+      )}
+      <div className="flex justify-end gap-1.5">
+        <button type="button" onClick={() => { setOpen(false); reset(); }} className="text-[10px] font-bold uppercase text-neutral-500 hover:text-neutral-900 px-2 py-1">
+          {vi ? 'Huỷ' : 'Cancel'}
+        </button>
+        <button type="submit" disabled={saving || !nameVi.trim()} className="bg-[#990000] hover:bg-neutral-900 disabled:opacity-60 text-white text-[10px] font-bold uppercase px-2.5 py-1">
+          {saving ? (vi ? 'Đang lưu...' : 'Saving...') : (vi ? 'Lưu' : 'Save')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Trash icon shown only on admin-added branches (real DEPARTMENTS entries
+    live in source and aren't deletable from the UI). */
+function DeleteCustomItemButton({ vi, itemId, onDeleted }) {
+  const [busy, setBusy] = useState(false);
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(vi ? 'Xoá mục này?' : 'Delete this item?')) return;
+    setBusy(true);
+    try {
+      await deleteCustomItem(itemId);
+      onDeleted();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      type="button" onClick={handleDelete} disabled={busy}
+      className="shrink-0 text-neutral-300 hover:text-[#990000] transition-colors disabled:opacity-50"
+      title={vi ? 'Xoá' : 'Delete'}
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  );
+}
 
 const DEPARTMENTS = [
   {
@@ -318,11 +567,16 @@ const MEMBER_GROUP_TONE = {
 };
 
 /** Tab "Thông tin thành viên ISCM" — danh bạ song ngữ dạng lưới, lọc theo
- *  nhóm và đồng bộ với ô tìm kiếm chung của trang. */
-function MemberDirectorySection({ lang, searchTerm }) {
+ *  nhóm và đồng bộ với ô tìm kiếm chung của trang. Admins get the full
+ *  add/edit/delete roster (+ external members) right here instead of a
+ *  separate Admin page; everyone else sees the read-only directory. */
+function MemberDirectorySection({ lang, searchTerm, isAdmin }) {
   const [group, setGroup] = useState('all');
   const [members, setMembers] = useState(ISCM_MEMBERS);
+  // null (closed) | 'new' | a member object to edit
+  const [formTarget, setFormTarget] = useState(null);
 
+  const reloadMembers = () => { fetchMembers().then(setMembers); };
   useEffect(() => {
     let cancelled = false;
     fetchMembers().then((data) => { if (!cancelled) setMembers(data); });
@@ -341,12 +595,20 @@ function MemberDirectorySection({ lang, searchTerm }) {
   const internCount = members.filter((m) => m.group === 'intern').length;
 
   const renderCard = (m) => (
-    <div key={m.id} className="flex items-start gap-2.5 border border-neutral-200 bg-neutral-50 p-2.5 card-scale">
+    <div
+      key={m.id}
+      onClick={isAdmin ? () => setFormTarget(m) : undefined}
+      className={`flex items-start gap-2.5 border border-neutral-200 bg-neutral-50 p-2.5 card-scale ${isAdmin ? 'cursor-pointer hover:border-[#990000] transition-colors' : ''}`}
+      title={isAdmin ? (lang === 'vi' ? 'Bấm để sửa' : 'Click to edit') : undefined}
+    >
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center font-barlow text-[11px] font-black ${MEMBER_GROUP_TONE[m.group]}`}>
         {memberInitials(m.nameVi)}
       </span>
-      <div className="min-w-0">
-        <p className="text-xs font-bold leading-tight text-neutral-900">{lang === 'vi' ? m.nameVi : m.nameEn}</p>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-bold leading-tight text-neutral-900">{lang === 'vi' ? m.nameVi : m.nameEn}</p>
+          {isAdmin && <Pencil className="h-3 w-3 shrink-0 text-neutral-300" />}
+        </div>
         <p className="text-[10px] font-semibold text-[#990000]">{lang === 'vi' ? m.titleVi : m.titleEn}</p>
         {(lang === 'vi' ? m.fieldVi : m.fieldEn) && (
           <p className="text-[10px] leading-snug text-neutral-500">{lang === 'vi' ? m.fieldVi : m.fieldEn}</p>
@@ -388,9 +650,20 @@ function MemberDirectorySection({ lang, searchTerm }) {
               : 'Complete member directory with academic titles and P.I.C operational duties per the 2026 Functions & Duties framework.'}
           </p>
         </div>
-        <span className="rounded-none border border-[#990000]/20 bg-[#990000]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#990000]">
-          {staffCount} {lang === 'vi' ? 'thành viên' : 'members'} · {internCount} {lang === 'vi' ? 'thực tập sinh' : 'interns'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-none border border-[#990000]/20 bg-[#990000]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#990000]">
+            {staffCount} {lang === 'vi' ? 'thành viên' : 'members'} · {internCount} {lang === 'vi' ? 'thực tập sinh' : 'interns'}
+          </span>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setFormTarget('new')}
+              className="flex items-center gap-1.5 border border-neutral-300 bg-white text-neutral-600 hover:border-[#990000] hover:text-[#990000] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors"
+            >
+              <Plus className="h-3 w-3" /> {lang === 'vi' ? 'Thêm thành viên' : 'Add Member'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Bộ lọc theo nhóm */}
@@ -442,21 +715,49 @@ function MemberDirectorySection({ lang, searchTerm }) {
           )}
         </div>
       )}
+
+      {/* Thành viên ngoài ISCM — luôn hiện, không cần bật chế độ chỉnh sửa */}
+      <div className="mt-6 border-t border-neutral-200 pt-4">
+        <span className="block font-barlow text-sm font-black uppercase tracking-wider text-neutral-900 mb-2">
+          {lang === 'vi' ? 'Thành viên ngoài ISCM' : 'Members Outside ISCM'}
+        </span>
+        <ExternalMembersTab vi={lang === 'vi'} />
+      </div>
+
+      {formTarget && (
+        <MemberEditForm
+          vi={lang === 'vi'}
+          member={formTarget === 'new' ? null : formTarget}
+          onClose={() => setFormTarget(null)}
+          onSaved={() => { setFormTarget(null); reloadMembers(); }}
+        />
+      )}
     </section>
   );
 }
 
 export default function ISCMOrganizationalChart({ lang = 'vi' }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDept, setSelectedDept] = useState(null);
+  const [selectedDeptId, setSelectedDeptId] = useState(null);
   const [viewMode, setViewMode] = useState('chart'); // 'members' | 'chart' | 'matrix'
   const [hoveredPic, setHoveredPic] = useState(null);
   const [selectedPic, setSelectedPic] = useState(null);
   const [roleOverrides, setRoleOverrides] = useState({});
+  const [customItems, setCustomItems] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { user: authUser } = useAuth();
+
+  const refreshOverrides = () => { fetchRoleAssignments().then(setRoleOverrides); };
+  const refreshCustomItems = () => { fetchCustomItems().then(setCustomItems); };
+  useEffect(() => {
+    refreshOverrides();
+    refreshCustomItems();
+  }, []);
 
   useEffect(() => {
-    fetchRoleAssignments().then(setRoleOverrides);
-  }, []);
+    if (!isLive || !authUser) { setIsAdmin(false); return; }
+    supabase.rpc('is_top_admin').then(({ data, error: err }) => setIsAdmin(!err && Boolean(data)));
+  }, [authUser]);
 
   // Admin-editable "who holds this role" (org-structure assignments) layered
   // on top of the hardcoded chart shape — same DEPARTMENTS below, just with
@@ -468,32 +769,51 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
       const deptOverride = roleOverrides[`dept:${dept.id}`];
       let next = deptOverride ? { ...dept, pic: deptOverride.picName } : dept;
 
-      if (next.subgroups) {
-        let subgroupsChanged = false;
-        const subgroups = next.subgroups.map((sub, idx) => {
+      const customSubs = customItems
+        .filter((ci) => ci.dept_id === dept.id && ci.field === 'subgroups')
+        .map((ci) => ({
+          nameVi: ci.name_vi, nameEn: ci.name_en || ci.name_vi,
+          descVi: ci.desc_vi || '', descEn: ci.desc_en || ci.desc_vi || '',
+          pic: roleOverrides[`sub:${dept.id}:custom:${ci.id}`]?.picName || '',
+          _customId: ci.id,
+        }));
+      if (next.subgroups || customSubs.length) {
+        const baseSubgroups = (next.subgroups || []).map((sub, idx) => {
           const subOverride = roleOverrides[`sub:${dept.id}:${idx}`];
-          if (!subOverride) return sub;
-          subgroupsChanged = true;
-          return { ...sub, pic: subOverride.picName };
+          return subOverride ? { ...sub, pic: subOverride.picName } : sub;
         });
-        if (subgroupsChanged) next = { ...next, subgroups };
+        next = { ...next, subgroups: [...baseSubgroups, ...customSubs] };
       }
 
       Object.entries(NESTED_FIELDS).forEach(([field, suffix]) => {
-        if (!next[field]) return;
-        let fieldChanged = false;
-        const items = next[field].map((item, idx) => {
+        const customFieldItems = customItems
+          .filter((ci) => ci.dept_id === dept.id && ci.field === field)
+          .map((ci) => ({
+            name: ci.name_vi,
+            pic: roleOverrides[`item:${dept.id}:${suffix}:custom:${ci.id}`]?.picName || '',
+            _customId: ci.id,
+          }));
+        if (!next[field] && customFieldItems.length === 0) return;
+        const baseItems = (next[field] || []).map((item, idx) => {
           const override = roleOverrides[`item:${dept.id}:${suffix}:${idx}`];
-          if (!override) return item;
-          fieldChanged = true;
-          return { ...item, pic: override.picName };
+          return override ? { ...item, pic: override.picName } : item;
         });
-        if (fieldChanged) next = { ...next, [field]: items };
+        next = { ...next, [field]: [...baseItems, ...customFieldItems] };
       });
 
       return next;
     });
-  }, [roleOverrides]);
+  }, [roleOverrides, customItems]);
+
+  // selectedDept tracks by id and is re-derived from `departments` on every
+  // render, instead of holding a snapshot object — otherwise a QuickAssign
+  // edit updates `departments` but the modal (still pointing at the old
+  // object) would keep showing the pre-edit P.I.C name until closed/reopened.
+  const selectedDept = useMemo(
+    () => (selectedDeptId ? departments.find((d) => d.id === selectedDeptId) || null : null),
+    [departments, selectedDeptId]
+  );
+  const setSelectedDept = (dept) => setSelectedDeptId(dept ? dept.id : null);
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return SIMULATED_USERS;
@@ -675,7 +995,7 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
       )}
 
       {/* VIEWPORT 0: Thông tin thành viên ISCM */}
-      {viewMode === 'members' && <MemberDirectorySection lang={lang} searchTerm={searchTerm} />}
+      {viewMode === 'members' && <MemberDirectorySection lang={lang} searchTerm={searchTerm} isAdmin={isAdmin} />}
 
       {/* VIEWPORT 1: Global Tree Flowchart with Nested Branches directly in the tree diagram */}
       {viewMode === 'chart' && (
@@ -950,7 +1270,15 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                       {lang === 'vi' ? dept.nameVi : dept.nameEn}
                     </h3>
                     <p className="text-[10px] text-neutral-400 uppercase tracking-widest mt-0.5">
-                      {lang === 'vi' ? dept.roleVi : dept.roleEn}: <span className="font-bold text-[#990000]">{dept.pic}</span>
+                      {lang === 'vi' ? dept.roleVi : dept.roleEn}:{' '}
+                      <EditablePic
+                        vi={lang === 'vi'} isAdmin={isAdmin}
+                        roleKey={`dept:${dept.id}`}
+                        roleLabel={lang === 'vi' ? dept.nameVi : dept.nameEn}
+                        onChanged={refreshOverrides}
+                      >
+                        <span className="font-bold text-[#990000]">{dept.pic}</span>
+                      </EditablePic>
                     </p>
                   </div>
                 </div>
@@ -963,9 +1291,18 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                   <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                     {dept.subgroups?.map((sub, idx) => (
                       <div key={idx} className="bg-neutral-50 p-2.5 border border-neutral-200 text-xs">
-                        <div className="flex justify-between items-start gap-2 border-b border-neutral-100 pb-1 mb-1">
+                        <div className="flex flex-col gap-1 border-b border-neutral-100 pb-1 mb-1">
                           <span className="font-bold text-neutral-800">{lang === 'vi' ? sub.nameVi : sub.nameEn}</span>
-                          <span className="font-bold text-[#990000] font-barlow uppercase text-[10px] bg-white border border-[#990000]/30 px-1 py-0.2 shrink-0">{sub.pic}</span>
+                          <div className="overflow-x-auto">
+                            <EditablePic
+                              vi={lang === 'vi'} isAdmin={isAdmin}
+                              roleKey={`sub:${dept.id}:${idx}`}
+                              roleLabel={lang === 'vi' ? sub.nameVi : sub.nameEn}
+                              onChanged={refreshOverrides}
+                            >
+                              <span className="inline-block whitespace-nowrap font-bold text-[#990000] font-barlow uppercase text-[10px] bg-white border border-[#990000]/30 px-1 py-0.2">{sub.pic}</span>
+                            </EditablePic>
+                          </div>
                         </div>
                         <p className="text-neutral-500 leading-relaxed font-ibm text-[10px]">{lang === 'vi' ? sub.descVi : sub.descEn}</p>
                       </div>
@@ -1120,7 +1457,15 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                   {lang === 'vi' ? selectedDept.nameVi : selectedDept.nameEn}
                 </h3>
                 <p className="text-xs text-neutral-500 font-ibm mt-0.5">
-                  {lang === 'vi' ? selectedDept.roleVi : selectedDept.roleEn}: <span className="font-bold text-neutral-800">{selectedDept.pic}</span>
+                  {lang === 'vi' ? selectedDept.roleVi : selectedDept.roleEn}:{' '}
+                  <EditablePic
+                    vi={lang === 'vi'} isAdmin={isAdmin}
+                    roleKey={`dept:${selectedDept.id}`}
+                    roleLabel={lang === 'vi' ? selectedDept.nameVi : selectedDept.nameEn}
+                    onChanged={refreshOverrides}
+                  >
+                    <span className="font-bold text-neutral-800">{selectedDept.pic}</span>
+                  </EditablePic>
                 </p>
               </div>
             </div>
@@ -1144,15 +1489,35 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                   </span>
                   <div className="space-y-2 max-h-56 overflow-y-auto border border-neutral-200 p-2 divide-y divide-neutral-100">
                     {selectedDept.subgroups.map((sub, idx) => (
-                      <div key={idx} className="py-2 first:pt-0">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-neutral-950">{lang === 'vi' ? sub.nameVi : sub.nameEn}</span>
-                          <span className="font-bold text-[#990000] font-barlow text-sm bg-neutral-100 px-2 py-0.5 uppercase">{sub.pic}</span>
+                      <div key={sub._customId || idx} className="py-2 first:pt-0">
+                        <div className="flex flex-col gap-1 mb-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-neutral-950">{lang === 'vi' ? sub.nameVi : sub.nameEn}</span>
+                            {sub._customId && (
+                              <DeleteCustomItemButton vi={lang === 'vi'} itemId={sub._customId} onDeleted={refreshCustomItems} />
+                            )}
+                          </div>
+                          <div className="overflow-x-auto">
+                            <EditablePic
+                              vi={lang === 'vi'} isAdmin={isAdmin}
+                              roleKey={sub._customId ? `sub:${selectedDept.id}:custom:${sub._customId}` : `sub:${selectedDept.id}:${idx}`}
+                              roleLabel={lang === 'vi' ? sub.nameVi : sub.nameEn}
+                              onChanged={refreshOverrides}
+                            >
+                              <span className="inline-block whitespace-nowrap font-bold text-[#990000] font-barlow text-sm bg-neutral-100 px-2 py-0.5 uppercase">{sub.pic}</span>
+                            </EditablePic>
+                          </div>
                         </div>
                         <p className="text-neutral-500 leading-relaxed font-ibm text-[10px]">{lang === 'vi' ? sub.descVi : sub.descEn}</p>
                       </div>
                     ))}
                   </div>
+                  {isAdmin && (
+                    <AddCustomItemForm
+                      vi={lang === 'vi'} deptId={selectedDept.id} field="subgroups" bilingual
+                      onAdded={refreshCustomItems}
+                    />
+                  )}
                 </div>
               )}
 
@@ -1164,12 +1529,32 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                   </span>
                   <div className="grid grid-cols-2 gap-2 border border-neutral-200 p-2.5 max-h-40 overflow-y-auto">
                     {selectedDept.programDirectors.map((prog, idx) => (
-                      <div key={idx} className="bg-neutral-50 p-2 border border-neutral-100 flex justify-between items-center text-[10px]">
-                        <span className="font-semibold text-neutral-600">{prog.name}</span>
-                        <span className="font-bold text-[#990000] font-barlow uppercase">{prog.pic}</span>
+                      <div key={prog._customId || idx} className="bg-neutral-50 p-2 border border-neutral-100 flex flex-col gap-0.5 text-[10px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-neutral-600">{prog.name}</span>
+                          {prog._customId && (
+                            <DeleteCustomItemButton vi={lang === 'vi'} itemId={prog._customId} onDeleted={refreshCustomItems} />
+                          )}
+                        </div>
+                        <div className="overflow-x-auto">
+                          <EditablePic
+                            vi={lang === 'vi'} isAdmin={isAdmin}
+                            roleKey={prog._customId ? `item:${selectedDept.id}:program:custom:${prog._customId}` : `item:${selectedDept.id}:program:${idx}`}
+                            roleLabel={prog.name}
+                            onChanged={refreshOverrides}
+                          >
+                            <span className="inline-block whitespace-nowrap font-bold text-[#990000] font-barlow uppercase">{prog.pic}</span>
+                          </EditablePic>
+                        </div>
                       </div>
                     ))}
                   </div>
+                  {isAdmin && (
+                    <AddCustomItemForm
+                      vi={lang === 'vi'} deptId={selectedDept.id} field="programDirectors" bilingual={false}
+                      onAdded={refreshCustomItems}
+                    />
+                  )}
                 </div>
               )}
 
@@ -1181,29 +1566,34 @@ export default function ISCMOrganizationalChart({ lang = 'vi' }) {
                   </span>
                   <div className="grid grid-cols-2 gap-2 border border-neutral-200 p-2.5 max-h-40 overflow-y-auto">
                     {selectedDept.researchUnits.map((u, idx) => (
-                      <div key={idx} className="bg-neutral-50 p-2 border border-neutral-100 flex justify-between items-center text-[10px]">
-                        <span className="font-semibold text-neutral-600">{u.name}</span>
-                        <span className="font-bold text-[#990000] font-barlow uppercase">{u.pic}</span>
+                      <div key={u._customId || idx} className="bg-neutral-50 p-2 border border-neutral-100 flex flex-col gap-0.5 text-[10px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-neutral-600">{u.name}</span>
+                          {u._customId && (
+                            <DeleteCustomItemButton vi={lang === 'vi'} itemId={u._customId} onDeleted={refreshCustomItems} />
+                          )}
+                        </div>
+                        <div className="overflow-x-auto">
+                          <EditablePic
+                            vi={lang === 'vi'} isAdmin={isAdmin}
+                            roleKey={u._customId ? `item:${selectedDept.id}:unit:custom:${u._customId}` : `item:${selectedDept.id}:unit:${idx}`}
+                            roleLabel={u.name}
+                            onChanged={refreshOverrides}
+                          >
+                            <span className="inline-block whitespace-nowrap font-bold text-[#990000] font-barlow uppercase">{u.pic}</span>
+                          </EditablePic>
+                        </div>
                       </div>
                     ))}
                   </div>
+                  {isAdmin && (
+                    <AddCustomItemForm
+                      vi={lang === 'vi'} deptId={selectedDept.id} field="researchUnits" bilingual={false}
+                      onAdded={refreshCustomItems}
+                    />
+                  )}
                 </div>
               )}
-
-              {/* Members P.I.C List for direct listing */}
-              <div className="space-y-2">
-                <span className="block font-bold text-neutral-500 uppercase text-[10px] tracking-wider">
-                  {lang === 'vi' ? 'Nhân sự chịu trách nhiệm chính' : 'P.I.C Roster'}
-                </span>
-                <div className="border border-neutral-200 divide-y divide-neutral-100 max-h-40 overflow-y-auto">
-                  {selectedDept.members.map((m, idx) => (
-                    <div key={idx} className="flex justify-between items-center py-2 px-3 hover:bg-neutral-50/50">
-                      <span className="font-medium text-neutral-600">{m.roleVi}</span>
-                      <span className="font-bold text-[#990000] font-barlow text-sm uppercase tracking-wide">{m.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Footer buttons */}
