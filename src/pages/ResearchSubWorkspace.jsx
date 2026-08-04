@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Folder, FolderOpen, FileText, ChevronRight, ChevronDown,
   Search, BookOpen, AlertCircle, Info, Landmark, HelpCircle, Download, GraduationCap,
-  Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X
+  Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X, ShieldCheck
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { isLive } from '../lib/supabaseClient.js';
 import { researchList as fallbackRows, RESEARCH_UNITS } from '../data/researchList.js';
 import { ISCM_MEMBERS } from '../data/iscmMembers.js';
@@ -27,8 +28,31 @@ import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
 import DataCatalog from '../components/research/DataCatalog.jsx';
 import DataSubmit from '../components/research/DataSubmit.jsx';
+import ResearchAccessGate from '../components/research/ResearchAccessGate.jsx';
+import ResearchAccessPanel from '../components/research/ResearchAccessPanel.jsx';
+import { canManageResearchAccess } from '../data/researchAccessStore.js';
 
 const STORE_KEY = 'iscm_research_list_edits_v1';
+
+// Legacy rows store start_year/end_year as free text like "3/8/2026"
+// (M/D/YYYY); the <input type="date"> picker only understands ISO
+// "YYYY-MM-DD". Convert on the way in for display; new edits are written
+// straight back in ISO (what the native picker already gives us).
+function toDateInputValue(str) {
+  if (!str) return '';
+  const s = String(str).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (!m) return '';
+  const [, mo, da, yr] = m;
+  return `${yr}-${mo.padStart(2, '0')}-${da.padStart(2, '0')}`;
+}
+
+function formatHistoryDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('vi-VN');
+}
 
 function loadStore() {
   try {
@@ -94,7 +118,39 @@ const PILLARS = [
 
 export default function ResearchSubWorkspace() {
   const { lang } = useLanguage();
+  const { user: authUser } = useAuth();
   const [selectedNode, setSelectedNode] = useState('research-list');
+
+  // Access-request gating (Documents behind Research Head approval): who the
+  // signed-in account is on the roster (to recognise "I'm already this
+  // task's coordinator/member"), and whether they can decide requests at all
+  // (Head of Research or top admin — same gate research_access_requests'
+  // RLS enforces server-side).
+  const myMemberIdentity = useMemo(
+    () => (authUser?.email ? ISCM_MEMBERS.find((m) => (m.email || '').toLowerCase() === authUser.email.toLowerCase()) : null),
+    [authUser]
+  );
+  const [canManageResearch, setCanManageResearch] = useState(false);
+  useEffect(() => {
+    if (!isLive || !authUser) { setCanManageResearch(false); return; }
+    canManageResearchAccess().then(setCanManageResearch);
+  }, [authUser]);
+
+  // Demo mode (no Supabase) has no real accounts to gate against, so the
+  // request/approve flow doesn't apply — content just shows.
+  const hasResearchAccess = (checker) => !isLive || canManageResearch || checker();
+
+  const hasTaskAccess = (row) => hasResearchAccess(() => {
+    if (!row || !myMemberIdentity) return false;
+    if (isMemberMatch(myMemberIdentity, row.coordinator_manager || '')) return true;
+    return (row.members || '').split(',').map((m) => m.trim()).filter(Boolean)
+      .some((m) => isMemberMatch(myMemberIdentity, m));
+  });
+
+  const hasUnitAccess = (unitName) => hasResearchAccess(() => {
+    if (!myMemberIdentity) return false;
+    return allRowsResolved.some((r) => r.research_unit === unitName && hasTaskAccess(r));
+  });
 
   // Shared Data States
   const [rows, setRows] = useState(null);
@@ -127,6 +183,15 @@ export default function ResearchSubWorkspace() {
   // here, not in `store`, until Save is pressed — closing the drawer any
   // other way (X, backdrop, Delete-on-draft) discards them untouched.
   const [pendingEdits, setPendingEdits] = useState({});
+  // Once Start Year / End Year is set it's locked — fixing it isn't
+  // "editing", it's adding a new dated entry with a reason, so these drive
+  // the small inline "add new date" forms instead of a plain input.
+  const [addingNewStartDate, setAddingNewStartDate] = useState(false);
+  const [newStartDateDraft, setNewStartDateDraft] = useState('');
+  const [newStartDateReason, setNewStartDateReason] = useState('');
+  const [addingNewEndDate, setAddingNewEndDate] = useState(false);
+  const [newEndDateDraft, setNewEndDateDraft] = useState('');
+  const [newEndDateReason, setNewEndDateReason] = useState('');
   const [drawerTab, setDrawerTab] = useState('metadata'); // 'metadata' | 'members' | 'documents' | 'tags'
 
   // File Upload states
@@ -231,6 +296,12 @@ export default function ResearchSubWorkspace() {
     setDraftRow(null);
     setPendingEdits({});
     setSelectedTask(null);
+    setAddingNewStartDate(false);
+    setNewStartDateDraft('');
+    setNewStartDateReason('');
+    setAddingNewEndDate(false);
+    setNewEndDateDraft('');
+    setNewEndDateReason('');
   };
 
   // Every field edited inside the drawer (Metadata/Members/Documents/
@@ -266,16 +337,67 @@ export default function ResearchSubWorkspace() {
   // Browser-only fallback: used when there's no Supabase backend, when the row
   // is a bundled demo row with no server counterpart, or when a database write
   // was refused (the user is told, so this never silently masquerades as saved).
-  const commitLocally = () => {
+  const commitLocally = (edits = pendingEdits) => {
     if (draftRow) {
       setStore((prev) => ({ ...prev, extraRows: [...prev.extraRows, draftRow] }));
-    } else if (Object.keys(pendingEdits).length > 0) {
+    } else if (Object.keys(edits).length > 0) {
       const rowId = currentSelectedTask.id;
       setStore((prev) => ({
         ...prev,
-        cellEdits: { ...prev.cellEdits, [rowId]: { ...prev.cellEdits[rowId], ...pendingEdits } },
+        cellEdits: { ...prev.cellEdits, [rowId]: { ...prev.cellEdits[rowId], ...edits } },
       }));
     }
+  };
+
+  // Same idea as confirmNewEndDate, for Start Year.
+  const confirmNewStartDate = () => {
+    if (!newStartDateDraft) {
+      alert(lang === 'vi' ? 'Chọn ngày bắt đầu mới.' : 'Pick the new start date.');
+      return;
+    }
+    if (!newStartDateReason.trim()) {
+      alert(lang === 'vi' ? 'Nhập lý do thay đổi.' : 'Enter a reason for the change.');
+      return;
+    }
+    const entry = {
+      changed_at: new Date().toISOString(),
+      from: currentSelectedTask.start_year || '',
+      to: newStartDateDraft,
+      reason: newStartDateReason.trim(),
+      changed_by: authUser?.email || authUser?.user_metadata?.full_name || (lang === 'vi' ? 'Không rõ' : 'Unknown'),
+    };
+    setDrawerCell('start_year', newStartDateDraft);
+    setDrawerCell('start_year_history', [...(currentSelectedTask.start_year_history || []), entry]);
+    setAddingNewStartDate(false);
+    setNewStartDateDraft('');
+    setNewStartDateReason('');
+  };
+
+  // Confirms the small inline "add new end date" form: appends a dated,
+  // reasoned entry to end_year_history and moves end_year to the new
+  // value. The original End Year field is never directly editable once
+  // set — this is the only way to change it after the first entry.
+  const confirmNewEndDate = () => {
+    if (!newEndDateDraft) {
+      alert(lang === 'vi' ? 'Chọn ngày kết thúc mới.' : 'Pick the new end date.');
+      return;
+    }
+    if (!newEndDateReason.trim()) {
+      alert(lang === 'vi' ? 'Nhập lý do thay đổi.' : 'Enter a reason for the change.');
+      return;
+    }
+    const entry = {
+      changed_at: new Date().toISOString(),
+      from: currentSelectedTask.end_year || '',
+      to: newEndDateDraft,
+      reason: newEndDateReason.trim(),
+      changed_by: authUser?.email || authUser?.user_metadata?.full_name || (lang === 'vi' ? 'Không rõ' : 'Unknown'),
+    };
+    setDrawerCell('end_year', newEndDateDraft);
+    setDrawerCell('end_year_history', [...(currentSelectedTask.end_year_history || []), entry]);
+    setAddingNewEndDate(false);
+    setNewEndDateDraft('');
+    setNewEndDateReason('');
   };
 
   // Validates, confirms, then persists — to Supabase when the table is
@@ -289,14 +411,15 @@ export default function ResearchSubWorkspace() {
     if (!ok) return;
 
     const rowId = currentSelectedTask.id;
-    const hasEdits = Object.keys(pendingEdits).length > 0;
+    const edits = pendingEdits;
+    const hasEdits = Object.keys(edits).length > 0;
 
     if (isDbBacked && (draftRow || (hasEdits && isDbRow(rowId)))) {
       try {
         if (draftRow) {
           await insertResearchRow(draftRow);
         } else {
-          await updateResearchRow(rowId, pendingEdits);
+          await updateResearchRow(rowId, edits);
           // The database is now the source of truth for this row — drop any
           // stale local override, or it would keep shadowing what we just saved.
           setStore((prev) => {
@@ -314,7 +437,7 @@ export default function ResearchSubWorkspace() {
       }
     }
 
-    commitLocally();
+    commitLocally(edits);
     closeDrawer();
   };
 
@@ -607,6 +730,15 @@ export default function ResearchSubWorkspace() {
         body: (
           <DataCatalog mode="staging" lang={lang} />
         )
+      },
+      'access-requests': {
+        title: lang === 'vi' ? 'Yêu cầu quyền truy cập' : 'Access Requests',
+        updated: lang === 'vi' ? 'Duyệt bởi Trưởng bộ phận Nghiên cứu Khoa học' : 'DECIDED BY THE RESEARCH HEAD',
+        author: lang === 'vi' ? 'TS. Phạm Nguyễn Hoài (Trưởng bộ phận Nghiên cứu Khoa học)' : 'Hoai Nguyen Pham, PhD (Head of Research)',
+        icon: ShieldCheck,
+        body: (
+          <ResearchAccessPanel lang={lang} />
+        )
       }
     };
   }, [lang, allRowsResolved, selectedTask, store, source, researchUnits, taskTypes, statusOptions]);
@@ -781,6 +913,11 @@ export default function ResearchSubWorkspace() {
               <button onClick={() => setSelectedNode('central-catalog')} className={treeNodeClass('central-catalog')}>
                 <span className="truncate">{lang === 'vi' ? 'Dữ liệu chờ kiểm duyệt' : 'Central Data Asset Catalog'}</span>
                 <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'central-catalog' ? 'text-white' : 'text-neutral-400'}`} />
+              </button>
+
+              <button onClick={() => setSelectedNode('access-requests')} className={treeNodeClass('access-requests')}>
+                <span className="truncate">{lang === 'vi' ? 'Yêu cầu quyền truy cập' : 'Access Requests'}</span>
+                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'access-requests' ? 'text-white' : 'text-neutral-400'}`} />
               </button>
             </div>
           </div>
@@ -1017,22 +1154,171 @@ export default function ResearchSubWorkspace() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-neutral-400 uppercase">Start Year</label>
-                    <input
-                      type="text"
-                      value={currentSelectedTask.start_year || ''}
-                      onChange={(e) => setDrawerCell('start_year', e.target.value)}
-                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
-                    />
+
+                    {!currentSelectedTask.start_year ? (
+                      // Not set yet — plain date entry, first time is free.
+                      <input
+                        type="date"
+                        value={toDateInputValue(currentSelectedTask.start_year)}
+                        onChange={(e) => setDrawerCell('start_year', e.target.value)}
+                        className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                      />
+                    ) : (
+                      <>
+                        {/* Once set, locked — no direct edit. Fixing it means
+                            adding a new dated entry with a reason, below. */}
+                        <div className="w-full mt-1 flex items-center justify-between border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-700">
+                          <span>{currentSelectedTask.start_year}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-400">
+                            {lang === 'vi' ? 'Đã khoá' : 'Locked'}
+                          </span>
+                        </div>
+
+                        {!addingNewStartDate ? (
+                          <button
+                            type="button"
+                            onClick={() => setAddingNewStartDate(true)}
+                            className="mt-1.5 text-[10px] font-bold uppercase tracking-wide text-[#8b0000] hover:underline"
+                          >
+                            + {lang === 'vi' ? 'Thêm lịch bắt đầu mới' : 'Add new start date'}
+                          </button>
+                        ) : (
+                          <div className="mt-2 space-y-1.5 border border-neutral-200 bg-neutral-50 p-2">
+                            <input
+                              type="date"
+                              value={newStartDateDraft}
+                              onChange={(e) => setNewStartDateDraft(e.target.value)}
+                              className="w-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                            />
+                            <textarea
+                              rows={2}
+                              value={newStartDateReason}
+                              onChange={(e) => setNewStartDateReason(e.target.value)}
+                              placeholder={lang === 'vi' ? 'Lý do thay đổi (bắt buộc)' : 'Reason for the change (required)'}
+                              className="w-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                            />
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => { setAddingNewStartDate(false); setNewStartDateDraft(''); setNewStartDateReason(''); }}
+                                className="text-[10px] font-bold uppercase text-neutral-500 hover:text-neutral-900 px-2 py-1"
+                              >
+                                {lang === 'vi' ? 'Huỷ' : 'Cancel'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={confirmNewStartDate}
+                                className="bg-[#8b0000] hover:bg-[#6d0000] text-white text-[10px] font-bold uppercase px-2.5 py-1"
+                              >
+                                {lang === 'vi' ? 'Thêm' : 'Add'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {currentSelectedTask.start_year_history?.length > 0 && (
+                      <div className="mt-2 space-y-1 border-l-2 border-neutral-200 pl-2">
+                        <span className="block text-[9px] font-bold uppercase tracking-wide text-neutral-400">
+                          {lang === 'vi' ? 'Lịch sử thay đổi' : 'Change history'}
+                        </span>
+                        {[...currentSelectedTask.start_year_history].reverse().map((h, i) => (
+                          <p key={i} className="text-[10px] leading-snug text-neutral-500">
+                            <span className="font-mono">{formatHistoryDate(h.changed_at)}</span>{': '}
+                            <span className="font-semibold text-neutral-700">{h.from}</span>
+                            {' → '}
+                            <span className="font-semibold text-neutral-700">{h.to}</span>
+                            {' — '}{h.reason}
+                            <span className="text-neutral-400"> ({h.changed_by})</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-neutral-400 uppercase">End Year</label>
-                    <input
-                      type="text"
-                      value={currentSelectedTask.end_year || ''}
-                      onChange={(e) => setDrawerCell('end_year', e.target.value)}
-                      placeholder="--"
-                      className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
-                    />
+
+                    {!currentSelectedTask.end_year ? (
+                      // Not set yet — plain date entry, first time is free.
+                      <input
+                        type="date"
+                        value={toDateInputValue(currentSelectedTask.end_year)}
+                        onChange={(e) => setDrawerCell('end_year', e.target.value)}
+                        className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] focus:outline-none transition-all rounded-none"
+                      />
+                    ) : (
+                      <>
+                        {/* Once set, locked — no direct edit. Fixing it means
+                            adding a new dated entry with a reason, below. */}
+                        <div className="w-full mt-1 flex items-center justify-between border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-700">
+                          <span>{currentSelectedTask.end_year}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-400">
+                            {lang === 'vi' ? 'Đã khoá' : 'Locked'}
+                          </span>
+                        </div>
+
+                        {!addingNewEndDate ? (
+                          <button
+                            type="button"
+                            onClick={() => setAddingNewEndDate(true)}
+                            className="mt-1.5 text-[10px] font-bold uppercase tracking-wide text-[#8b0000] hover:underline"
+                          >
+                            + {lang === 'vi' ? 'Thêm lịch kết thúc mới' : 'Add new end date'}
+                          </button>
+                        ) : (
+                          <div className="mt-2 space-y-1.5 border border-neutral-200 bg-neutral-50 p-2">
+                            <input
+                              type="date"
+                              value={newEndDateDraft}
+                              onChange={(e) => setNewEndDateDraft(e.target.value)}
+                              className="w-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                            />
+                            <textarea
+                              rows={2}
+                              value={newEndDateReason}
+                              onChange={(e) => setNewEndDateReason(e.target.value)}
+                              placeholder={lang === 'vi' ? 'Lý do thay đổi (bắt buộc) — VD: dời tiến độ do chờ phê duyệt ngân sách' : 'Reason for the change (required) — e.g. delayed pending budget approval'}
+                              className="w-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                            />
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => { setAddingNewEndDate(false); setNewEndDateDraft(''); setNewEndDateReason(''); }}
+                                className="text-[10px] font-bold uppercase text-neutral-500 hover:text-neutral-900 px-2 py-1"
+                              >
+                                {lang === 'vi' ? 'Huỷ' : 'Cancel'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={confirmNewEndDate}
+                                className="bg-[#8b0000] hover:bg-[#6d0000] text-white text-[10px] font-bold uppercase px-2.5 py-1"
+                              >
+                                {lang === 'vi' ? 'Thêm' : 'Add'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {currentSelectedTask.end_year_history?.length > 0 && (
+                      <div className="mt-2 space-y-1 border-l-2 border-neutral-200 pl-2">
+                        <span className="block text-[9px] font-bold uppercase tracking-wide text-neutral-400">
+                          {lang === 'vi' ? 'Lịch sử thay đổi' : 'Change history'}
+                        </span>
+                        {[...currentSelectedTask.end_year_history].reverse().map((h, i) => (
+                          <p key={i} className="text-[10px] leading-snug text-neutral-500">
+                            <span className="font-mono">{formatHistoryDate(h.changed_at)}</span>{': '}
+                            <span className="font-semibold text-neutral-700">{h.from}</span>
+                            {' → '}
+                            <span className="font-semibold text-neutral-700">{h.to}</span>
+                            {' — '}{h.reason}
+                            <span className="text-neutral-400"> ({h.changed_by})</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1107,6 +1393,15 @@ export default function ResearchSubWorkspace() {
                   notes, each entry timestamped) and a general Documents
                   section, each its own independently addable/removable list. */}
               {drawerTab === 'documents' && (
+              <ResearchAccessGate
+                vi={lang === 'vi'}
+                userId={authUser?.id}
+                resourceType="task"
+                resourceId={currentSelectedTask.id}
+                resourceLabel={currentSelectedTask.task_name || currentSelectedTask.code}
+                hasImplicitAccess={draftRow ? true : hasTaskAccess(currentSelectedTask)}
+                unitResourceId={currentSelectedTask.research_unit}
+              >
               <div className="space-y-6">
 
                 {/* Section: Minute Report */}
@@ -1201,6 +1496,7 @@ export default function ResearchSubWorkspace() {
                   />
                 </div>
               </div>
+              </ResearchAccessGate>
               )}
 
               {/* Tab: Classification (Framework Pillars + SDGs) */}

@@ -182,14 +182,21 @@ export default function NewResearchRowDialog({ open, onClose, rows, onCreate, pr
         </div>
 
         <div className="space-y-4 px-5 py-4">
-          <p className="text-[11px] leading-relaxed text-neutral-500">
-            {vi
-              ? 'Mã CODE gồm 3 ô: Đơn vị . Nhóm con . Tác vụ. Ô sâu nhất bạn điền chính là hàng được tạo. Không có nhóm con thì chọn 0.'
-              : 'The CODE has three parts: Unit . Sub-unit . Task. The deepest part you fill in is the row that gets created. Pick 0 when there is no sub-unit.'}
-          </p>
+          <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 space-y-1">
+            <p className="text-[11px] leading-relaxed text-neutral-600">
+              {vi
+                ? 'Mã CODE gồm 3 ô ghép lại: Đơn vị . Nhóm con . Tác vụ — giống như địa chỉ nhà: số nhà nằm trong con hẻm, con hẻm nằm trong con đường.'
+                : 'The CODE is 3 boxes joined together: Unit . Sub-unit . Task — like a street address: the house number sits inside the alley, the alley sits inside the street.'}
+            </p>
+            <p className="text-[11px] leading-relaxed text-neutral-600">
+              {vi
+                ? 'Bạn chỉ cần điền Ô SÂU NHẤT bạn muốn tạo — các ô còn lại chỉ để XÁC ĐỊNH nó thuộc về đâu, không cần đổi gì. Ví dụ mã RU2.0.3 nghĩa là: tác vụ số 3, thuộc Đơn vị RU2, không có nhóm con (nên ô giữa để 0).'
+                : 'You only fill in the DEEPEST box you want to create — the other boxes just say where it belongs, no need to change them. Example: code RU2.0.3 means task #3, under Unit RU2, with no sub-unit (so the middle box stays 0).'}
+            </p>
+          </div>
 
           {/* The three code boxes */}
-          <div className="grid grid-cols-[1fr_auto_1fr_auto_90px] items-end gap-2">
+          <div className="grid grid-cols-[1fr_auto_1fr_auto_90px] items-start gap-2">
             <div>
               <label className={boxLabel}>{vi ? 'Mã Đơn vị' : 'Unit code'}</label>
               <select value={unitSel} onChange={(e) => setUnitSel(e.target.value)} className={boxInput}>
@@ -198,8 +205,11 @@ export default function NewResearchRowDialog({ open, onClose, rows, onCreate, pr
                 ))}
                 <option value={NEW}>{vi ? '＋ Đơn vị mới' : '＋ New unit'}</option>
               </select>
+              <p className="mt-1 text-[9px] leading-snug text-neutral-400">
+                {vi ? 'Hướng nghiên cứu lớn mà việc này thuộc về.' : 'The big research direction this belongs to.'}
+              </p>
             </div>
-            <span className="pb-2 font-mono text-sm text-neutral-400">.</span>
+            <span className="pt-6 font-mono text-sm text-neutral-400">.</span>
             <div>
               <label className={boxLabel}>{vi ? 'Mã Nhóm con' : 'Sub-unit code'}</label>
               <select
@@ -214,8 +224,11 @@ export default function NewResearchRowDialog({ open, onClose, rows, onCreate, pr
                 ))}
                 <option value={NEW}>{vi ? '＋ Nhóm con mới' : '＋ New sub-unit'}</option>
               </select>
+              <p className="mt-1 text-[9px] leading-snug text-neutral-400">
+                {vi ? 'Chỉ chọn nếu việc thuộc một dự án/nhóm nhỏ hơn bên trong Đơn vị. Không có thì để 0.' : 'Only pick one if this belongs to a smaller project/group inside the Unit. Leave 0 if there isn\'t one.'}
+              </p>
             </div>
-            <span className="pb-2 font-mono text-sm text-neutral-400">.</span>
+            <span className="pt-6 font-mono text-sm text-neutral-400">.</span>
             <div>
               <label className={boxLabel}>{vi ? 'Số tác vụ' : 'Task no.'}</label>
               <input
@@ -227,6 +240,9 @@ export default function NewResearchRowDialog({ open, onClose, rows, onCreate, pr
                 placeholder="0"
                 className={`${boxInput} disabled:bg-neutral-50 disabled:placeholder:text-neutral-300`}
               />
+              <p className="mt-1 text-[9px] leading-snug text-neutral-400">
+                {vi ? 'Tự đề xuất số còn trống tiếp theo — cứ để nguyên, hoặc đổi nếu muốn.' : 'Auto-suggests the next free number — leave it, or change it if you want.'}
+              </p>
             </div>
           </div>
 
@@ -247,34 +263,47 @@ export default function NewResearchRowDialog({ open, onClose, rows, onCreate, pr
           {creating === 'unit' && (
             <div>
               <label className={boxLabel}>{vi ? 'Tên Đơn vị nghiên cứu' : 'Research Unit name'}</label>
-              <input value={unitName} onChange={(e) => setUnitName(e.target.value)} className={boxInput} autoFocus />
+              <input value={unitName} onChange={(e) => setUnitName(e.target.value)} className={boxInput} autoFocus placeholder={vi ? 'VD: MOVE System' : 'e.g. MOVE System'} />
+              <p className="mt-1 text-[10px] leading-relaxed text-neutral-400">
+                {vi
+                  ? `Dùng tên đầy đủ, dễ hiểu của hướng nghiên cứu (không viết tắt) — mã ${nextUnitCode(rows)} sẽ tự sinh, tên này chỉ để hiển thị.`
+                  : `Use the full, descriptive name of the research direction (not an abbreviation) — the ${nextUnitCode(rows)} code is generated for you; this name is just for display.`}
+              </p>
             </div>
           )}
 
           {creating === 'sub' && (
-            <div className="grid grid-cols-[1fr_120px] gap-2">
-              <div>
-                <label className={boxLabel}>{vi ? 'Tên nhóm con' : 'Sub-unit name'}</label>
-                <input
-                  value={subName}
-                  onChange={(e) => {
-                    setSubName(e.target.value);
-                    if (!subAbbr) setSubAbbr(suggestAbbreviation(e.target.value));
-                  }}
-                  className={boxInput}
-                  autoFocus
-                />
+            <>
+              <div className="grid grid-cols-[1fr_120px] gap-2">
+                <div>
+                  <label className={boxLabel}>{vi ? 'Tên nhóm con' : 'Sub-unit name'}</label>
+                  <input
+                    value={subName}
+                    onChange={(e) => {
+                      setSubName(e.target.value);
+                      if (!subAbbr) setSubAbbr(suggestAbbreviation(e.target.value));
+                    }}
+                    className={boxInput}
+                    autoFocus
+                    placeholder={vi ? 'VD: CE-Rail@UEH' : 'e.g. CE-Rail@UEH'}
+                  />
+                </div>
+                <div>
+                  <label className={boxLabel}>{vi ? 'Viết tắt' : 'Abbreviation'}</label>
+                  <input
+                    value={subAbbr}
+                    onChange={(e) => setSubAbbr(e.target.value)}
+                    placeholder="SML"
+                    className={`${boxInput} font-mono uppercase`}
+                  />
+                </div>
               </div>
-              <div>
-                <label className={boxLabel}>{vi ? 'Viết tắt' : 'Abbreviation'}</label>
-                <input
-                  value={subAbbr}
-                  onChange={(e) => setSubAbbr(e.target.value)}
-                  placeholder="SML"
-                  className={`${boxInput} font-mono uppercase`}
-                />
-              </div>
-            </div>
+              <p className="text-[10px] leading-relaxed text-neutral-400">
+                {vi
+                  ? 'Viết tắt chỉ gồm CHỮ CÁI (không số/ký tự đặc biệt), 2-5 ký tự, là phần sẽ nằm trong mã (VD: "Smart Mobility Lab" → SML). Gõ tên trước, hệ thống tự đề xuất viết tắt — bạn có thể sửa lại.'
+                  : 'The abbreviation is LETTERS ONLY (no numbers/symbols), 2-5 characters, and becomes part of the code (e.g. "Smart Mobility Lab" → SML). Type the name first — the system suggests an abbreviation you can edit.'}
+              </p>
+            </>
           )}
 
           {creating === 'task' && (

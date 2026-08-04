@@ -16,10 +16,10 @@ const RESEARCH_COLUMNS = [
   'task_type', 'ordered_by', 'coordinator_manager', 'members', 'report_plan_link',
   'framework_transition', 'glocal_design', 'human_centric_orientation',
   'tech_solutions', 'urban_system', 'sdgs',
-  'member_roles', 'minute_reports', 'documents',
+  'member_roles', 'minute_reports', 'documents', 'end_year_history', 'start_year_history',
 ];
 
-const JSON_DEFAULTS = { member_roles: {}, minute_reports: [], documents: [] };
+const JSON_DEFAULTS = { member_roles: {}, minute_reports: [], documents: [], end_year_history: [], start_year_history: [] };
 // NOT NULL in the schema — an emptied field must stay '' rather than become null.
 const NOT_NULL_COLUMNS = new Set(['research_unit', 'task_name']);
 

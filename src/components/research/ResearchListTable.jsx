@@ -1,17 +1,107 @@
 import { useMemo, useState, useEffect, Fragment } from 'react';
 import {
-  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus, Download
+  Search, Plus, ChevronRight, ChevronDown, Folder, FileText, FolderPlus, Download, X,
+  LockKeyhole, Send,
 } from 'lucide-react';
 import { RESEARCH_UNITS } from '../../data/researchList.js';
 import { ISCM_MEMBERS } from '../../data/iscmMembers.js';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { isLive } from '../../lib/supabaseClient.js';
 import { exportToCsv } from '../../lib/exportCsv.js';
-import { resolveMemberNameAndTitle } from '../../data/memberNames.js';
+import { resolveMemberNameAndTitle, isMemberMatch } from '../../data/memberNames.js';
 import { roleOf } from '../../data/memberRoles.js';
 import {
   compareCodes, parentCodeOf, codeDepth, isSubUnitCode, isMainUnitCode,
 } from '../../data/researchCodes.js';
+import {
+  canManageResearchAccess, fetchMyResearchAccess, requestResearchAccess, myRequestStatus,
+} from '../../data/researchAccessStore.js';
 import NewResearchRowDialog from './NewResearchRowDialog.jsx';
+
+/** Small badge/button next to a Research Unit's group header — requests
+    blanket access to that whole unit's documents (one approval covers
+    every task inside it, see ResearchAccessGate's unitResourceId prop). */
+function UnitAccessButton({ vi, userId, unitName, hasImplicitAccess }) {
+  const [status, setStatus] = useState(hasImplicitAccess ? 'approved' : 'checking');
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const reload = () => {
+    if (hasImplicitAccess) { setStatus('approved'); return; }
+    if (!userId) { setStatus('none'); return; }
+    fetchMyResearchAccess(userId).then((rows) => {
+      setStatus(myRequestStatus(rows, 'unit', unitName) || 'none');
+    });
+  };
+  useEffect(() => { reload(); }, [hasImplicitAccess, unitName, userId]);
+
+  if (status === 'approved' || status === 'checking') return null;
+
+  const submit = async (e) => {
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      await requestResearchAccess({ userId, resourceType: 'unit', resourceId: unitName, resourceLabel: unitName, reason });
+      setOpen(false);
+      setReason('');
+      reload();
+    } catch (err) {
+      window.alert(err.message || (vi ? 'Gửi yêu cầu thất bại.' : 'Failed to send the request.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <span className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={status === 'pending'}
+        className="ml-2 inline-flex items-center gap-1 border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-neutral-500 hover:border-[#8b0000] hover:text-[#8b0000] disabled:opacity-60 normal-case"
+      >
+        <LockKeyhole className="h-2.5 w-2.5" />
+        {status === 'pending'
+          ? (vi ? 'Đang chờ duyệt' : 'Pending approval')
+          : (vi ? 'Yêu cầu truy cập' : 'Request access')}
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full z-30 mt-1 w-64 border border-neutral-200 bg-white p-2.5 shadow-xl normal-case font-ibm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-[10px] text-neutral-500 mb-1.5">
+            {vi ? `Xin quyền xem tài liệu của cả Đơn vị "${unitName}".` : `Request to view all documents in the "${unitName}" unit.`}
+          </p>
+          <textarea
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder={vi ? 'Lý do (không bắt buộc)' : 'Reason (optional)'}
+            className="w-full border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none"
+          />
+          <div className="mt-1.5 flex justify-end gap-1.5">
+            <button type="button" onClick={() => setOpen(false)} className="text-[10px] font-bold uppercase text-neutral-500 hover:text-neutral-900 px-2 py-1">
+              {vi ? 'Huỷ' : 'Cancel'}
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy}
+              className="inline-flex items-center gap-1 bg-[#8b0000] hover:bg-[#6d0000] disabled:opacity-60 text-white text-[10px] font-bold uppercase px-2.5 py-1"
+            >
+              <Send className="h-3 w-3" />
+              {busy ? (vi ? 'Đang gửi...' : 'Sending...') : (vi ? 'Gửi' : 'Send')}
+            </button>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
 
 // The one canonical set of Status values actually used across the Research
 // List — "Completed" was a dead duplicate of "Done" that no row ever used,
@@ -77,6 +167,7 @@ export default function ResearchListTable({
   statusOptions = []
 }) {
   const { lang } = useLanguage();
+  const { user: authUser } = useAuth();
   const [query, setQuery] = useState('');
   const [unit, setUnit] = useState('all');
   const [taskType, setTaskType] = useState('all');
@@ -84,6 +175,27 @@ export default function ResearchListTable({
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [newOpen, setNewOpen] = useState(false);
   const [newPrefill, setNewPrefill] = useState(null);
+
+  // Who's signed in, on the roster — recognises "I'm already a
+  // coordinator/member of a task in this unit" so the Request Access badge
+  // doesn't show for people who don't need it. See ResearchAccessGate for
+  // the matching task-level check.
+  const myMemberIdentity = useMemo(
+    () => (authUser?.email ? ISCM_MEMBERS.find((m) => (m.email || '').toLowerCase() === authUser.email.toLowerCase()) : null),
+    [authUser]
+  );
+  const [canManageResearch, setCanManageResearch] = useState(false);
+  useEffect(() => {
+    if (!isLive || !authUser) { setCanManageResearch(false); return; }
+    canManageResearchAccess().then(setCanManageResearch);
+  }, [authUser]);
+  const hasUnitImplicitAccess = (rows) => !isLive || canManageResearch || (
+    myMemberIdentity && rows.some((r) =>
+      isMemberMatch(myMemberIdentity, r.coordinator_manager || '')
+      || (r.members || '').split(',').map((m) => m.trim()).filter(Boolean).some((m) => isMemberMatch(myMemberIdentity, m)))
+  );
+  const [exportPickerOpen, setExportPickerOpen] = useState(false);
+  const [exportUnits, setExportUnits] = useState(new Set());
 
   // Set default view collapsed on load
   useEffect(() => {
@@ -374,23 +486,44 @@ export default function ResearchListTable({
 
   const customColumns = store.customColumns;
 
-  // Exports exactly the rows currently rendered in the table — same rows,
-  // same order, respecting the search/unit/task type/status filters AND
-  // which Research Unit folders are collapsed vs expanded right now (a
-  // collapsed folder's children aren't "in the table" until expanded).
-  // Coordinator and Members are resolved to the same display names shown
-  // on screen, not the raw short-name strings the fields are stored as, so
-  // the CSV matches what's actually visible rather than the backing data.
+  // Same "Individual"/"IndividualTEAM" -> "Individual & Team Initiatives"
+  // consolidation groupedAndSortedData does, factored out so the export
+  // picker can filter the FULL dataset by the same unit names the table
+  // groups rows under — regardless of what's currently expanded/collapsed.
+  const groupNameOf = (row) => {
+    const g = row.research_unit || 'Other';
+    return (g === 'Individual' || g === 'IndividualTEAM') ? 'Individual & Team Initiatives' : g;
+  };
+
+  // Exporting no longer requires expanding every folder first — pick which
+  // Research Units to include (all data for those units, not just whatever
+  // happens to be visible right now), export those.
+  const openExportPicker = () => {
+    setExportUnits(new Set(researchUnits));
+    setExportPickerOpen(true);
+  };
+
+  const toggleExportUnit = (u) => {
+    setExportUnits((prev) => {
+      const next = new Set(prev);
+      if (next.has(u)) next.delete(u); else next.add(u);
+      return next;
+    });
+  };
+
   const handleExportCsv = () => {
     const headers = ['Code', 'Task Name', 'Research Unit', 'Task Type', 'Coordinator / Manager', 'Members', 'Status', 'Start Year', 'End Year'];
-    const visibleRows = groupedAndSortedData.flatMap((group) => group.rows);
-    const rows = visibleRows.map((r) => [
+    const selectedRows = allRowsResolved
+      .filter((r) => exportUnits.has(groupNameOf(r)))
+      .sort((a, b) => compareCodes(a.code, b.code));
+    const rows = selectedRows.map((r) => [
       r.code || '', r.task_name || '', r.research_unit || '', r.task_type || '',
       resolveMemberNameAndTitle(r.coordinator_manager || ''),
       (r.members || '').split(',').map((m) => m.trim()).filter(Boolean).map(resolveMemberNameAndTitle).join(', '),
       r.status || '', r.start_year || '', r.end_year || '',
     ]);
     exportToCsv('research-list', headers, rows);
+    setExportPickerOpen(false);
   };
 
   return (
@@ -449,7 +582,7 @@ export default function ResearchListTable({
 
         <button
           type="button"
-          onClick={handleExportCsv}
+          onClick={openExportPicker}
           title={lang === 'vi' ? 'Xuất CSV' : 'Export CSV'}
           className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#8b0000] hover:text-[#8b0000] transition-colors rounded-none"
         >
@@ -457,6 +590,79 @@ export default function ResearchListTable({
           CSV
         </button>
       </div>
+
+      {exportPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setExportPickerOpen(false)}>
+          <div
+            className="w-full max-w-sm border border-neutral-200 bg-white shadow-xl font-ibm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+              <h3 className="font-barlow text-sm font-bold uppercase tracking-wide text-neutral-900">
+                {lang === 'vi' ? 'Chọn Đơn vị để xuất' : 'Pick Research Units to export'}
+              </h3>
+              <button type="button" onClick={() => setExportPickerOpen(false)} className="text-neutral-400 hover:text-[#8b0000]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-2">
+              <button
+                type="button"
+                onClick={() => setExportUnits(new Set(researchUnits))}
+                className="text-[10px] font-bold uppercase text-neutral-500 hover:text-[#8b0000]"
+              >
+                {lang === 'vi' ? 'Chọn tất cả' : 'Select all'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportUnits(new Set())}
+                className="text-[10px] font-bold uppercase text-neutral-500 hover:text-[#8b0000]"
+              >
+                {lang === 'vi' ? 'Bỏ chọn tất cả' : 'Select none'}
+              </button>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto divide-y divide-neutral-100">
+              {researchUnits.map((u) => (
+                <label key={u} className="flex items-center gap-2 px-4 py-2 text-xs text-neutral-700 hover:bg-neutral-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={exportUnits.has(u)}
+                    onChange={() => toggleExportUnit(u)}
+                    className="accent-[#8b0000]"
+                  />
+                  <span className="truncate">{u}</span>
+                </label>
+              ))}
+              {researchUnits.length === 0 && (
+                <div className="px-4 py-6 text-center text-xs text-neutral-400">
+                  {lang === 'vi' ? 'Chưa có Đơn vị nghiên cứu nào.' : 'No Research Units yet.'}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-neutral-200 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setExportPickerOpen(false)}
+                className="border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:border-neutral-400 rounded-none"
+              >
+                {lang === 'vi' ? 'Huỷ' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={exportUnits.size === 0}
+                className="inline-flex items-center gap-1.5 bg-[#8b0000] disabled:bg-neutral-300 disabled:cursor-not-allowed px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#6d0000] rounded-none"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {lang === 'vi' ? `Xuất (${exportUnits.size})` : `Export (${exportUnits.size})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Grid Table */}
       <div className="min-h-0 flex-1 overflow-auto border border-neutral-200 bg-white shadow-sm">
@@ -482,6 +688,12 @@ export default function ResearchListTable({
                 <tr className="bg-neutral-100/80 border-y border-neutral-200 select-none">
                   <td colSpan={7 + customColumns.length} className="px-4 py-2.5 font-bold font-barlow text-[#8b0000] uppercase tracking-wide text-[11px]">
                     {group.groupName}
+                    <UnitAccessButton
+                      vi={lang === 'vi'}
+                      userId={authUser?.id}
+                      unitName={group.groupName}
+                      hasImplicitAccess={hasUnitImplicitAccess(group.rows)}
+                    />
                   </td>
                 </tr>
 
@@ -609,8 +821,10 @@ export default function ResearchListTable({
                       </td>
 
                       {/* TIMELINE */}
-                      <td className="px-4 py-3 text-neutral-500 font-mono font-medium whitespace-nowrap">
-                        {row.start_year || '—'} - {row.end_year || '--'}
+                      <td className="px-4 py-3 text-neutral-500 font-mono font-medium overflow-hidden">
+                        <span className="block max-w-full truncate" title={`${row.start_year || '—'} - ${row.end_year || '--'}`}>
+                          {row.start_year || '—'} - {row.end_year || '--'}
+                        </span>
                       </td>
 
                       {/* CUSTOM COLUMNS */}

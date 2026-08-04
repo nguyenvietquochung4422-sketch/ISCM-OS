@@ -65,6 +65,17 @@ export function isMemberMatch(member, targetStr) {
   if (!targetStr) return false;
   const targetWords = wordsOf(targetStr);
   if (targetWords.length === 0) return false;
+
+  // Several roster members share a given name — "...Dung" (Lại Phương Dung /
+  // Phạm Võ Hồng Dung), "...An", "...Tiên", "...Đạt" — so a bare word-run
+  // match on the given name alone is ambiguous. When targetStr is an exact
+  // full-name match for someone, it can ONLY refer to that person: otherwise
+  // selecting "Phạm Võ Hồng Dung" would also match (and get displayed back
+  // as) "Lại Phương Dung", since both end in "Dung".
+  const exact = deaccent(stripTitles(targetStr)).trim();
+  const exactOwner = ISCM_MEMBERS.find((m) => deaccent(memberOptionValue(m)) === exact);
+  if (exactOwner) return exactOwner.id === member.id;
+
   return getShortNamesForMember(member).some((term) =>
     hasWordRun(targetWords, wordsOf(term))
   );
