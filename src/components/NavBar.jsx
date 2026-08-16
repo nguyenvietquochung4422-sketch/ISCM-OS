@@ -70,10 +70,23 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
     return unsubscribe;
   }, [authUser]);
 
-  const handleOpenNotification = async (n) => {
+  /** `n.link` is a dashboard `selected` key (e.g. 'attendance-log',
+      'admin-attendance', 'form:order-book') — the same key every module
+      already uses to route the top nav, so a notification just replays it.
+      When the notification also names a specific entity (Phase 3C), a
+      second event tells the destination panel which record to open —
+      the dashboard switch alone can't carry that, since it only accepts
+      a `selected` key. */
+  const handleOpenNotification = (n) => {
     if (!n.is_read) {
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
       markNotificationRead(n.id);
+    }
+    if (n.link) navigateTo('personal-dashboard', n.link); else closeAll();
+    if (n.entity_type === 'attendance_record' && n.entity_id) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('attendance:open-record', { detail: { recordId: n.entity_id } }));
+      }, 80);
     }
   };
 
@@ -189,10 +202,11 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                   </li>
                   <li>
                     <button
-                      onClick={() => navigateTo('placeholder-cl2')}
-                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
+                      onClick={() => navigateTo('personal-dashboard', 'my-teaching-schedule')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800 flex items-center justify-between"
                     >
-                      {t.ACADEMIA}
+                      <span>{t.ACADEMIA}</span>
+                      <span className="text-[9px] uppercase border border-neutral-900 px-1 py-0.2 scale-90 font-bold text-neutral-900 bg-neutral-100">Active</span>
                     </button>
                   </li>
                   <li>
@@ -214,10 +228,47 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
                   </li>
                   <li>
                     <button
-                      onClick={() => navigateTo('placeholder-cl5')}
+                      onClick={() => navigateTo('personal-dashboard', 'institutional-partners')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800 flex items-center justify-between"
+                    >
+                      <span>{t.PARTNERSHIP}</span>
+                      <span className="text-[9px] uppercase border border-neutral-900 px-1 py-0.2 scale-90 font-bold text-neutral-900 bg-neutral-100">Active</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* DATA MANAGEMENT Dropdown */}
+          <div className="relative flex items-stretch h-full" onMouseEnter={() => openAt('data')}>
+            <button
+              onClick={() => (openMenu === 'data' ? setOpenMenu(null) : openAt('data'))}
+              className={topBtnClass('data', active === 'data-management')}
+            >
+              {t.DATA_MANAGEMENT}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+            {openMenu === 'data' && (
+              <div
+                className={`${dropdownClass} w-64 left-0`}
+                onMouseEnter={() => openAt('data')}
+              >
+                <ul className="space-y-0.5">
+                  <li>
+                    <button
+                      onClick={() => navigateTo('data-management', 'data-catalog')}
                       className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
                     >
-                      {t.PARTNERSHIP}
+                      {t.DATA_CATALOG}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => navigateTo('data-management', 'data-submit')}
+                      className="w-full text-left rounded-none px-3 py-1.5 text-xs hover:bg-[#990000] hover:text-white transition-colors font-bold text-neutral-800"
+                    >
+                      {t.REGISTER_DATASET}
                     </button>
                   </li>
                 </ul>
@@ -386,6 +437,11 @@ export default function NavBar({ active, onNavigate, onOpenAsset }) {
             <button onClick={() => navigateTo('research-sub-workspace')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.RESEARCH}</button>
             <button onClick={() => navigateTo('placeholder-cl4')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.COMMUNITY}</button>
             <button onClick={() => navigateTo('placeholder-cl5')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.PARTNERSHIP}</button>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.DATA_MANAGEMENT}</div>
+            <button onClick={() => navigateTo('data-management', 'data-catalog')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.DATA_CATALOG}</button>
+            <button onClick={() => navigateTo('data-management', 'data-submit')} className="block w-full text-left px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50">{t.REGISTER_DATASET}</button>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase text-[#990000] mb-1">{t.ISCM_OVERVIEW}</div>

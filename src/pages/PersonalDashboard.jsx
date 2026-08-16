@@ -14,11 +14,12 @@ import { FormPortalGrid, FormDetail, loadSubmissions } from '../components/perso
 import { MyTasksPanel, MyFormsPanel } from '../components/personal/RequestQueues.jsx';
 import TransactionsPanel from '../components/personal/TransactionsPanel.jsx';
 import MyAssetsPanel from '../components/personal/MyAssetsPanel.jsx';
-import WikiHubPanel from '../components/personal/WikiHubPanel.jsx';
 import ISCMOrganizationalChart from '../components/personal/ISCMOrganizationalChart.jsx';
 import ContentPermissionsPanel from '../components/personal/ContentPermissionsPanel.jsx';
 import AccessRequestsPanel from '../components/personal/AccessRequestsPanel.jsx';
 import InstituteAttendancePanel from '../components/personal/InstituteAttendancePanel.jsx';
+import MyEventsPanel from '../components/personal/MyEventsPanel.jsx';
+import EventManagementPanel from '../components/personal/EventManagementPanel.jsx';
 import InstituteCalendarPanel from '../components/personal/InstituteCalendarPanel.jsx';
 import LibraryAdminPanel from '../components/personal/LibraryAdminPanel.jsx';
 import { CreateRequestView, MyRequestsView } from '../components/personal/SupportsPanel.jsx';
@@ -26,6 +27,14 @@ import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { supabase, isLive } from '../lib/supabaseClient.js';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
+import { RESOURCES_CONTENT, RESOURCE_CATEGORY_KEYS } from '../data/resourcesContent.js';
+import { ACADEMIA_RESOURCES_CONTENT, ACADEMIA_RESOURCE_CATEGORY_KEYS } from '../data/academiaResourcesContent.js';
+import MyTeachingSchedulePanel from '../components/personal/MyTeachingSchedulePanel.jsx';
+import InstituteTeachingSchedulePanel from '../components/personal/InstituteTeachingSchedulePanel.jsx';
+import TeachingAssignmentsPanel from '../components/personal/TeachingAssignmentsPanel.jsx';
+import { PARTNERSHIP_RESOURCES_CONTENT, PARTNERSHIP_RESOURCE_CATEGORY_KEYS } from '../data/partnershipResourcesContent.js';
+import { IndividualStakeholdersPanel, InstitutionalPartnersPanel } from '../components/personal/PartnersDirectoryPanel.jsx';
+import AgreementsPanel from '../components/personal/AgreementsPanel.jsx';
 import { WS_EVENTS } from '../data/calendarEvents.js';
 
 /** Demo-mode fallback (no Supabase configured, so no real sign-in is possible). */
@@ -136,30 +145,41 @@ function MyRequestsWidgetView({ myForms, openForms, setSelectedItem, lang, t, TA
   );
 }
 
-/* ---------------- Wiki Hub — read straight from SIDEBAR_TREE ---------------- */
+/* ---------------- Resources (O&F) — read from resourcesContent.js ---------------- */
 
-/** Every wiki-hub-root branch's children, straight off the same SIDEBAR_TREE
-    the left nav renders — used for both flat-list branches (Templates/Media/
-    Reference) and as the data source for WikiTreeOutline below. */
-function findWikiBranchChildren(t, branchId) {
-  const wikiRoot = t.SIDEBAR_TREE.find((n) => n.id === 'wiki-hub-root');
-  const branch = wikiRoot?.children?.find((n) => n.id === branchId);
-  return branch?.children || [];
-}
+/** One RESOURCES category page (Guidelines / Policies & Regulations / ...) —
+    subgroup headers + document buttons, with a search box since categories
+    run ~10-20 items. Data lives in resourcesContent.js, not SIDEBAR_TREE:
+    the sidebar only goes one level deep for Resources (category only), so
+    this is the only place the subgroup/document breakdown actually renders. */
+function ResourcesCategoryView({ lang, categoryKey, onOpen, contentMap = RESOURCES_CONTENT }) {
+  const [query, setQuery] = useState('');
+  const category = contentMap[lang]?.[categoryKey];
+  if (!category) return null;
 
-/** Inline outline for any wiki-hub-root branch, read straight from the same
-    SIDEBAR_TREE the left nav uses — so what shows here always matches what's
-    in the sidebar. Just names (group headers + doc titles), no dates/badges. */
-function WikiTreeOutline({ t, branchId, onOpen }) {
-  const children = findWikiBranchChildren(t, branchId);
+  const q = query.trim().toLowerCase();
+  const groups = category.groups
+    .map((g) => ({ ...g, docs: g.docs.filter((d) => !q || d.label.toLowerCase().includes(q)) }))
+    .filter((g) => g.docs.length > 0);
+
   return (
-    <div className="space-y-3 font-sans">
-      {children.map((node) =>
-        node.children ? (
-          <div key={node.id}>
-            <span className="block font-bold text-neutral-900 text-xs mb-1">{node.label}</span>
-            <div className="ml-2 border border-neutral-200 divide-y divide-neutral-100">
-              {node.children.map((doc) => (
+    <div className="space-y-4 font-sans">
+      <div className="relative max-w-sm">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={lang === 'vi' ? 'Tìm tài liệu...' : 'Search documents...'}
+          className="w-full rounded-none border border-neutral-300 bg-white py-1.5 pl-8 pr-2.5 text-xs focus:border-neutral-900 focus:outline-none"
+        />
+      </div>
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={g.label}>
+            <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-1.5">{g.label}</span>
+            <div className="border border-neutral-200 bg-white divide-y divide-neutral-100">
+              {g.docs.map((doc) => (
                 <button
                   key={doc.key}
                   onClick={() => onOpen(doc.key)}
@@ -171,49 +191,9 @@ function WikiTreeOutline({ t, branchId, onOpen }) {
               ))}
             </div>
           </div>
-        ) : (
-          <button
-            key={node.key}
-            onClick={() => onOpen(node.key)}
-            className="w-full flex items-center gap-2 border border-neutral-200 bg-white px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 hover:text-[#990000] transition-colors"
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-            <span className="truncate">{node.label}</span>
-          </button>
-        )
-      )}
-    </div>
-  );
-}
-
-function WikiDocList({ lang, items, onOpen }) {
-  const [query, setQuery] = useState('');
-  const filtered = items.filter((i) => !query.trim() || i.label.toLowerCase().includes(query.trim().toLowerCase()));
-  return (
-    <div className="space-y-3 font-sans">
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={lang === 'vi' ? 'Tìm tài liệu...' : 'Search documents...'}
-          className="w-full rounded-none border border-neutral-300 bg-white py-1.5 pl-8 pr-2.5 text-xs focus:border-neutral-900 focus:outline-none"
-        />
-      </div>
-      <div className="border border-neutral-200 divide-y divide-neutral-100">
-        {filtered.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => onOpen(item.key)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 hover:text-[#990000] transition-colors"
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-            <span className="truncate">{item.label}</span>
-          </button>
         ))}
-        {filtered.length === 0 && (
-          <div className="p-6 text-center text-xs text-neutral-400">{lang === 'vi' ? 'Không tìm thấy.' : 'No matches.'}</div>
+        {groups.length === 0 && (
+          <div className="p-6 text-center text-xs text-neutral-400 border border-neutral-200">{lang === 'vi' ? 'Không tìm thấy.' : 'No matches.'}</div>
         )}
       </div>
     </div>
@@ -226,9 +206,6 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
   let key = selected;
   if (selected === 'my-portal') key = 'profile-bio';
   else if (selected === 'requests-forms') key = 'cat-forms';
-  else if (selected === 'wiki-hub-root') key = 'cat-wiki';
-  else if (['wiki-of-g', 'wiki-rp-g', 'wiki-ac-g', 'wiki-cm-g'].includes(selected)) key = 'wiki-guidelines';
-  else if (['wiki-oh-r', 'wiki-af-r'].includes(selected)) key = 'wiki-regulations';
 
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
 
@@ -876,6 +853,7 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
       ),
     },
     'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel lang={lang} /> },
+    'my-events': { title: lang === 'vi' ? 'Sự kiện của tôi' : 'My Events', icon: Presentation, body: <MyEventsPanel lang={lang} /> },
     'my-assets': { title: t.ASSETS_TITLE, icon: MonitorSmartphone, body: <MyAssetsPanel typeFilter={filters.assetType} /> },
     'admin-access-requests': {
       title: lang === 'vi' ? 'YÊU CẦU TRUY CẬP' : 'ACCESS REQUESTS',
@@ -892,6 +870,11 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
       icon: CalendarClock,
       body: <InstituteAttendancePanel lang={lang} />,
     },
+    'admin-events': {
+      title: lang === 'vi' ? 'QUẢN LÝ SỰ KIỆN' : 'EVENT MANAGEMENT',
+      icon: Presentation,
+      body: <EventManagementPanel lang={lang} />,
+    },
     'admin-calendar': {
       title: lang === 'vi' ? 'LỊCH TOÀN VIỆN' : 'INSTITUTE CALENDAR',
       icon: CalendarRange,
@@ -905,158 +888,83 @@ function usePaneContent(selected, filters, setSelected, lang, wsData) {
 
     // Overview sections
     'cat-forms': {
-      title: lang === 'vi' ? 'VẬN HÀNH & TÀI CHÍNH' : 'OPERATION & FINANCE', icon: FileText,
-      body: (
-        <div className="space-y-8 font-sans text-sm text-neutral-800">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
-                {lang === 'vi' ? 'TẤT CẢ DỊCH VỤ BIỂU MẪU' : 'ALL E-FORM SERVICES'}
-              </span>
-              <span className="text-xs text-neutral-400">Category Filter: {filters.formCategory}</span>
-            </div>
-            <FormPortalGrid categoryFilter={filters.formCategory} onOpenForm={(k) => setSelected(`form:${k}`)} />
-          </div>
-
-          <div className="space-y-4 border-t border-neutral-200 pt-6">
-            <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
-              {lang === 'vi' ? 'TRUNG TÂM TRI THỨC DÙNG CHUNG' : 'WIKI HUB'}
-            </span>
-            <div className="p-3 bg-neutral-100 border border-neutral-200 flex items-center justify-between rounded-none">
-              <div>
-                <span className="block font-bold text-neutral-900 text-sm">ISCM Wiki Commons</span>
-                <span className="block text-xs text-neutral-500 mt-0.5">
-                  {lang === 'vi'
-                    ? 'Truy cập cẩm nang hướng dẫn, quy định bắt buộc, hệ thống mẫu biểu và chính sách chiến lược.'
-                    : 'Access policies, regulations, guidelines, templates, and tool starter guides.'}
-                </span>
-              </div>
-              <span className="badge border border-neutral-300 bg-white text-neutral-800 font-bold text-xs">2026 Core Docs</span>
-            </div>
-
-            <div className="space-y-5">
-              <div className="border border-neutral-200 bg-white p-3 rounded-none">
-                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📘 {lang === 'vi' ? 'Cẩm nang Guidelines' : 'Guidelines'}</span>
-                <WikiTreeOutline t={t} branchId="wiki-guidelines-branch" onOpen={setSelected} />
-              </div>
-              <div className="border border-neutral-200 bg-white p-3 rounded-none">
-                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📕 {lang === 'vi' ? 'Chính sách Policies' : 'Policies'}</span>
-                <WikiTreeOutline t={t} branchId="wiki-policies-branch" onOpen={setSelected} />
-              </div>
-              <div className="border border-neutral-200 bg-white p-3 rounded-none">
-                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📙 {lang === 'vi' ? 'Quy chế Regulations' : 'Regulations'}</span>
-                <WikiTreeOutline t={t} branchId="wiki-regulations-branch" onOpen={setSelected} />
-              </div>
-              <div className="border border-neutral-200 bg-white p-3 rounded-none">
-                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🗂️ {lang === 'vi' ? 'Văn bản mẫu' : 'Templates'}</span>
-                <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-templates-branch')} onOpen={setSelected} />
-              </div>
-              <div className="border border-neutral-200 bg-white p-3 rounded-none">
-                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🎨 {lang === 'vi' ? 'Ấn phẩm Thương hiệu' : 'Brand Media'}</span>
-                <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-media-branch')} onOpen={setSelected} />
-              </div>
-              <div className="border border-neutral-200 bg-white p-3 rounded-none">
-                <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📚 {lang === 'vi' ? 'Danh mục Tra cứu' : 'Reference'}</span>
-                <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-reference-branch')} onOpen={setSelected} />
-              </div>
-            </div>
-
-            <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
-              <span className="block font-bold text-neutral-950 uppercase text-xs tracking-wider mb-2">
-                {lang === 'vi' ? 'Chính Sách Cốt Lõi 2026' : '2026 Core Policy Highlights'}
-              </span>
-              <ul className="space-y-2 text-sm text-neutral-600">
-                <li className="flex items-start gap-1.5">
-                  <span className="text-neutral-400 font-bold">•</span>
-                  <span><strong>Financial Routing Policy:</strong> Segregate payments strictly into Track 1 (UEH Standard Budgets: Flow 1 &amp; 2) and Track 2 (Internal ISCM Funds: Flow 3 &amp; 4).</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-neutral-400 font-bold">•</span>
-                  <span><strong>Lab Asset Management:</strong> Real-time reservation logs required for high-spec laptops, drones, spatial rigs, and VR units in the Book Catalog.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    'cat-wiki': {
-      title: lang === 'vi' ? 'TRUNG TÂM TRI THỨC DÙNG CHUNG' : 'WIKI HUB', icon: BookOpen,
+      title: lang === 'vi' ? 'BIỂU MẪU ĐIỆN TỬ' : 'E-FORMS', icon: FileText,
       body: (
         <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <div className="p-3 bg-neutral-100 border border-neutral-200 flex items-center justify-between rounded-none">
-            <div>
-              <span className="block font-bold text-neutral-900 text-sm">ISCM Wiki Commons</span>
-              <span className="block text-xs text-neutral-500 mt-0.5">
-                {lang === 'vi'
-                  ? 'Truy cập cẩm nang hướng dẫn, quy định bắt buộc, hệ thống mẫu biểu và chính sách chiến lược.'
-                  : 'Access policies, regulations, guidelines, templates, and tool starter guides.'}
-              </span>
-            </div>
-            <span className="badge border border-neutral-300 bg-white text-neutral-800 font-bold text-xs">2026 Core Docs</span>
-          </div>
-
-          <div className="space-y-5">
-            <div className="border border-neutral-200 bg-white p-3 rounded-none">
-              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📘 {lang === 'vi' ? 'Cẩm nang Guidelines' : 'Guidelines'}</span>
-              <WikiTreeOutline t={t} branchId="wiki-guidelines-branch" onOpen={setSelected} />
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 rounded-none">
-              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📕 {lang === 'vi' ? 'Chính sách Policies' : 'Policies'}</span>
-              <WikiTreeOutline t={t} branchId="wiki-policies-branch" onOpen={setSelected} />
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 rounded-none">
-              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📙 {lang === 'vi' ? 'Quy chế Regulations' : 'Regulations'}</span>
-              <WikiTreeOutline t={t} branchId="wiki-regulations-branch" onOpen={setSelected} />
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 rounded-none">
-              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🗂️ {lang === 'vi' ? 'Văn bản mẫu' : 'Templates'}</span>
-              <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-templates-branch')} onOpen={setSelected} />
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 rounded-none">
-              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">🎨 {lang === 'vi' ? 'Ấn phẩm Thương hiệu' : 'Brand Media'}</span>
-              <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-media-branch')} onOpen={setSelected} />
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 rounded-none">
-              <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-2">📚 {lang === 'vi' ? 'Danh mục Tra cứu' : 'Reference'}</span>
-              <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-reference-branch')} onOpen={setSelected} />
-            </div>
-          </div>
-
-          <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
-            <span className="block font-bold text-neutral-950 uppercase text-xs tracking-wider mb-2">
-              {lang === 'vi' ? 'Chính Sách Cốt Lõi 2026' : '2026 Core Policy Highlights'}
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
+              {lang === 'vi' ? 'TẤT CẢ BIỂU MẪU' : 'ALL E-FORMS'}
             </span>
-            <ul className="space-y-2 text-sm text-neutral-600">
-              <li className="flex items-start gap-1.5">
-                <span className="text-neutral-400 font-bold">•</span>
-                <span><strong>Financial Routing Policy:</strong> Segregate payments strictly into Track 1 (UEH Standard Budgets: Flow 1 &amp; 2) and Track 2 (Internal ISCM Funds: Flow 3 &amp; 4).</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-neutral-400 font-bold">•</span>
-                <span><strong>Lab Asset Management:</strong> Real-time reservation logs required for high-spec laptops, drones, spatial rigs, and VR units in the Book Catalog.</span>
-              </li>
-            </ul>
+            <span className="text-xs text-neutral-400">Category Filter: {filters.formCategory}</span>
           </div>
+          <FormPortalGrid categoryFilter={filters.formCategory} onOpenForm={(k) => setSelected(`form:${k}`)} />
         </div>
       ),
     },
-    // Wiki leaf view backups
-    'wiki-guidelines': { title: lang === 'vi' ? '📘 Cẩm nang Hướng dẫn Thực hiện' : '📘 Guidelines', icon: BookOpen, body: <WikiHubPanel branch="guidelines" /> },
-    'wiki-policies': { title: lang === 'vi' ? '📕 Chính sách Chiến lược' : '📕 Policies', icon: BookOpen, body: <WikiHubPanel branch="policies" /> },
-    'wiki-regulations': { title: lang === 'vi' ? '📙 Quy chế / Nội quy bắt buộc' : '📙 Regulations', icon: BookOpen, body: <WikiHubPanel branch="regulations" /> },
-    'wiki-templates': {
-      title: lang === 'vi' ? '🗂️ Tổng kho Văn bản mẫu' : '🗂️ Templates', icon: BookOpen,
-      body: <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-templates-branch')} onOpen={setSelected} />,
+    // RESOURCES — one page per category (Guidelines / Policies & Regulations /
+    // Official Documents / Templates / Lists & Directories / Materials);
+    // sidebar only shows the category, this page shows the subgroup/document
+    // breakdown from resourcesContent.js.
+    ...Object.fromEntries(RESOURCE_CATEGORY_KEYS.map((catKey) => [
+      catKey,
+      {
+        title: RESOURCES_CONTENT[lang]?.[catKey]?.label || catKey,
+        icon: BookOpen,
+        body: <ResourcesCategoryView lang={lang} categoryKey={catKey} onOpen={setSelected} />,
+      },
+    ])),
+
+    // Academia > Teaching
+    'my-teaching-schedule': {
+      title: lang === 'vi' ? 'LỊCH DẠY CỦA TÔI' : 'MY TEACHING SCHEDULE',
+      icon: CalendarClock,
+      body: <MyTeachingSchedulePanel lang={lang} />,
     },
-    'wiki-media': {
-      title: lang === 'vi' ? '🎨 Ấn phẩm Thương hiệu' : '🎨 Brand Media', icon: BookOpen,
-      body: <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-media-branch')} onOpen={setSelected} />,
+    'institute-teaching-schedule': {
+      title: lang === 'vi' ? 'LỊCH DẠY TOÀN VIỆN' : 'INSTITUTE TEACHING SCHEDULE',
+      icon: CalendarClock,
+      body: <InstituteTeachingSchedulePanel lang={lang} />,
     },
-    'wiki-reference': {
-      title: lang === 'vi' ? '📚 Hệ thống Danh mục Tra cứu' : '📚 Reference', icon: BookOpen,
-      body: <WikiDocList lang={lang} items={findWikiBranchChildren(t, 'wiki-reference-branch')} onOpen={setSelected} />,
+    'teaching-assignments': {
+      title: lang === 'vi' ? 'PHÂN CÔNG GIẢNG DẠY' : 'TEACHING ASSIGNMENTS',
+      icon: CalendarClock,
+      body: <TeachingAssignmentsPanel lang={lang} />,
     },
+    // Academia > RESOURCES — same category-only-sidebar pattern as O&F.
+    ...Object.fromEntries(ACADEMIA_RESOURCE_CATEGORY_KEYS.map((catKey) => [
+      catKey,
+      {
+        title: ACADEMIA_RESOURCES_CONTENT[lang]?.[catKey]?.label || catKey,
+        icon: BookOpen,
+        body: <ResourcesCategoryView lang={lang} categoryKey={catKey} onOpen={setSelected} contentMap={ACADEMIA_RESOURCES_CONTENT} />,
+      },
+    ])),
+
+    // Partnership > Partners / Agreements
+    'individual-stakeholders': {
+      title: lang === 'vi' ? 'ĐỐI TÁC CÁ NHÂN' : 'INDIVIDUAL STAKEHOLDERS',
+      icon: UsersRound,
+      body: <IndividualStakeholdersPanel lang={lang} />,
+    },
+    'institutional-partners': {
+      title: lang === 'vi' ? 'ĐỐI TÁC TỔ CHỨC' : 'INSTITUTIONAL PARTNERS',
+      icon: UsersRound,
+      body: <InstitutionalPartnersPanel lang={lang} />,
+    },
+    'active-mous': {
+      title: lang === 'vi' ? 'MOU ĐANG HIỆU LỰC' : 'ACTIVE MOUS',
+      icon: FileText,
+      body: <AgreementsPanel lang={lang} />,
+    },
+    // Partnership > RESOURCES — same category-only-sidebar pattern.
+    ...Object.fromEntries(PARTNERSHIP_RESOURCE_CATEGORY_KEYS.map((catKey) => [
+      catKey,
+      {
+        title: PARTNERSHIP_RESOURCES_CONTENT[lang]?.[catKey]?.label || catKey,
+        icon: BookOpen,
+        body: <ResourcesCategoryView lang={lang} categoryKey={catKey} onOpen={setSelected} contentMap={PARTNERSHIP_RESOURCES_CONTENT} />,
+      },
+    ])),
 
     // Request queues
     'my-tasks': { title: t.TASKS_TITLE, icon: Inbox, body: <MyTasksPanel statusFilter={filters.tasksStatus} /> },
@@ -1241,10 +1149,12 @@ const TASK_STATUS_BADGE = {
 
 /* Helper to identify category group of any selected key */
 function getActiveCategory(selected) {
+  if (selected.startsWith('academia-') || ['my-teaching-schedule', 'institute-teaching-schedule', 'teaching-assignments'].includes(selected)) return 'academia';
+  if (selected.startsWith('partnership-') || ['individual-stakeholders', 'institutional-partners', 'active-mous'].includes(selected)) return 'partnership';
   if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'operation-finance';
   if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'operation-finance';
   if (['requests-forms', 'cat-forms'].includes(selected)) return 'operation-finance';
-  if (['admin-access-requests', 'admin-content-permissions', 'admin-attendance', 'admin-calendar', 'admin-library'].includes(selected)) return 'admin';
+  if (['admin-access-requests', 'admin-content-permissions', 'admin-attendance', 'admin-events', 'admin-calendar', 'admin-library'].includes(selected)) return 'admin';
   return 'my-portal';
 }
 

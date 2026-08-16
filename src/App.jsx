@@ -9,6 +9,7 @@ import ExecutiveCalendar from './pages/ExecutiveCalendar.jsx';
 import ExecutiveDashboard from './pages/ExecutiveDashboard.jsx';
 import MatrixAssignerPage from './pages/MatrixAssignerPage.jsx';
 import ResearchSubWorkspace from './pages/ResearchSubWorkspace.jsx';
+import DataManagementWorkspace from './pages/DataManagementWorkspace.jsx';
 import ProjectWorkspace from './pages/ProjectWorkspace.jsx';
 import GlobalLibrary from './pages/GlobalLibrary.jsx';
 import GovernanceRegulations from './pages/GovernanceRegulations.jsx';
@@ -73,6 +74,7 @@ export default function App() {
       {activeModule === 'executive-dashboard' && <ExecutiveDashboard onNavigate={setActiveModule} />}
       {activeModule === 'matrix-assigner' && <MatrixAssignerPage />}
       {activeModule === 'research-sub-workspace' && <ResearchSubWorkspace />}
+      {activeModule === 'data-management' && <DataManagementWorkspace />}
 
       {/* Đề án 1 — ISCM OS core modules */}
       {activeModule === 'hierarchical-projects' && <HierarchicalProjects />}

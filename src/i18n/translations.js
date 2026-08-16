@@ -40,7 +40,7 @@ export const translations = {
     // --- Personal Dashboard categories ---
     'cat.myPortal':          'MY PORTAL',
     'cat.requests':          'YÊU CẦU & BIỂU MẪU',
-    'cat.wiki':              'KHO TRI THỨC',
+    'cat.wiki':              'TÀI NGUYÊN',
     'cat.supports':          'HỖ TRỢ',
 
     // --- Workspace hub ---
@@ -112,7 +112,7 @@ export const translations = {
     // --- Personal Dashboard categories ---
     'cat.myPortal':          'MY PORTAL',
     'cat.requests':          'REQUESTS & E-FORMS',
-    'cat.wiki':              'WIKI HUB',
+    'cat.wiki':              'RESOURCES',
     'cat.supports':          'SUPPORTS',
 
     // --- Workspace hub ---

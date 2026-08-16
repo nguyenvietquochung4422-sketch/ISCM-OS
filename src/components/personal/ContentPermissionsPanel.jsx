@@ -18,7 +18,7 @@ const SELF_OWNED_KEYS = new Set(['profile-bio', 'my-assets', 'my-tasks', 'my-for
 // today (checked via can_manage_content()). Every other item below is a
 // forward-looking placeholder — granting it is recorded but nothing in the
 // app currently reads that grant to change what that account can do.
-const ENFORCED_KEYS = new Set(['form:order-book', 'attendance-log']);
+const ENFORCED_KEYS = new Set(['form:order-book', 'attendance-log', 'my-events', 'my-teaching-schedule', 'institutional-partners']);
 
 // Whole branches that are pure reference/read-only content — Wiki Hub docs
 // aren't submitted or edited through the app by anyone, and ISCM Core is

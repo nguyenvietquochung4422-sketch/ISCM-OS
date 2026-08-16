@@ -15,6 +15,7 @@ CREATE TABLE iscm_research_list (
     start_year VARCHAR(10) NULL,
     end_year VARCHAR(10) NULL,
     task_type VARCHAR(100) NULL,
+    project_type VARCHAR(100) NULL,  -- 'Đề tài cấp trường' | 'Đề tài cấp trường trọng điểm' | 'Casestudy' (UEH PROJECT) | 'Cấp tỉnh' | 'Cấp nhà nước' (PROJECT)
     ordered_by VARCHAR(100) NULL,
     coordinator_manager VARCHAR(150) NULL,
     members TEXT NULL,

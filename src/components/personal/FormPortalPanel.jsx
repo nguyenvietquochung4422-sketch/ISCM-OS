@@ -243,6 +243,33 @@ function TrainingBlock({ onValid, lang }) {
   );
 }
 
+/** Quarterly Performance Evaluation is one form, not two — the Vietnamese
+    and English versions are the same process, just different wording, so
+    a toggle picks which text the submission actually uses instead of
+    listing them as separate E-Forms. Always valid (a default variant is
+    already selected), so onValid(true) fires once on mount. */
+function LangVariantBlock({ onValid, onData, lang }) {
+  const [variant, setVariant] = useState(lang === 'vi' ? 'vi' : 'en');
+  useEffect(() => { onValid(true); onData({ variant }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (v) => { setVariant(v); onData({ variant: v }); };
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-[10px] font-bold text-neutral-400 uppercase">
+        {lang === 'vi' ? 'Phiên bản biểu mẫu' : 'Form version'}
+      </label>
+      <div className="flex border border-neutral-300 w-fit text-xs font-bold uppercase">
+        <button type="button" onClick={() => pick('vi')} className={`px-3 py-1.5 ${variant === 'vi' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'}`}>
+          {lang === 'vi' ? 'Tiếng Việt' : 'Vietnamese'}
+        </button>
+        <button type="button" onClick={() => pick('en')} className={`px-3 py-1.5 ${variant === 'en' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'}`}>
+          {lang === 'vi' ? 'Tiếng Anh' : 'English'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LabEquipBlock({ onValid, lang }) {
   return (
     <div className="space-y-2">
@@ -785,6 +812,7 @@ const SPECIAL_BLOCKS = {
   overtime: OvertimeBlock, naming: NamingBlock,
   handover: HandoverBlock, payment: PaymentBlock, training: TrainingBlock,
   labEquip: LabEquipBlock, resignation: ResignationBlock, library: LibraryBlock,
+  langVariant: LangVariantBlock,
 };
 
 /* ---------------- Form detail view ---------------- */

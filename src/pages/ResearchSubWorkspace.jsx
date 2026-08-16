@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Folder, FolderOpen, FileText, ChevronRight, ChevronDown,
   Search, BookOpen, AlertCircle, Info, Landmark, HelpCircle, Download, GraduationCap,
-  Table2, Database, Server, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X, ShieldCheck
+  Table2, Users, Link, Paperclip, UploadCloud, Check, CheckSquare, Briefcase, X, ShieldCheck
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -26,8 +26,6 @@ import CoordinatorField from '../components/research/CoordinatorField.jsx';
 import ResearchListTable from '../components/research/ResearchListTable.jsx';
 import ResearchWorkload from '../components/research/ResearchWorkload.jsx';
 import ResearchPublications from '../components/research/ResearchPublications.jsx';
-import DataCatalog from '../components/research/DataCatalog.jsx';
-import DataSubmit from '../components/research/DataSubmit.jsx';
 import ResearchAccessGate from '../components/research/ResearchAccessGate.jsx';
 import ResearchAccessPanel from '../components/research/ResearchAccessPanel.jsx';
 import { canManageResearchAccess } from '../data/researchAccessStore.js';
@@ -101,6 +99,14 @@ const MAIN_FOLDER_TASK_TYPES = [
   { value: 'TIL', label: 'Technology & Innovation Lab (TIL)' },
   { value: 'Individual', label: 'Individual' },
   { value: 'Fund Raising', label: 'Fund Raising' },
+];
+
+// Project Type — a finer classification than Task Type (which just has a
+// generic "Project" bucket), grouped by who runs it: a UEH-internal project
+// vs. one commissioned by a province/state authority.
+const PROJECT_TYPE_GROUPS = [
+  { label: 'UEH PROJECT', options: ['Đề tài cấp trường', 'Đề tài cấp trường trọng điểm', 'Casestudy'] },
+  { label: 'PROJECT', options: ['Cấp tỉnh', 'Cấp nhà nước'] },
 ];
 
 // Role a member holds on a given task/unit — purely a tag for management
@@ -704,33 +710,6 @@ export default function ResearchSubWorkspace() {
           <ResearchPublications lang={lang} />
         )
       },
-      'data-submit': {
-        title: lang === 'vi' ? 'Nộp tài sản dữ liệu' : 'Submit Data Asset',
-        updated: lang === 'vi' ? 'Mở cho tất cả thành viên' : 'OPEN SUBMISSION · ALL MEMBERS',
-        author: 'ISCM Members',
-        icon: UploadCloud,
-        body: (
-          <DataSubmit lang={lang} />
-        )
-      },
-      'data-catalog': {
-        title: lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard',
-        updated: lang === 'vi' ? 'Đồng bộ từ cổng thông tin địa lý' : 'APPROVED DATA CATALOG · CONTROLLED SHARING',
-        author: 'ISCM Core Team',
-        icon: Database,
-        body: (
-          <DataCatalog mode="core" lang={lang} />
-        )
-      },
-      'central-catalog': {
-        title: lang === 'vi' ? 'Dữ liệu chờ kiểm duyệt' : 'Central Data Asset Catalog',
-        updated: lang === 'vi' ? 'Đường ống dữ liệu đang thẩm định' : 'STAGE BUFFER · INGESTION UNDER AUDIT',
-        author: 'ISCM Ingestion Hub',
-        icon: Server,
-        body: (
-          <DataCatalog mode="staging" lang={lang} />
-        )
-      },
       'access-requests': {
         title: lang === 'vi' ? 'Yêu cầu quyền truy cập' : 'Access Requests',
         updated: lang === 'vi' ? 'Duyệt bởi Trưởng bộ phận Nghiên cứu Khoa học' : 'DECIDED BY THE RESEARCH HEAD',
@@ -898,21 +877,6 @@ export default function ResearchSubWorkspace() {
               <button onClick={() => setSelectedNode('publication-list')} className={treeNodeClass('publication-list')}>
                 <span className="truncate">{lang === 'vi' ? 'Công bố khoa học' : 'Publications'}</span>
                 <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'publication-list' ? 'text-white' : 'text-neutral-400'}`} />
-              </button>
-
-              <button onClick={() => setSelectedNode('data-submit')} className={treeNodeClass('data-submit')}>
-                <span className="truncate">{lang === 'vi' ? 'Nộp dữ liệu mới' : 'Submit Data Asset'}</span>
-                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'data-submit' ? 'text-white' : 'text-neutral-400'}`} />
-              </button>
-
-              <button onClick={() => setSelectedNode('data-catalog')} className={treeNodeClass('data-catalog')}>
-                <span className="truncate">{lang === 'vi' ? 'Tổng kho dữ liệu' : 'Data Catalog Dashboard'}</span>
-                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'data-catalog' ? 'text-white' : 'text-neutral-400'}`} />
-              </button>
-
-              <button onClick={() => setSelectedNode('central-catalog')} className={treeNodeClass('central-catalog')}>
-                <span className="truncate">{lang === 'vi' ? 'Dữ liệu chờ kiểm duyệt' : 'Central Data Asset Catalog'}</span>
-                <ChevronRight className={`h-3 w-3 shrink-0 ${selectedNode === 'central-catalog' ? 'text-white' : 'text-neutral-400'}`} />
               </button>
 
               <button onClick={() => setSelectedNode('access-requests')} className={treeNodeClass('access-requests')}>
@@ -1086,6 +1050,30 @@ export default function ResearchSubWorkspace() {
                     </select>
                   </div>
                 </div>
+
+                {currentSelectedTask.task_type === 'Project' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">
+                        {lang === 'vi' ? 'Loại đề tài / dự án' : 'Project Type'}
+                      </label>
+                      <select
+                        value={currentSelectedTask.project_type || ''}
+                        onChange={(e) => setDrawerCell('project_type', e.target.value)}
+                        className="w-full mt-1 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 focus:border-[#8b0000] focus:outline-none rounded-none"
+                      >
+                        <option value="">{lang === 'vi' ? 'Không có' : 'None'}</option>
+                        {PROJECT_TYPE_GROUPS.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Ordered By — same picker as Coordinator/Manager (ISCM

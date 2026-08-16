@@ -13,7 +13,7 @@ import { supabase, isLive } from '../lib/supabaseClient.js';
 // dropped before a write, otherwise Postgres rejects the whole statement.
 const RESEARCH_COLUMNS = [
   'code', 'research_unit', 'task_name', 'status', 'start_year', 'end_year',
-  'task_type', 'ordered_by', 'coordinator_manager', 'members', 'report_plan_link',
+  'task_type', 'project_type', 'ordered_by', 'coordinator_manager', 'members', 'report_plan_link',
   'framework_transition', 'glocal_design', 'human_centric_orientation',
   'tech_solutions', 'urban_system', 'sdgs',
   'member_roles', 'minute_reports', 'documents', 'end_year_history', 'start_year_history',

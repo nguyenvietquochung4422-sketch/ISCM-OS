@@ -5,17 +5,33 @@
 
 export const FORM_CATEGORIES = [
   { id: 'All', label: 'All' },
-  { id: 'IT', label: 'IT Services' }
+  { id: 'IT', label: 'IT Services' },
+  { id: 'Comms', label: 'Communication' },
+  { id: 'Admin', label: 'Administration' }
 ];
 
 export const FORM_GROUPS = [
   {
-    id: 'it-product', label: 'Product Operation & Tech',
+    id: 'ef-equipment', label: 'Equipment & Resources',
     forms: [
       { key: 'order-equipment', label: 'Order Equipment Form', cat: 'IT', desc: 'Order standard laptop or lab peripherals.' },
       { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' },
-      { key: 'order-gift', label: 'Order ISCM Gift', cat: 'IT', desc: 'Requisition ISCM corporate gifts.' },
-      { key: 'order-support-comm', label: 'Order Support Communication', cat: 'IT', desc: 'Request PR support / article publishing.' }
+      { key: 'order-gift', label: 'Order ISCM Gift', cat: 'IT', desc: 'Requisition ISCM corporate gifts.' }
+    ]
+  },
+  {
+    id: 'ef-comms-tech', label: 'Communication & Technology',
+    forms: [
+      { key: 'order-support-comm', label: 'Communication Posting Request', cat: 'Comms', desc: 'Request PR support / content publishing on ISCM channels.' },
+      { key: 'technology-request', label: 'Technology Request', cat: 'IT', desc: 'Request support for developing or improving a digital platform/tool.' }
+    ]
+  },
+  {
+    id: 'ef-internal-admin', label: 'Internal Administration',
+    forms: [
+      { key: 'training-point-proposal', label: 'Training Point Proposal', cat: 'Admin', desc: 'Propose DRS training-point credit for an activity.' },
+      { key: 'quarterly-performance-evaluation', label: 'Quarterly Performance Evaluation', cat: 'Admin', desc: 'Submit your quarterly performance evaluation.', special: 'langVariant' },
+      { key: 'team-evaluation', label: 'Team Evaluation', cat: 'Admin', desc: 'Bilingual team evaluation submission.' }
     ]
   }
 ];

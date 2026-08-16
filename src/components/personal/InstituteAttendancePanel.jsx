@@ -1,172 +1,161 @@
 import { useEffect, useState } from 'react';
-import { Check, ShieldCheck, X } from 'lucide-react';
-import { ATTENDANCE_LEGEND, INSTITUTE_YTD_TOTALS, STAFF_ROSTER, DAILY_LOG_ENTRIES } from '../../data/attendanceData.js';
+import { CalendarClock, ListChecks, LayoutGrid, Users, Table2, Settings } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import {
-  canManageAttendance, fetchAllAttendanceRequests, decideAttendanceRequestRemote,
-} from '../../data/attendanceAdmin.js';
-
-const maxTotal = Math.max(...Object.values(INSTITUTE_YTD_TOTALS));
-// The Jul 2025 sheet's own staff columns — not STAFF_ROSTER, which is a
-// different (2026) roster snapshot with several different names on it.
-const LOG_STAFF_NAMES = [...new Set(DAILY_LOG_ENTRIES.map((e) => e.staff))].sort((a, b) => a.localeCompare(b, 'vi'));
-
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('vi-VN');
-}
+  canManageAttendance, fetchAllAttendanceRecords, fetchActiveMemberCount, fetchAllAccounts,
+} from '../../data/attendanceStore.js';
+import { fetchPolicies, fetchCalendarDays, fetchAllMemberScopes } from '../../data/attendancePolicyStore.js';
+import { buildAttendanceContext } from '../../data/attendanceAggregation.js';
+import InstituteTodayOverview from './attendance/InstituteTodayOverview.jsx';
+import PendingRequestsAdmin from './attendance/PendingRequestsAdmin.jsx';
+import InstituteAttendanceCalendar from './attendance/InstituteAttendanceCalendar.jsx';
+import MemberAttendanceProfile from './attendance/MemberAttendanceProfile.jsx';
+import MonthlyAttendanceMatrix from './attendance/MonthlyAttendanceMatrix.jsx';
+import AttendanceSettingsPanel from './attendance/AttendanceSettingsPanel.jsx';
+import AttendanceRecordModal from './attendance/AttendanceRecordModal.jsx';
+import useAttendanceDeepLink from './attendance/useAttendanceDeepLink.js';
 
 /**
  * Institute-wide attendance — the admin counterpart to the personal-only
- * "Daily Attendance" pane in My Portal. Covers everyone's pending WFH/leave
- * requests, institute-wide YTD totals, and a per-staff drill-down log.
- * Gated by canManageAttendance() (is_top_admin, or delegated via
- * content_permissions for 'attendance-log').
+ * Daily Attendance pane. Gated by canManageAttendance() (is_top_admin, or
+ * delegated via content_permissions for 'attendance-log').
  */
 export default function InstituteAttendancePanel({ lang = 'vi' }) {
+  const vi = lang === 'vi';
+  const { user: authUser } = useAuth();
   const [canManage, setCanManage] = useState(false);
   const [checked, setChecked] = useState(false);
-  const [requests, setRequests] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [activeMemberCount, setActiveMemberCount] = useState(0);
+  const [accounts, setAccounts] = useState([]);
+  const [context, setContext] = useState(() => buildAttendanceContext([], [], []));
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [staffFilter, setStaffFilter] = useState('all');
+  const [tab, setTab] = useState('today');
+  const { focusedRecord, missingRecordId, clear: clearDeepLink } = useAttendanceDeepLink(records, loading);
+
+  const reload = () => {
+    setLoading(true);
+    Promise.all([
+      fetchAllAttendanceRecords(), fetchActiveMemberCount(), fetchAllAccounts(),
+      fetchPolicies(), fetchCalendarDays(), fetchAllMemberScopes(),
+    ]).then(([r, count, acc, policies, calendarDays, scopes]) => {
+      setRecords(r);
+      setActiveMemberCount(count);
+      setAccounts(acc);
+      setContext(buildAttendanceContext(policies, calendarDays, scopes));
+      setLoading(false);
+    });
+  };
 
   useEffect(() => {
     canManageAttendance().then((ok) => {
       setCanManage(ok);
       setChecked(true);
-      if (ok) fetchAllAttendanceRequests().then((r) => { setRequests(r); setLoading(false); });
-      else setLoading(false);
+      if (ok) reload(); else setLoading(false);
     });
   }, []);
 
   if (!checked) {
-    return <div className="font-sans text-xs text-neutral-400 p-4">{lang === 'vi' ? 'Đang kiểm tra quyền...' : 'Checking permissions...'}</div>;
+    return <div className="font-sans text-xs text-neutral-400 p-4">{vi ? 'Đang kiểm tra quyền...' : 'Checking permissions...'}</div>;
   }
-
   if (!canManage) {
     return (
       <div className="font-sans text-xs text-red-700 p-4 border border-red-200 bg-red-50">
-        {lang === 'vi'
+        {vi
           ? 'Bạn không có quyền truy cập mục này. Chỉ Admin, Director, Vice Director, hoặc tài khoản được cấp quyền quản lý chấm công mới xem được.'
           : 'You do not have access to this page. Only Admin, Director, Vice Director, or an account granted attendance-management rights can view this.'}
       </div>
     );
   }
 
-  const pending = requests.filter((r) => r.status === 'Open');
-  const logEntries = DAILY_LOG_ENTRIES
-    .filter((e) => staffFilter === 'all' || e.staff === staffFilter)
-    .slice()
-    .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? -1 : 1));
-
-  const handleDecide = async (r, status) => {
-    setRequests((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
-    await decideAttendanceRequestRemote(r, status);
-  };
+  const TABS = [
+    { key: 'today', label: vi ? 'Hôm nay' : 'Today', icon: CalendarClock },
+    { key: 'requests', label: vi ? 'Yêu cầu' : 'Requests', icon: ListChecks },
+    { key: 'calendar', label: vi ? 'Lịch' : 'Calendar', icon: LayoutGrid },
+    { key: 'matrix', label: vi ? 'Ma trận' : 'Matrix', icon: Table2 },
+    { key: 'members', label: vi ? 'Thành viên' : 'Members', icon: Users },
+    { key: 'settings', label: vi ? 'Cài đặt' : 'Settings', icon: Settings },
+  ];
+  const pendingCount = records.filter((r) => r.approval_status === 'Pending').length;
+  const selectedAccount = accounts.find((a) => a.id === selectedMemberId);
+  const focusedAccount = focusedRecord && accounts.find((a) => a.id === focusedRecord.member_id);
 
   return (
-    <div className="space-y-2.5 rounded-lg border border-gray-200 bg-white p-3.5">
-      <p className="flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
-        <ShieldCheck className="h-3.5 w-3.5 text-iscm-crimson" />
-        {lang === 'vi' ? 'Duyệt yêu cầu chấm công' : 'Attendance requests to approve'}
-        {pending.length > 0 && (
-          <span className="rounded-full bg-iscm-crimson px-1.5 py-0.5 text-[9px] font-bold text-white">{pending.length}</span>
-        )}
-      </p>
+    <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3.5 font-sans">
+      <div className="flex flex-wrap gap-1.5 border-b border-neutral-100 pb-2">
+        {TABS.map((t) => (
+          <button key={t.key} type="button" onClick={() => setTab(t.key)}
+            className={`flex items-center gap-1.5 border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              tab === t.key ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-600 hover:border-neutral-900'
+            }`}>
+            <t.icon className="h-3.5 w-3.5" /> {t.label}
+            {t.key === 'requests' && pendingCount > 0 && (
+              <span className="rounded-full bg-[#8b0000] px-1.5 py-0.5 text-[9px] font-bold text-white">{pendingCount}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
-        <p className="font-ibm text-[11px] text-gray-400">{lang === 'vi' ? 'Đang tải...' : 'Loading...'}</p>
-      ) : pending.length === 0 ? (
-        <p className="font-ibm text-[11px] text-gray-400">{lang === 'vi' ? 'Không có yêu cầu chờ duyệt.' : 'No pending requests.'}</p>
+        <p className="font-ibm text-[11px] text-gray-400 p-2">{vi ? 'Đang tải...' : 'Loading...'}</p>
       ) : (
-        <ul className="space-y-1.5">
-          {pending.map((r) => (
-            <li key={r.id} className="flex flex-col gap-1.5 border border-gray-100 bg-iscm-surface/60 p-2.5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="font-ibm text-xs font-semibold text-iscm-charcoal">{r.status_label}</p>
-                <p className="font-ibm text-[10px] text-gray-500">
-                  {r.requester?.full_name || r.requester_id} · {fmtDate(r.request_date)}
+        <>
+          {tab === 'today' && <InstituteTodayOverview vi={vi} records={records} activeMemberCount={activeMemberCount} viewerId={authUser?.id} onChanged={reload} />}
+          {tab === 'requests' && <PendingRequestsAdmin vi={vi} records={records} viewerId={authUser?.id} onChanged={reload} />}
+          {tab === 'calendar' && <InstituteAttendanceCalendar vi={vi} records={records} viewerId={authUser?.id} />}
+          {tab === 'matrix' && <MonthlyAttendanceMatrix vi={vi} records={records} accounts={accounts} viewerId={authUser?.id} context={context} />}
+          {tab === 'members' && (
+            <div className="space-y-3">
+              <select
+                value={selectedMemberId}
+                onChange={(e) => setSelectedMemberId(e.target.value)}
+                className="border border-neutral-200 bg-white px-2.5 py-1.5 text-xs focus:border-[#8b0000] focus:outline-none rounded-none text-neutral-700 font-medium"
+              >
+                <option value="">{vi ? '— Chọn thành viên —' : '— Select a member —'}</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.full_name || a.email}</option>
+                ))}
+              </select>
+
+              {selectedMemberId ? (
+                <MemberAttendanceProfile
+                  vi={vi}
+                  records={records}
+                  memberId={selectedMemberId}
+                  memberLabel={selectedAccount?.full_name || selectedAccount?.email}
+                  isAdmin
+                  viewerId={authUser?.id}
+                  canCancel={false}
+                  onChanged={reload}
+                  context={context}
+                />
+              ) : (
+                <p className="text-xs text-neutral-400 p-4 text-center border border-neutral-200 bg-neutral-50">
+                  {vi ? 'Chọn một thành viên để xem hồ sơ chấm công.' : 'Select a member to view their attendance profile.'}
                 </p>
-                {r.note && <p className="font-ibm text-[10px] italic text-gray-400">{r.note}</p>}
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <button onClick={() => handleDecide(r, 'Approved')} className="flex items-center gap-1 border border-emerald-300 bg-emerald-50 px-2 py-1 font-ibm text-[10px] font-bold uppercase text-emerald-700 hover:bg-emerald-100">
-                  <Check className="h-3 w-3" /> {lang === 'vi' ? 'Duyệt' : 'Approve'}
-                </button>
-                <button onClick={() => handleDecide(r, 'Rejected')} className="flex items-center gap-1 border border-red-300 bg-red-50 px-2 py-1 font-ibm text-[10px] font-bold uppercase text-red-700 hover:bg-red-100">
-                  <X className="h-3 w-3" /> {lang === 'vi' ? 'Từ chối' : 'Reject'}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              )}
+            </div>
+          )}
+          {tab === 'settings' && <AttendanceSettingsPanel vi={vi} />}
+        </>
       )}
 
-      {/* Team-wide stats */}
-      <div className="border-t border-gray-100 pt-2.5">
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
-          {lang === 'vi' ? `Thống kê toàn viện 2026 (${STAFF_ROSTER.length} nhân sự)` : `Institute-wide 2026 YTD (${STAFF_ROSTER.length} staff)`}
-        </p>
-        <div className="space-y-1.5">
-          {ATTENDANCE_LEGEND.filter((s) => s.key in INSTITUTE_YTD_TOTALS).map((s) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <span className="w-40 shrink-0 truncate font-ibm text-[10px] text-gray-500">{s.label}</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-iscm-crimson"
-                  style={{ width: `${(INSTITUTE_YTD_TOTALS[s.key] / maxTotal) * 100}%` }} />
-              </div>
-              <span className="w-8 shrink-0 text-right font-barlow-condensed text-xs font-semibold text-iscm-charcoal">
-                {INSTITUTE_YTD_TOTALS[s.key]}
-              </span>
-            </div>
-          ))}
+      {missingRecordId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={clearDeepLink}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white border border-neutral-200 shadow-xl p-4 text-center">
+            <p className="text-xs text-neutral-600">{vi ? 'Không tìm thấy bản ghi chấm công này — có thể đã có thay đổi.' : 'This attendance record is no longer available — it may have changed.'}</p>
+            <button onClick={clearDeepLink} className="mt-3 px-3 py-1.5 text-[10px] font-bold uppercase text-white bg-iscm-crimson hover:bg-[#7a0010]">{vi ? 'Đóng' : 'Close'}</button>
+          </div>
         </div>
-      </div>
-
-      {/* Detail log — who was what, on which day. Real data: the workbook's
-          "Jul" monthly sheet is the only month with entries actually filled
-          in (every other month sheet is a blank template), so this covers
-          2025-07-01 through 2025-07-30. */}
-      <div className="border-t border-gray-100 pt-2.5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="font-ibm text-xs font-semibold text-iscm-charcoal">
-            {lang === 'vi' ? 'Chi tiết theo ngày (Jul 2025)' : 'Daily detail log (Jul 2025)'}
-          </p>
-          <select
-            value={staffFilter}
-            onChange={(e) => setStaffFilter(e.target.value)}
-            className="border border-neutral-200 bg-white px-2 py-1 font-ibm text-[10px] text-neutral-700 focus:border-iscm-crimson focus:outline-none rounded-none"
-          >
-            <option value="all">{lang === 'vi' ? 'Tất cả nhân sự' : 'All staff'}</option>
-            {LOG_STAFF_NAMES.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="overflow-x-auto border border-neutral-200">
-          <table className="w-full min-w-[420px] table-fixed border-collapse text-left">
-            <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-900 font-barlow text-[10px] font-bold uppercase tracking-wider text-white">
-                <th className="px-3 py-2 w-[22%]">{lang === 'vi' ? 'Ngày' : 'Date'}</th>
-                <th className="px-3 py-2 w-[22%]">{lang === 'vi' ? 'Nhân sự' : 'Staff'}</th>
-                <th className="px-3 py-2 w-[56%]">{lang === 'vi' ? 'Trạng thái' : 'Status'}</th>
-              </tr>
-            </thead>
-            <tbody className="max-h-[320px] divide-y divide-neutral-100 font-ibm text-xs">
-              {logEntries.map((e, i) => (
-                <tr key={i} className="hover:bg-neutral-50/80 transition-colors">
-                  <td className="px-3 py-1.5 text-neutral-500 whitespace-nowrap">{e.day} {e.date}</td>
-                  <td className="px-3 py-1.5 font-medium text-neutral-800">{e.staff}</td>
-                  <td className="px-3 py-1.5 text-iscm-crimson">{e.status}</td>
-                </tr>
-              ))}
-              {logEntries.length === 0 && (
-                <tr><td colSpan={3} className="px-3 py-6 text-center text-neutral-400 italic">
-                  {lang === 'vi' ? 'Không có bản ghi.' : 'No entries.'}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
+      {focusedRecord && (
+        <AttendanceRecordModal
+          vi={vi} record={focusedRecord} memberLabel={focusedAccount?.full_name || focusedAccount?.email}
+          isAdmin viewerId={authUser?.id} canCancel={false}
+          onClose={clearDeepLink} onChanged={() => { clearDeepLink(); reload(); }}
+        />
+      )}
     </div>
   );
 }
