@@ -1,22 +1,26 @@
 import { useState } from 'react';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import { LanguageProvider } from './i18n/LanguageContext.jsx';
+import { AuthProvider } from './auth/AuthContext.jsx';
+import AuthGate from './auth/AuthGate.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import PersonalDashboard from './pages/PersonalDashboard.jsx';
 import ExecutiveCalendar from './pages/ExecutiveCalendar.jsx';
 import ExecutiveDashboard from './pages/ExecutiveDashboard.jsx';
 import MatrixAssignerPage from './pages/MatrixAssignerPage.jsx';
 import ResearchSubWorkspace from './pages/ResearchSubWorkspace.jsx';
+import DataManagementWorkspace from './pages/DataManagementWorkspace.jsx';
 import ProjectWorkspace from './pages/ProjectWorkspace.jsx';
 import GlobalLibrary from './pages/GlobalLibrary.jsx';
 import GovernanceRegulations from './pages/GovernanceRegulations.jsx';
 import HierarchicalProjects from './pages/HierarchicalProjects.jsx';
 import ApprovalEngine from './pages/ApprovalEngine.jsx';
 import EquipmentTracking from './pages/EquipmentTracking.jsx';
-import IscmCore from './pages/IscmCore.jsx';
-import IscmOverviewStructure from './pages/IscmOverviewStructure.jsx';
+import Home from './pages/Home.jsx';
+import { PLACEHOLDER_TITLES } from './data/overviewSubmenus.js';
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState('personal-dashboard');
+  const [activeModule, setActiveModule] = useState('home');
   const [workspaceProjectId, setWorkspaceProjectId] = useState('a1111111-1111-1111-1111-111111111111'); // default project UUID
 
   /** "Không gian của tôi" / search result opens workspace */
@@ -35,7 +39,7 @@ export default function App() {
   };
 
   const renderPlaceholder = (route) => {
-    const sectionName = route.replace('placeholder-', '').toUpperCase();
+    const sectionName = PLACEHOLDER_TITLES[route] || route.replace('placeholder-', '').toUpperCase();
     return (
       <div className="mx-auto max-w-xl text-center py-20 space-y-4">
         <div className="text-4xl">🛠️</div>
@@ -54,27 +58,29 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary>
+    <AuthProvider>
     <LanguageProvider>
+    <AuthGate>
       <AppLayout
         active={activeModule}
         onNavigate={setActiveModule}
         onOpenWorkspace={handleOpenWorkspace}
         onOpenAsset={handleOpenSearchResult}
       >
+      {activeModule === 'home' && <Home />}
       {activeModule === 'personal-dashboard' && <PersonalDashboard />}
       {activeModule === 'executive-calendar' && <ExecutiveCalendar />}
       {activeModule === 'executive-dashboard' && <ExecutiveDashboard onNavigate={setActiveModule} />}
       {activeModule === 'matrix-assigner' && <MatrixAssignerPage />}
       {activeModule === 'research-sub-workspace' && <ResearchSubWorkspace />}
+      {activeModule === 'data-management' && <DataManagementWorkspace />}
 
       {/* Đề án 1 — ISCM OS core modules */}
       {activeModule === 'hierarchical-projects' && <HierarchicalProjects />}
       {activeModule === 'approval-engine' && <ApprovalEngine />}
       {activeModule === 'equipment-tracking' && <EquipmentTracking />}
-      {/* Đề án 2 — ISCM CORE */}
-      {activeModule === 'iscm-core' && <IscmCore />}
-      {activeModule === 'placeholder-dl3' && <IscmOverviewStructure />}
-      
+
       {/* Governance & Policy Regulations (CR1, CR2, CR3) */}
       {(activeModule === 'placeholder-cr1' || 
         activeModule === 'placeholder-cr2' || 
@@ -88,14 +94,15 @@ export default function App() {
       )}
       {activeModule === 'library' && <GlobalLibrary />}
 
-      {/* Megamenu Placeholders */}
       {activeModule.startsWith('placeholder-') && 
         activeModule !== 'placeholder-cr1' && 
         activeModule !== 'placeholder-cr2' && 
-        activeModule !== 'placeholder-cr3' && 
-        activeModule !== 'placeholder-dl3' && 
+        activeModule !== 'placeholder-cr3' &&
         renderPlaceholder(activeModule)}
       </AppLayout>
+    </AuthGate>
     </LanguageProvider>
+    </AuthProvider>
+    </ErrorBoundary>
   );
 }

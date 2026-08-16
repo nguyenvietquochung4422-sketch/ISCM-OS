@@ -1,4 +1,4 @@
-# ISCM Hub
+# ISCM OS
 
 Hybrid **ERP · CRM · KMS** portal on a matrix organization model for the **Institute of Smart City and Management (ISCM-UEH)** — internal workflow operations, partner directories, and institutional knowledge assets.
 
@@ -38,7 +38,7 @@ Far right: unified intelligent search (assets + templates + partners), language 
 ## Run
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev -- --host  # Expose to local network (http://<your-ip>:5173)
 ```
 
 Ships with a mock dataset (`src/data/mockData.js`) mirroring the schema 1:1, so it runs without a backend.

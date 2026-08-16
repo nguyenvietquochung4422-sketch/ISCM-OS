@@ -4,7 +4,7 @@ import { translations } from './translations.js';
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState('vi'); // 'vi' | 'en'
+  const [lang, setLang] = useState('en'); // 'vi' | 'en'
 
   const t = useCallback(
     (key) => {

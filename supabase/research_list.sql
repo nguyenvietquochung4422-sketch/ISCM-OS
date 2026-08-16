@@ -15,6 +15,7 @@ CREATE TABLE iscm_research_list (
     start_year VARCHAR(10) NULL,
     end_year VARCHAR(10) NULL,
     task_type VARCHAR(100) NULL,
+    project_type VARCHAR(100) NULL,  -- 'Đề tài cấp trường' | 'Đề tài cấp trường trọng điểm' | 'Casestudy' (UEH PROJECT) | 'Cấp tỉnh' | 'Cấp nhà nước' (PROJECT)
     ordered_by VARCHAR(100) NULL,
     coordinator_manager VARCHAR(150) NULL,
     members TEXT NULL,
@@ -24,7 +25,15 @@ CREATE TABLE iscm_research_list (
     human_centric_orientation VARCHAR(100) NULL,
     tech_solutions VARCHAR(100) NULL,
     urban_system VARCHAR(100) NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Fields the Research List drawer edits (Classification tab, Members tab
+    -- role tags, and the Documents tab's two upload lists).
+    sdgs TEXT NULL,
+    member_roles   JSONB NOT NULL DEFAULT '{}'::jsonb,  -- { "<member name>": "Head" | "Coordinator" | ... }
+    minute_reports JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{ id, name, addedAt }]
+    documents      JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{ id, name, addedAt }]
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
 -- Enable Row Level Security (RLS) for privacy settings control
@@ -35,6 +44,11 @@ CREATE POLICY "Allow authenticated read access"
 ON iscm_research_list FOR SELECT
 TO authenticated
 USING (true);
+
+-- Writes (INSERT/UPDATE/DELETE) are restricted to a top admin or the head of
+-- Scientific Research via can_manage_group(); see the policies named
+-- "iscm_research_list write/update/delete (research head)" in the project.
+-- The app surfaces a rejection to the user instead of pretending it saved.
 
 -- ----------------------------------------------------------------------------
 -- SEED — representative subset of the 2026 Research List TSV (all 10 units).
@@ -64,18 +78,18 @@ VALUES
   ('RU 10', 'Individual', 'Individual Research Main Folder', 'In progress', '2021', NULL, 'General Information', 'ISCM', 'Mr. Hoài', 'TuAnh-Lead', NULL, 'Không', NULL, NULL, NULL, 'Urban System'),
   ('RU10.1', 'Individual', 'Passive design', 'In progress', '2026', '2027', 'Project', 'Khang', 'Mr. Khang', NULL, NULL, 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
   ('RU1', 'MOVE System', 'MOVE System Main Folder', 'In progress', '2021', NULL, 'IRL_UEH', 'ISCM', 'Mr. Hoài', 'TuAnh-Lead, Prof Geert, An, Hoài, Hạnh An DCP, Mẫn VGU, Cường 3I, Tuấn NCS, Quang, Chi, Đường', 'Hoài upload thông tin làm UEH IRG: dl 15/6', 'Không', NULL, NULL, NULL, 'Urban System'),
-  ('RU1.CE1', 'MOVE System', 'CE-Rail@UEH_TOD', 'Done', '2025', '2026', 'Paper', 'ISCM', 'Mr. Bình', 'TuAnh-Lead', NULL, 'Không', NULL, NULL, NULL, 'Urban System'),
-  ('RU1.SML1', 'MOVE System', 'Smart Mobility Lab_UEH DRT Bus', 'In progress', '2026', '2026', 'Project', 'KICT/ISCM', 'Mr. Quang', 'TuAnh-Lead, Sandhya, Chi, DSA: Thao, Duy', 'Funded by K-City Network & kick-off meeting', 'Không', NULL, NULL, NULL, 'Urban System'),
-  ('RU1.SML2', 'MOVE System', 'Smart Mobility Lab_UEH e-motorbike', 'In progress', '2026', '2026', 'Research', 'UEH', 'Mr. Quang', 'TuAnh-Lead, Sandhya, An, Tân, Đường', 'Proceed w Datbike, Honda, a Paul', 'Không', NULL, NULL, NULL, 'Urban System'),
-  ('RU1.SML3', 'MOVE System', 'Smart Mobility Lab_ĐTCNN_Transportation research', 'In progress', '2025', '2026', 'Research', 'UEH', 'Mr. Quang', 'TuAnh-Lead, Lan, Đạo, Hiền, Vũ, An, Huyền SMD, Mai, Hoài', 'Coordinate all related projects', 'Không', NULL, NULL, NULL, 'Urban System'),
+  ('RU1.CE.1', 'MOVE System', 'CE-Rail@UEH_TOD', 'Done', '2025', '2026', 'Paper', 'ISCM', 'Mr. Bình', 'TuAnh-Lead', NULL, 'Không', NULL, NULL, NULL, 'Urban System'),
+  ('RU1.SML.1', 'MOVE System', 'Smart Mobility Lab_UEH DRT Bus', 'In progress', '2026', '2026', 'Project', 'KICT/ISCM', 'Mr. Quang', 'TuAnh-Lead, Sandhya, Chi, DSA: Thao, Duy', 'Funded by K-City Network & kick-off meeting', 'Không', NULL, NULL, NULL, 'Urban System'),
+  ('RU1.SML.2', 'MOVE System', 'Smart Mobility Lab_UEH e-motorbike', 'In progress', '2026', '2026', 'Research', 'UEH', 'Mr. Quang', 'TuAnh-Lead, Sandhya, An, Tân, Đường', 'Proceed w Datbike, Honda, a Paul', 'Không', NULL, NULL, NULL, 'Urban System'),
+  ('RU1.SML.3', 'MOVE System', 'Smart Mobility Lab_ĐTCNN_Transportation research', 'In progress', '2025', '2026', 'Research', 'UEH', 'Mr. Quang', 'TuAnh-Lead, Lan, Đạo, Hiền, Vũ, An, Huyền SMD, Mai, Hoài', 'Coordinate all related projects', 'Không', NULL, NULL, NULL, 'Urban System'),
   ('RU2', 'Net Zero Open lab', 'NZ Main Folder', 'In progress', '2025', NULL, 'PL_UEH', 'ISCM', 'Ms. Sandhya', 'TuAnh-Lead, Trung Nexus, Đức, Quyên, Vũ Bạch, Cường 3I, Quang', NULL, 'Global Design', 'Global Design', 'Human Centric Orientation', 'Tech Solutions', NULL),
   (NULL, 'Net Zero Open lab', 'NZ center proposal', 'In progress', '2025', '2028', 'Research', 'ISCM', 'Ms. Sandhya', 'TuAnh-Lead, Trung Nexus, Đức, Quyên, Vũ Bạch, Cường 3I, Quang', NULL, 'Framework Transition', NULL, NULL, NULL, NULL),
   ('RU7', 'New Economy', 'New Economics Main Folder', 'In progress', '2021', '2026', 'IRL', 'ISCM', 'Mr. Hoài', 'TuAnh-Lead, Hạnh An DCP, Đức, Toàn', NULL, 'Không', NULL, NULL, NULL, 'Urban System'),
   ('RU4.2', 'New Economy', 'CL phát triển Đặc khu Côn Đảo', 'In progress', '2025', '2026', 'Project', 'HIDS/UBNDTPHCM', 'Mr. Hoài', 'TuAnh-Lead, Quang, Vũ', 'Revised report', 'Framework Transition', NULL, NULL, NULL, NULL),
   (NULL, 'New Economy', 'NE Platform', 'In progress', '2026', '2026', 'Project', 'Hải', 'Mr. Hải', NULL, NULL, 'Không', NULL, NULL, NULL, NULL),
-  ('RU3', 'Public Space Lab', 'PSL Main Folder', 'In progress', '2026', NULL, 'PL', 'ISCM', 'Ms. Daniela', 'TuAnh-Lead, Minh, Hùng, Thư, Đạt', 'Link', 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
-  ('RU3.1', 'Public Space Lab', 'HCR-PDPhung', 'Review', 'Apr2026', NULL, 'New initiative', 'UEH/Xuân Hòa Ward', 'Ms. Daniela', 'TuAnh-Lead, Minh, Hùng, Thư, Đạt', NULL, 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
-  ('RU3.2', 'Public Space Lab', 'PS Atlas', 'In progress', '2026', '2027', 'Research', 'ISCM', 'Ms. Daniela', 'TuAnh-Lead, Minh, Hùng, Thư, Đạt', NULL, 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
+  ('RU3', 'Public Space Living Lab', 'PSL Main Folder', 'In progress', '2026', NULL, 'PL', 'ISCM', 'Ms. Daniela', 'TuAnh-Lead, Minh, Hùng, Thư, Đạt', 'Link', 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
+  ('RU3.1', 'Public Space Living Lab', 'HCR-PDPhung', 'Review', 'Apr2026', NULL, 'New initiative', 'UEH/Xuân Hòa Ward', 'Ms. Daniela', 'TuAnh-Lead, Minh, Hùng, Thư, Đạt', NULL, 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
+  ('RU3.2', 'Public Space Living Lab', 'PS Atlas', 'In progress', '2026', '2027', 'Research', 'ISCM', 'Ms. Daniela', 'TuAnh-Lead, Minh, Hùng, Thư, Đạt', NULL, 'Không', 'Global Design', 'Human Centric Orientation', NULL, NULL),
   ('RU6', 'Smart City', 'SC Main Folder', 'In progress', '2022', NULL, 'IRL', 'ISCM', 'Mr. Tâm', 'TuAnh-Lead, Hoài, Chi, Hoài (Korea), An', NULL, 'Framework Transition', NULL, NULL, NULL, NULL),
   ('RU6.1', 'Smart City', 'RTD 2026 - Keynote Speakers', 'In progress', '2026', '2026', 'Event', 'UEH', 'Mr. Hoài', 'TuAnh-Lead', NULL, 'Không', NULL, NULL, NULL, 'Urban System'),
   ('RU6.2', 'Smart City', 'RTD 2026 - Special Sessions', 'In progress', '2026', '2026', 'Event', 'UEH', 'Mr. Tâm', 'TuAnh-Lead, Chi', NULL, 'Không', NULL, NULL, NULL, 'Urban System'),

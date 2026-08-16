@@ -1,118 +1,71 @@
-import { Clock3, AlertCircle, FileSpreadsheet, UserRound } from 'lucide-react';
-import {
-  ATTENDANCE_DEADLINES, ATTENDANCE_LEGEND, INSTITUTE_YTD_TOTALS, MY_YTD_ATTENDANCE,
-  RECENT_LOG_SAMPLE, STAFF_ROSTER,
-} from '../../data/attendanceData.js';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { fetchMyAttendanceRecords } from '../../data/attendanceStore.js';
+import { fetchPolicies, fetchCalendarDays, fetchAllMemberScopes } from '../../data/attendancePolicyStore.js';
+import { buildAttendanceContext } from '../../data/attendanceAggregation.js';
+import ReportAttendanceForm from './attendance/ReportAttendanceForm.jsx';
+import MemberAttendanceProfile from './attendance/MemberAttendanceProfile.jsx';
+import AttendanceRecordModal from './attendance/AttendanceRecordModal.jsx';
+import useAttendanceDeepLink from './attendance/useAttendanceDeepLink.js';
 
-/* Daily Attendance Log — integrates iscm daily attendance checklist.xlsx */
+/* Daily Attendance — Normal Working Day is the default; a member only acts
+   when reporting one of the five exception types (Annual Leave / Absence /
+   Work from Home / Work Outside / Late), each going through approval.
+   The institute-wide admin view lives in InstituteAttendancePanel.jsx. */
+export default function AttendanceLogPanel({ lang = 'vi' }) {
+  const vi = lang === 'vi';
+  const { user: authUser } = useAuth();
+  const [records, setRecords] = useState([]);
+  const [context, setContext] = useState(() => buildAttendanceContext([], [], []));
+  const [loading, setLoading] = useState(true);
 
-const maxTotal = Math.max(...Object.values(INSTITUTE_YTD_TOTALS));
+  const reload = () => {
+    if (!authUser) { setRecords([]); setLoading(false); return; }
+    setLoading(true);
+    Promise.all([
+      fetchMyAttendanceRecords(authUser.id), fetchPolicies(), fetchCalendarDays(), fetchAllMemberScopes(),
+    ]).then(([r, policies, calendarDays, scopes]) => {
+      setRecords(r);
+      setContext(buildAttendanceContext(policies, calendarDays, scopes));
+      setLoading(false);
+    });
+  };
+  useEffect(() => { reload(); }, [authUser]);
 
-export default function AttendanceLogPanel() {
+  const { focusedRecord, missingRecordId, clear: clearDeepLink } = useAttendanceDeepLink(records, loading);
+
   return (
-    <div className="space-y-5">
-      {/* Deadline banner */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg bg-iscm-cta p-3 text-center text-white">
-          <Clock3 className="mx-auto mb-1 h-4 w-4" />
-          <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.officeCheckIn}</div>
-          <div className="font-ibm text-[10px] text-white/70">Office check-in</div>
-        </div>
-        <div className="rounded-lg bg-iscm-crimson p-3 text-center text-white">
-          <Clock3 className="mx-auto mb-1 h-4 w-4" />
-          <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.formLock}</div>
-          <div className="font-ibm text-[10px] text-white/70">Form lock (general)</div>
-        </div>
-        <div className="rounded-lg bg-iscm-charcoal p-3 text-center text-white">
-          <Clock3 className="mx-auto mb-1 h-4 w-4" />
-          <div className="font-barlow-condensed text-lg font-bold">{ATTENDANCE_DEADLINES.okrFinalLog}</div>
-          <div className="font-ibm text-[10px] text-white/70">OKR final log</div>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <ReportAttendanceForm lang={lang} onSaved={reload} />
+      {loading ? (
+        <p className="font-ibm text-[11px] text-gray-400">{vi ? 'Đang tải...' : 'Loading...'}</p>
+      ) : (
+        <MemberAttendanceProfile
+          vi={vi}
+          records={records}
+          memberId={authUser?.id}
+          isAdmin={false}
+          viewerId={authUser?.id}
+          canCancel
+          onChanged={reload}
+          context={context}
+        />
+      )}
 
-      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 font-ibm text-[11px] text-amber-800">
-        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-        Chốt log 17:00 hằng ngày là dữ liệu đầu vào cho OKR quý và kỳ xét thù lao — mọi cập nhật sau 08:30 cần phê duyệt của Quản lý trực tiếp.
-      </div>
-
-      {/* Personal YTD — 'Hùng' column of 2026_Daily attendance record */}
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
-          <UserRound className="h-3.5 w-3.5 text-iscm-crimson" /> My 2026 YTD (cột "Hùng" — đồng bộ từ workbook)
-        </p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {ATTENDANCE_LEGEND.map((s) => (
-            <div key={s.key} className={`rounded-lg border p-2 text-center ${
-              s.key === 'absence_no_permit' && MY_YTD_ATTENDANCE[s.key] > 0
-                ? 'border-red-200 bg-red-50' : 'border-gray-100 bg-iscm-surface/60'
-            }`}>
-              <div className="font-barlow-condensed text-lg font-bold text-iscm-charcoal">{MY_YTD_ATTENDANCE[s.key] ?? 0}</div>
-              <div className="truncate font-ibm text-[9px] text-gray-500" title={s.label}>{s.label}</div>
-            </div>
-          ))}
+      {missingRecordId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={clearDeepLink}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white border border-neutral-200 shadow-xl p-4 text-center">
+            <p className="text-xs text-neutral-600">{vi ? 'Không tìm thấy bản ghi chấm công này — có thể bạn không có quyền xem hoặc đã có thay đổi.' : 'This attendance record is no longer available — you may not have access to it, or it has changed.'}</p>
+            <button onClick={clearDeepLink} className="mt-3 px-3 py-1.5 text-[10px] font-bold uppercase text-white bg-iscm-crimson hover:bg-[#7a0010]">{vi ? 'Đóng' : 'Close'}</button>
+          </div>
         </div>
-      </div>
-
-      {/* Legend */}
-      <div>
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">8 trạng thái chuẩn / Status keywords</p>
-        <div className="grid gap-1.5 sm:grid-cols-2">
-          {ATTENDANCE_LEGEND.map((s) => (
-            <div key={s.key} className="rounded-lg border border-gray-100 bg-iscm-surface/60 p-2">
-              <div className="font-ibm text-[11px] font-semibold text-iscm-charcoal">{s.label}</div>
-              <div className="font-ibm text-[10px] text-gray-500">{s.vi} — {s.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Institute-wide 2026 snapshot */}
-      <div>
-        <p className="mb-2 font-ibm text-xs font-semibold text-iscm-charcoal">
-          Institute-wide 2026 YTD ({STAFF_ROSTER.length} nhân sự)
-        </p>
-        <div className="space-y-1.5">
-          {ATTENDANCE_LEGEND.filter((s) => s.key in INSTITUTE_YTD_TOTALS).map((s) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <span className="w-40 shrink-0 truncate font-ibm text-[10px] text-gray-500">{s.label}</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-iscm-crimson"
-                  style={{ width: `${(INSTITUTE_YTD_TOTALS[s.key] / maxTotal) * 100}%` }} />
-              </div>
-              <span className="w-8 shrink-0 text-right font-barlow-condensed text-xs font-semibold text-iscm-charcoal">
-                {INSTITUTE_YTD_TOTALS[s.key]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent log sample */}
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 font-ibm text-xs font-semibold text-iscm-charcoal">
-          <FileSpreadsheet className="h-3.5 w-3.5 text-iscm-crimson" /> Recent log sample (synced)
-        </p>
-        <div className="overflow-hidden rounded-lg border border-gray-200">
-          <table className="w-full text-left font-ibm text-[11px]">
-            <thead className="bg-iscm-surface text-gray-400">
-              <tr><th className="px-2.5 py-1.5">Date</th><th className="px-2.5 py-1.5">Nhân sự</th><th className="px-2.5 py-1.5">Trạng thái</th></tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {RECENT_LOG_SAMPLE.map((r, i) => (
-                <tr key={i}>
-                  <td className="px-2.5 py-1.5 text-gray-500">{r.day} {r.date}</td>
-                  <td className="px-2.5 py-1.5 font-medium">{r.staff}</td>
-                  <td className="px-2.5 py-1.5 text-iscm-crimson">{r.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <p className="font-ibm text-[10px] text-gray-400">
-        Nguồn: <code>iscm daily attendance checklist.xlsx</code> — Description, 2026_Daily attendance record, Jul sheets.
-      </p>
+      )}
+      {focusedRecord && (
+        <AttendanceRecordModal
+          vi={vi} record={focusedRecord} isAdmin={false} viewerId={authUser?.id} canCancel
+          onClose={clearDeepLink} onChanged={() => { clearDeepLink(); reload(); }}
+        />
+      )}
     </div>
   );
 }

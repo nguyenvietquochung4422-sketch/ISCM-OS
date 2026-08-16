@@ -47,7 +47,7 @@ export function CreateRequestView() {
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={4}
-        placeholder={kind === 'help' ? 'Mô tả vấn đề bạn cần hỗ trợ…' : 'Góp ý của bạn cho ISCM Hub / vận hành Viện…'}
+        placeholder={kind === 'help' ? 'Mô tả vấn đề bạn cần hỗ trợ…' : 'Góp ý của bạn cho ISCM OS / vận hành Viện…'}
         className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-ibm text-xs focus:border-iscm-crimson focus:outline-none"
       />
       <button onClick={submit} className="btn-primary text-xs"><Send className="h-3.5 w-3.5" /> Gửi</button>

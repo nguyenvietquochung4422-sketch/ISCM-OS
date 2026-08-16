@@ -7,6 +7,8 @@ import {
   APPROVALS, APPROVAL_TYPES, APPROVAL_NOTIFICATIONS, staffById,
 } from '../data/osData.js';
 import { Avatar } from '../components/ui.jsx';
+import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
 
 /* ------------------------------------------------------------------ */
 /* Đề án 1 · 3.3 — Bypass Approval Engine (trục phê duyệt tờ trình)    */
@@ -101,12 +103,15 @@ export default function ApprovalEngine() {
     return done.length ? Math.round(done.reduce((s, a) => s + a.sla_hours, 0) / done.length) : 0;
   }, [items]);
 
+  const { lang } = useLanguage();
+  const t = NAVIGATION_LOCALIZATION[lang];
+
   return (
     <div className="w-full space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-3 border-l-4 border-iscm-crimson pl-4 py-1 mb-2">
         <div>
           <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            Bypass Approval Engine
+            {t.APPROVAL_WORKFLOW}
           </h1>
           <p className="mt-1 font-ibm text-xs uppercase tracking-wider text-gray-500">
             Trục phê duyệt tờ trình số & ký số · Đề án 1 / Phân hệ 3.3

@@ -5,71 +5,33 @@
 
 export const FORM_CATEGORIES = [
   { id: 'All', label: 'All' },
-  { id: 'HR', label: 'HR Services' },
   { id: 'IT', label: 'IT Services' },
-  { id: 'FA', label: 'FA Services' },
-  { id: 'RM', label: 'Research Forms' },
-  { id: 'AF', label: 'AF Services' }
+  { id: 'Comms', label: 'Communication' },
+  { id: 'Admin', label: 'Administration' }
 ];
 
 export const FORM_GROUPS = [
   {
-    id: 'hr-admin', label: 'Human Resources & Admin',
+    id: 'ef-equipment', label: 'Equipment & Resources',
     forms: [
-      { key: 'resignation', label: 'Resignation', cat: 'HR', desc: 'Initiate offboarding and data handover.', special: 'resignation' },
-      { key: 'recruitment-request', label: 'Recruitment request', cat: 'HR', desc: 'Request recruitment of new CTV/Interns.' },
-      { key: 'training-register', label: 'Training register', cat: 'HR', desc: 'Register for internal courses or seminars.', special: 'training' },
-      { key: 'ask-anything', label: 'Ask anything', cat: 'HR', desc: 'Send general HR & administrative inquiries.' },
-      { key: 'wfh', label: 'Work from home', cat: 'HR', desc: 'Request remote work allocation.', special: 'wfh' },
-      { key: 'leave', label: 'Leave', cat: 'HR', desc: 'Absence/Leave request.', special: 'leave' },
-      { key: 'travel-auth', label: 'Travel authorization', cat: 'HR', desc: 'Request authorization for fieldwork/travel.' },
-      { key: 'benefit-hr', label: 'Benefit and HR', cat: 'HR', desc: 'Inquire or register for HR benefits.' },
-      { key: 'member-partner-info', label: 'Member & Partner Information Form', cat: 'HR', desc: 'Register or update member info.' },
-      { key: 'team-eval', label: 'Team Evaluation Form', cat: 'HR', desc: 'Submit peer & team assessments.' },
-      { key: 'quarterly-perf-eval', label: 'Quarterly Performance Evaluation', cat: 'HR', desc: 'Submit Q2 OKR & performance review.' }
-    ]
-  },
-  {
-    id: 'it-product', label: 'Product Operation & Tech',
-    forms: [
-      { key: 'purchase-permission', label: 'Purchase permission', cat: 'IT', desc: 'Get pre-approval for technical purchases.' },
       { key: 'order-equipment', label: 'Order Equipment Form', cat: 'IT', desc: 'Order standard laptop or lab peripherals.' },
-      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.' },
-      { key: 'tech-request', label: 'Technology Request Form', cat: 'IT', desc: 'General IT support & tech request.' }
-    ]
-  },
-  {
-    id: 'finance', label: 'Finance and Accounting',
-    forms: [
-      { key: 'payment-request', label: 'Payment request', cat: 'FA', desc: 'Submit Track 1/Track 2 payment claims.', special: 'payment' },
-      { key: 'expense-report', label: 'Expense report request', cat: 'FA', desc: 'Submit post-activity expense statement.' }
-    ]
-  },
-  {
-    id: 'it-comms', label: 'Communication & Orders',
-    forms: [
-      { key: 'order-design', label: 'Order Design', cat: 'IT', desc: 'Request branding/graphic assets design.' },
-      { key: 'order-support-comm', label: 'Order Support Communication', cat: 'IT', desc: 'Request PR support / article publishing.' },
+      { key: 'order-book', label: 'Order Book/Documents Form', cat: 'IT', desc: 'Requisition books for the ISCM library.', special: 'library' },
       { key: 'order-gift', label: 'Order ISCM Gift', cat: 'IT', desc: 'Requisition ISCM corporate gifts.' }
     ]
   },
   {
-    id: 'research-rm', label: 'Research Forms',
+    id: 'ef-comms-tech', label: 'Communication & Technology',
     forms: [
-      { key: 'quarterly-research-reg', label: 'Quarterly Research Registration', cat: 'RM', desc: 'Register quarterly research outputs.' },
-      { key: 'internal-seminar-reg', label: 'Internal Seminar Registration', cat: 'RM', desc: 'Register to present at internal seminar.' },
-      { key: 'quarterly-progress-report', label: 'Quarterly Progress Report', cat: 'RM', desc: 'Update progress of research projects.' },
-      { key: 'fundraising-proposal-progress', label: 'Fundraising Proposal Progress', cat: 'RM', desc: 'Track external funding proposals.' },
-      { key: 'publications-submission', label: 'Publications Submission Form', cat: 'RM', desc: 'Submit Scopus/accredited publication details.' }
+      { key: 'order-support-comm', label: 'Communication Posting Request', cat: 'Comms', desc: 'Request PR support / content publishing on ISCM channels.' },
+      { key: 'technology-request', label: 'Technology Request', cat: 'IT', desc: 'Request support for developing or improving a digital platform/tool.' }
     ]
   },
   {
-    id: 'admin-af', label: 'Administration Services',
+    id: 'ef-internal-admin', label: 'Internal Administration',
     forms: [
-      { key: 'cctv-history', label: 'Check CCTV history', cat: 'AF', desc: 'Request review of campus security footage.' },
-      { key: 'annual-student-survey', label: 'Annual Student Survey', cat: 'AF', desc: 'Deploy annual program feedback survey.' },
-      { key: 'student-pigeon-post', label: 'ISCM Student Pigeon Post', cat: 'AF', desc: 'Access student-to-admin letter channel.' },
-      { key: 'training-point-proposal', label: 'Training Point Proposal', cat: 'AF', desc: 'Propose extra-curricular student credits.' }
+      { key: 'training-point-proposal', label: 'Training Point Proposal', cat: 'Admin', desc: 'Propose DRS training-point credit for an activity.' },
+      { key: 'quarterly-performance-evaluation', label: 'Quarterly Performance Evaluation', cat: 'Admin', desc: 'Submit your quarterly performance evaluation.', special: 'langVariant' },
+      { key: 'team-evaluation', label: 'Team Evaluation', cat: 'Admin', desc: 'Bilingual team evaluation submission.' }
     ]
   }
 ];
@@ -87,8 +49,8 @@ export const MY_TASKS = [
 ];
 
 export const MY_FORMS_SEED = [
-  { id: 'f1', form: 'Work from home', group: 'Human Resources & Admin', date: '2026-07-01', status: 'Open' },
-  { id: 'f2', form: 'Leave', group: 'Human Resources & Admin', date: '2026-06-20', status: 'Approved' },
+  { id: 'f1', form: 'Daily Attendance — Work from Home with Permission', group: 'Human Resources & Admin', date: '2026-07-01', status: 'Open' },
+  { id: 'f2', form: 'Daily Attendance — Annual Leave', group: 'Human Resources & Admin', date: '2026-06-20', status: 'Approved' },
   { id: 'f3', form: 'Payment request', group: 'Finance and Accounting', date: '2026-06-15', status: 'Approved' },
   { id: 'f4', form: 'Overtime register', group: 'Human Resources & Admin', date: '2026-06-10', status: 'Rejected' },
 ];
@@ -102,7 +64,7 @@ export const TRANSACTIONS = [
   { id: 'x6', date: '2026-05-30', desc: 'Q2 Scopus incentive — under review', track: 2, flow: 4, amount: '+5,000,000', status: 'Pending' },
 ];
 
-export const ASSET_TYPES = ['All', 'VR Headset', 'Drone', 'Spatial Computing Rig', 'Monitor', 'Laptop', 'Other'];
+export const ASSET_TYPES = ['All', 'VR Headset', 'Drone', 'Spatial Computing Rig', 'Monitor', 'Laptop', 'Book', 'Document', 'Journal', 'Other'];
 
 export const MY_ASSETS = [
   { id: 'as1', name: 'VR Headset — Quest Pro (Set A)', type: 'VR Headset', checked_out: '2026-06-20', due: '2026-07-15' },

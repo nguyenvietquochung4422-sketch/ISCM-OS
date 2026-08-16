@@ -25,7 +25,7 @@ const INITIAL_EVENTS = [
     title: 'Thẩm định Đề xuất dự án HCMC Walkability Atlas 2026',
     start_time: '2026-07-09T10:00',
     end_time: '2026-07-09T12:00',
-    location: 'Meeting Room C, ISCM Hub',
+    location: 'Meeting Room C, ISCM OS',
     attendees_emails: 'tuianh.trinh@ueh.edu.vn, khoa.vo@ueh.edu.vn, thao.le@ueh.edu.vn',
     sync_source: 'Google Calendar'
   }

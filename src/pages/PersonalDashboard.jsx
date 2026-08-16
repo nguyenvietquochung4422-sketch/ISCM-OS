@@ -2,64 +2,211 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   ChevronDown, ChevronRight, UserCircle2, CalendarClock, CalendarRange,
   Flag, GraduationCap, UsersRound, Ticket, FlaskConical, Presentation, Wallet,
-  ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter,
-  MonitorSmartphone, BookOpen, Phone, Building2, Users2, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info,
+  ReceiptText, Landmark, FileText, CheckCircle2, Circle, Filter, X, Search,
+  MonitorSmartphone, BookOpen, LifeBuoy, Inbox, Send, ArrowRight, Download, AlertCircle, Info, ListTodo, ShieldCheck, Save, UserCheck,
 } from 'lucide-react';
-import { researchList } from '../data/researchList.js';
 import { FORM_GROUPS, FORM_BY_KEY, FORM_CATEGORIES, ASSET_TYPES, MY_TASKS, MY_FORMS_SEED, MY_ASSETS } from '../data/formPortal.js';
 import { Avatar } from '../components/ui.jsx';
 import AttendanceLogPanel from '../components/personal/AttendanceLogPanel.jsx';
+import MyCalendarView from '../components/personal/MyCalendarView.jsx';
 import TaskReceiptPanel from '../components/personal/TaskReceiptPanel.jsx';
 import { FormPortalGrid, FormDetail, loadSubmissions } from '../components/personal/FormPortalPanel.jsx';
 import { MyTasksPanel, MyFormsPanel } from '../components/personal/RequestQueues.jsx';
 import TransactionsPanel from '../components/personal/TransactionsPanel.jsx';
 import MyAssetsPanel from '../components/personal/MyAssetsPanel.jsx';
-import WikiHubPanel from '../components/personal/WikiHubPanel.jsx';
 import ISCMOrganizationalChart from '../components/personal/ISCMOrganizationalChart.jsx';
-import { SupportContactsView, DepartmentsView, ColleaguesView } from '../components/personal/ContactsPanel.jsx';
+import ContentPermissionsPanel from '../components/personal/ContentPermissionsPanel.jsx';
+import AccessRequestsPanel from '../components/personal/AccessRequestsPanel.jsx';
+import InstituteAttendancePanel from '../components/personal/InstituteAttendancePanel.jsx';
+import MyEventsPanel from '../components/personal/MyEventsPanel.jsx';
+import EventManagementPanel from '../components/personal/EventManagementPanel.jsx';
+import InstituteCalendarPanel from '../components/personal/InstituteCalendarPanel.jsx';
+import LibraryAdminPanel from '../components/personal/LibraryAdminPanel.jsx';
 import { CreateRequestView, MyRequestsView } from '../components/personal/SupportsPanel.jsx';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { supabase, isLive } from '../lib/supabaseClient.js';
 import { NAVIGATION_LOCALIZATION } from '../data/navigationLocalization.js';
+import { RESOURCES_CONTENT, RESOURCE_CATEGORY_KEYS } from '../data/resourcesContent.js';
+import { ACADEMIA_RESOURCES_CONTENT, ACADEMIA_RESOURCE_CATEGORY_KEYS } from '../data/academiaResourcesContent.js';
+import MyTeachingSchedulePanel from '../components/personal/MyTeachingSchedulePanel.jsx';
+import InstituteTeachingSchedulePanel from '../components/personal/InstituteTeachingSchedulePanel.jsx';
+import TeachingAssignmentsPanel from '../components/personal/TeachingAssignmentsPanel.jsx';
+import { PARTNERSHIP_RESOURCES_CONTENT, PARTNERSHIP_RESOURCE_CATEGORY_KEYS } from '../data/partnershipResourcesContent.js';
+import { IndividualStakeholdersPanel, InstitutionalPartnersPanel } from '../components/personal/PartnersDirectoryPanel.jsx';
+import AgreementsPanel from '../components/personal/AgreementsPanel.jsx';
+import { WS_EVENTS } from '../data/calendarEvents.js';
 
-/** Signed-in demo persona: Director Trịnh Tú Anh */
+/** Demo-mode fallback (no Supabase configured, so no real sign-in is possible). */
 const MY_PROFILE = {
-  full_name: 'TRỊNH TÚ ANH',
-  email: 'tuanh.trinh@iscm.ueh.edu.vn',
-  system_role: 'Institute Director',
-  base_functional_group: 'Management Board (RU0)',
+  full_name: 'Demo User',
+  email: 'demo@iscm.ueh.edu.vn',
+  system_role: 'Guest',
+  base_functional_group: 'ISCM',
   mentor: 'N/A',
 };
 
-const CTV_JOINT_CAP = 2;
 const STATUS_FILTER_OPTS = ['All', 'Open', 'Others'];
 
 const CAT_BADGE_STYLE = {
-  HR: 'border border-blue-200 bg-blue-50 text-blue-800',
   IT: 'border border-emerald-200 bg-emerald-50 text-emerald-800',
-  FA: 'border border-amber-200 bg-amber-50 text-amber-800',
-  RM: 'border border-purple-200 bg-purple-50 text-purple-800',
-  AF: 'border border-slate-300 bg-slate-100 text-slate-700',
 };
+
+/* ---------------- Helper Viewport Components for Workspace tabs ---------------- */
+
+function MyAssignedTasksView() {
+  return (
+    <div className="border border-neutral-200 bg-white rounded-none p-4 overflow-hidden">
+      <div className="max-w-xl mx-auto border border-neutral-200 p-2">
+        <TaskReceiptPanel />
+      </div>
+    </div>
+  );
+}
+
+function MyTasksWidgetView({ tasks, openTasks, decideTask, setSelectedItem, lang, t, TASK_STATUS_BADGE }) {
+  return (
+    <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+      <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+          <Inbox className="h-3.5 w-3.5 text-[#990000]" /> {lang === 'vi' ? 'CẦN PHÊ DUYỆT' : 'PENDING APPROVALS'}
+        </span>
+        {openTasks.length > 0 && (
+          <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openTasks.length} {t.OPEN_TASKS}</span>
+        )}
+      </div>
+      <div className="divide-y divide-neutral-100 overflow-y-auto min-h-[300px]">
+        {tasks.map((tk) => (
+          <div
+            key={tk.id}
+            onClick={() => setSelectedItem({ type: 'task', item: tk })}
+            className="flex items-start justify-between gap-2 px-4 py-3 hover:bg-neutral-50 cursor-pointer transition-colors"
+          >
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-xs font-bold text-neutral-800 leading-snug hover:text-[#990000] transition-colors">{tk.title}</p>
+              <p className="text-[10px] text-neutral-400 mt-0.5">{tk.requester} · {tk.date}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              {tk.status === 'Open' ? (
+                <>
+                  <button
+                    onClick={() => decideTask(tk.id, 'Approved')}
+                    title="Approve"
+                    className="flex items-center justify-center h-6 w-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => decideTask(tk.id, 'Rejected')}
+                    title="Reject"
+                    className="flex items-center justify-center h-6 w-6 rounded bg-[#990000] hover:bg-red-800 text-white transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              ) : (
+                <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[tk.status]}`}>{tk.status}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MyRequestsWidgetView({ myForms, openForms, setSelectedItem, lang, t, TASK_STATUS_BADGE }) {
+  return (
+    <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
+      <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+          <Send className="h-3.5 w-3.5 text-[#990000]" /> {lang === 'vi' ? 'ĐƠN TỪ ĐÃ GỬI' : 'SUBMITTED REQUESTS'}
+        </span>
+        {openForms.length > 0 && (
+          <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openForms.length} {t.PENDING_FORMS}</span>
+        )}
+      </div>
+      <div className="divide-y divide-neutral-100 overflow-y-auto min-h-[300px]">
+        {myForms.map((f) => (
+          <div
+            key={f.id}
+            onClick={() => setSelectedItem({ type: 'request', item: f })}
+            className="flex items-start justify-between gap-2.5 px-4 py-3 hover:bg-neutral-50 cursor-pointer transition-colors"
+          >
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-xs font-bold text-neutral-800 truncate hover:text-[#990000] transition-colors">{f.form}</p>
+              <p className="text-[10px] text-neutral-400 mt-0.5">{f.group} · {f.date}</p>
+            </div>
+            <span className={`shrink-0 px-1.5 py-0.5 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[f.status]}`}>{f.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Resources (O&F) — read from resourcesContent.js ---------------- */
+
+/** One RESOURCES category page (Guidelines / Policies & Regulations / ...) —
+    subgroup headers + document buttons, with a search box since categories
+    run ~10-20 items. Data lives in resourcesContent.js, not SIDEBAR_TREE:
+    the sidebar only goes one level deep for Resources (category only), so
+    this is the only place the subgroup/document breakdown actually renders. */
+function ResourcesCategoryView({ lang, categoryKey, onOpen, contentMap = RESOURCES_CONTENT }) {
+  const [query, setQuery] = useState('');
+  const category = contentMap[lang]?.[categoryKey];
+  if (!category) return null;
+
+  const q = query.trim().toLowerCase();
+  const groups = category.groups
+    .map((g) => ({ ...g, docs: g.docs.filter((d) => !q || d.label.toLowerCase().includes(q)) }))
+    .filter((g) => g.docs.length > 0);
+
+  return (
+    <div className="space-y-4 font-sans">
+      <div className="relative max-w-sm">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={lang === 'vi' ? 'Tìm tài liệu...' : 'Search documents...'}
+          className="w-full rounded-none border border-neutral-300 bg-white py-1.5 pl-8 pr-2.5 text-xs focus:border-neutral-900 focus:outline-none"
+        />
+      </div>
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={g.label}>
+            <span className="block font-bold text-neutral-900 text-xs uppercase tracking-wider mb-1.5">{g.label}</span>
+            <div className="border border-neutral-200 bg-white divide-y divide-neutral-100">
+              {g.docs.map((doc) => (
+                <button
+                  key={doc.key}
+                  onClick={() => onOpen(doc.key)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 hover:text-[#990000] transition-colors"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                  <span className="truncate">{doc.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {groups.length === 0 && (
+          <div className="p-6 text-center text-xs text-neutral-400 border border-neutral-200">{lang === 'vi' ? 'Không tìm thấy.' : 'No matches.'}</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ---------------- Right-viewport content resolution ---------------- */
 
-function usePaneContent(selected, filters, setSelected, lang) {
+function usePaneContent(selected, filters, setSelected, lang, wsData) {
   let key = selected;
   if (selected === 'my-portal') key = 'profile-bio';
   else if (selected === 'requests-forms') key = 'cat-forms';
-  else if (selected === 'wiki-hub-root') key = 'cat-wiki';
-  else if (selected === 'contacts-root') key = 'cat-contacts';
-  else if (['wiki-of-g', 'wiki-rp-g', 'wiki-ac-g', 'wiki-cm-g'].includes(selected)) key = 'wiki-guidelines';
-  else if (['wiki-oh-r', 'wiki-af-r'].includes(selected)) key = 'wiki-regulations';
 
-  const myResearch = useMemo(
-    () => researchList.filter((r) => r.members?.includes('TuAnh')),
-    []
-  );
-  const jointEngagements = myResearch.filter(
-    (r) => !r.task_name.includes('Main Folder') && !['Training', 'Event'].includes(r.task_type)
-  );
-  const capExceeded = jointEngagements.length > CTV_JOINT_CAP;
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
 
   /* Form detail views */
@@ -570,195 +717,314 @@ function usePaneContent(selected, filters, setSelected, lang) {
     'profile-bio': {
       title: lang === 'vi' ? 'HỒ SƠ CỦA TÔI' : 'MY PORTAL', icon: UserCircle2,
       body: (
-        <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <p className="leading-relaxed">
-            {lang === 'vi' 
-              ? `Tôi là ${MY_PROFILE.full_name}, Viện trưởng Viện Đô thị Thông minh và Quản lý (ISCM). Tôi chịu trách nhiệm quản lý chung, lập kế hoạch học thuật và các hoạt động nghiên cứu khoa học cốt lõi.`
-              : `I am ${MY_PROFILE.full_name}, Director of the Institute of Smart City and Management (ISCM). I lead the institutional administration, academic planning, and core research operations.`}
-          </p>
-          <p className="text-neutral-500 leading-relaxed">
-            {lang === 'vi'
-              ? 'Tôi giám sát khối lượng học thuật giảng viên, duyệt thanh toán cho các dòng ngân quỹ Track 1 và Track 2, đồng thời rà soát nhật ký điểm danh hàng ngày.'
-              : 'I oversee academic workloads, approve financial routing for Track 1 and Track 2 budgets, and monitor daily attendance logs.'}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        <div className="space-y-5 font-sans text-sm text-neutral-800">
+          <div className="flex items-center gap-3">
+            <Avatar name={wsData.myProfile.full_name} src={wsData.contactForm.avatar_url} size="lg" />
+            <div>
+              <span className="block font-bold text-neutral-900">{wsData.myProfile.full_name}</span>
+              {wsData.contactForm.academic_title && (
+                <span className="block text-xs text-neutral-500">{wsData.contactForm.academic_title}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
               <span className="block text-xs text-neutral-400 uppercase">{t.BIO_NAME_LABEL}</span>
-              <span className="font-bold text-neutral-800 block mt-1 text-sm">{MY_PROFILE.full_name}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.full_name}</span>
             </div>
             <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
               <span className="block text-xs text-neutral-400 uppercase">{t.BIO_ROLE_LABEL}</span>
-              <span className="font-bold text-neutral-800 block mt-1 text-sm">{MY_PROFILE.system_role}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.system_role || '—'}</span>
+            </div>
+            <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
+              <span className="block text-xs text-neutral-400 uppercase">{lang === 'vi' ? 'Email' : 'Email'}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm truncate">{wsData.myProfile.email || '—'}</span>
+            </div>
+            <div className="border border-neutral-200 bg-neutral-50 p-3 rounded-none">
+              <span className="block text-xs text-neutral-400 uppercase">{lang === 'vi' ? 'Khối chức năng' : 'Functional Group'}</span>
+              <span className="font-bold text-neutral-800 block mt-1 text-sm">{wsData.myProfile.base_functional_group || '—'}</span>
             </div>
           </div>
-          <div className="border border-neutral-200 bg-neutral-50 p-3 flex items-center justify-between rounded-none text-sm">
-            <span className="text-neutral-500 font-medium">{t.BIO_NCKH_LABEL}</span>
-            <span className={`font-bold ${capExceeded ? 'text-red-700' : 'text-emerald-700'}`}>
-              {jointEngagements.length} / {CTV_JOINT_CAP} {capExceeded ? '⚠' : '✓'}
-            </span>
+
+          {/* Contact Information — self-service; goes through the
+              update_my_contact_info RPC so a user can only ever touch their
+              own personal_email/phone/date_of_birth/address, never role or
+              functional group. */}
+          <div className="border-t border-neutral-200 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 border-l-2 border-[#8b0000] pl-2 mb-3">
+              {lang === 'vi' ? 'Thông tin liên hệ' : 'Contact Information'}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Gmail cá nhân' : 'Personal Email'}
+                </label>
+                <input
+                  type="email"
+                  value={wsData.contactForm.personal_email}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, personal_email: e.target.value }))}
+                  placeholder="you@gmail.com"
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Số điện thoại' : 'Phone'}
+                </label>
+                <input
+                  type="tel"
+                  value={wsData.contactForm.phone}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder={lang === 'vi' ? '090xxxxxxx' : '+84 90 xxx xxxx'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Ngày sinh' : 'Date of Birth'}
+                </label>
+                <input
+                  type="date"
+                  value={wsData.contactForm.date_of_birth}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, date_of_birth: e.target.value }))}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Địa chỉ' : 'Address'}
+                </label>
+                <input
+                  type="text"
+                  value={wsData.contactForm.address}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, address: e.target.value }))}
+                  placeholder={lang === 'vi' ? 'Số nhà, đường, quận/huyện, tỉnh/thành' : 'Street, district, city'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  {lang === 'vi' ? 'Học vị / Chức danh' : 'Academic Title'}
+                </label>
+                <input
+                  type="text"
+                  value={wsData.contactForm.academic_title}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, academic_title: e.target.value }))}
+                  placeholder={lang === 'vi' ? 'PGS.TS., ThS. ...' : 'Assoc. Prof. Dr., MSc. ...'}
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 uppercase mb-1">
+                  ORCID / Google Scholar
+                </label>
+                <input
+                  type="url"
+                  value={wsData.contactForm.scholar_url}
+                  onChange={(e) => wsData.setContactForm((p) => ({ ...p, scholar_url: e.target.value }))}
+                  placeholder="https://orcid.org/... hoặc scholar.google.com/..."
+                  className="w-full border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-800 focus:border-[#8b0000] focus:outline-none rounded-none"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                onClick={wsData.saveContactInfo}
+                disabled={wsData.contactStatus === 'saving'}
+                className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                {wsData.contactStatus === 'saving'
+                  ? (lang === 'vi' ? 'Đang lưu...' : 'Saving...')
+                  : (lang === 'vi' ? 'Lưu' : 'Save')}
+              </button>
+              {wsData.contactStatus === 'saved' && (
+                <span className="text-xs font-semibold text-emerald-700">✓ {lang === 'vi' ? 'Đã lưu' : 'Saved'}</span>
+              )}
+              {wsData.contactStatus === 'error' && (
+                <span className="text-xs font-semibold text-red-700">
+                  {lang === 'vi' ? 'Lưu thất bại. Thử lại?' : 'Save failed. Try again?'}
+                </span>
+              )}
+            </div>
           </div>
-          <button onClick={() => setSelected('form:ask-anything')} className="btn-primary">
-            <Send className="h-3 w-3 mr-1" /> {t.CONTACT_OPS}
-          </button>
         </div>
       ),
     },
-    'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel /> },
+    'attendance-log': { title: t.ATTENDANCE_TITLE, icon: CalendarClock, body: <AttendanceLogPanel lang={lang} /> },
+    'my-events': { title: lang === 'vi' ? 'Sự kiện của tôi' : 'My Events', icon: Presentation, body: <MyEventsPanel lang={lang} /> },
     'my-assets': { title: t.ASSETS_TITLE, icon: MonitorSmartphone, body: <MyAssetsPanel typeFilter={filters.assetType} /> },
-    
+    'admin-access-requests': {
+      title: lang === 'vi' ? 'YÊU CẦU TRUY CẬP' : 'ACCESS REQUESTS',
+      icon: UserCheck,
+      body: <AccessRequestsPanel />,
+    },
+    'admin-content-permissions': {
+      title: lang === 'vi' ? 'PHÂN QUYỀN QUẢN TRỊ NỘI DUNG' : 'CONTENT ADMIN PERMISSIONS',
+      icon: ShieldCheck,
+      body: <ContentPermissionsPanel />,
+    },
+    'admin-attendance': {
+      title: lang === 'vi' ? 'CHẤM CÔNG TOÀN VIỆN' : 'INSTITUTE ATTENDANCE',
+      icon: CalendarClock,
+      body: <InstituteAttendancePanel lang={lang} />,
+    },
+    'admin-events': {
+      title: lang === 'vi' ? 'QUẢN LÝ SỰ KIỆN' : 'EVENT MANAGEMENT',
+      icon: Presentation,
+      body: <EventManagementPanel lang={lang} />,
+    },
+    'admin-calendar': {
+      title: lang === 'vi' ? 'LỊCH TOÀN VIỆN' : 'INSTITUTE CALENDAR',
+      icon: CalendarRange,
+      body: <InstituteCalendarPanel />,
+    },
+    'admin-library': {
+      title: lang === 'vi' ? 'QUẢN TRỊ THƯ VIỆN' : 'LIBRARY ADMIN',
+      icon: BookOpen,
+      body: <LibraryAdminPanel lang={lang} />,
+    },
+
     // Overview sections
     'cat-forms': {
-      title: lang === 'vi' ? 'HỆ THỐNG BIỂU MẪU ĐIỆN TỬ' : 'REQUESTS & E-FORMS', icon: FileText,
+      title: lang === 'vi' ? 'BIỂU MẪU ĐIỆN TỬ' : 'E-FORMS', icon: FileText,
       body: (
         <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="border border-neutral-200 bg-white p-3 text-center rounded-none">
-              <span className="block text-base">📥</span>
-              <span className="block font-sans text-xs font-bold text-neutral-800 mt-1">{t.MY_TASKS_WIDGET}</span>
-              <span className="block text-[10px] text-neutral-400">{t.PENDING_APPROVALS}</span>
-              <button
-                onClick={() => setSelected('my-tasks')}
-                className="mt-2 text-xs text-[#990000] font-bold hover:underline"
-              >
-                {lang === 'vi' ? 'Xem Luồng Phê Duyệt →' : 'View Approval Queue →'}
-              </button>
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 text-center rounded-none">
-              <span className="block text-base">📤</span>
-              <span className="block font-sans text-xs font-bold text-neutral-800 mt-1">{t.MY_REQUESTS_WIDGET}</span>
-              <span className="block text-[10px] text-neutral-400">{lang === 'vi' ? 'Yêu cầu đã gửi' : 'Submitted Requests'}</span>
-              <button
-                onClick={() => setSelected('my-forms')}
-                className="mt-2 text-xs text-[#990000] font-bold hover:underline"
-              >
-                {lang === 'vi' ? 'Theo Dõi Trạng Thái →' : 'Track Request Status →'}
-              </button>
-            </div>
-            <div className="border border-neutral-200 bg-white p-3 text-center rounded-none">
-              <span className="block text-base">📂</span>
-              <span className="block font-sans text-xs font-bold text-neutral-800 mt-1">{lang === 'vi' ? 'Quy Tắc Đặt Tên' : 'Naming Standard'}</span>
-              <span className="block text-xs text-red-700 font-bold mt-0.5">[Date][Project][Title]</span>
-              <span className="block text-[10px] text-neutral-400 mt-0.5">Strict compliance validation</span>
-            </div>
-          </div>
-
-          <div className="border-t border-neutral-200 pt-3">
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
-                {lang === 'vi' ? 'TẤT CẢ DỊCH VỤ BIỂU MẪU' : 'ALL E-FORM SERVICES'}
-              </span>
-              <span className="text-xs text-neutral-400">Category Filter: {filters.formCategory}</span>
-            </div>
-            <FormPortalGrid categoryFilter={filters.formCategory} onOpenForm={(k) => setSelected(`form:${k}`)} />
-          </div>
-        </div>
-      ),
-    },
-    'cat-wiki': {
-      title: lang === 'vi' ? 'TRUNG TÂM TRI THỨC DÙNG CHUNG' : 'WIKI HUB', icon: BookOpen,
-      body: (
-        <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <div className="p-3 bg-neutral-100 border border-neutral-200 flex items-center justify-between rounded-none">
-            <div>
-              <span className="block font-bold text-neutral-900 text-sm">ISCM Wiki Commons</span>
-              <span className="block text-xs text-neutral-500 mt-0.5">
-                {lang === 'vi' 
-                  ? 'Truy cập cẩm nang hướng dẫn, quy định bắt buộc, hệ thống mẫu biểu và chính sách chiến lược.'
-                  : 'Access policies, regulations, guidelines, templates, and tool starter guides.'}
-              </span>
-            </div>
-            <span className="badge border border-neutral-300 bg-white text-neutral-800 font-bold text-xs">2026 Core Docs</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[
-              ['wiki-guidelines', lang === 'vi' ? '📘 Cẩm nang Guidelines' : '📘 Guidelines', 'Standard operating manuals'],
-              ['wiki-policies', lang === 'vi' ? '📕 Chính sách Policies' : '📕 Policies', 'Institutional mandates'],
-              ['wiki-regulations', lang === 'vi' ? '📙 Quy chế Regulations' : '📙 Regulations', 'Legal & administrative limits'],
-            ].map(([k, label, desc]) => (
-              <button
-                key={k}
-                onClick={() => setSelected(k)}
-                className="p-3 border border-neutral-200 bg-white text-left hover:border-[#990000] transition-all rounded-none"
-              >
-                <span className="block font-bold text-neutral-900 text-sm">{label}</span>
-                <span className="block text-xs text-neutral-400 mt-1 leading-tight">{desc}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
-            <span className="block font-bold text-neutral-950 uppercase text-xs tracking-wider mb-2">
-              {lang === 'vi' ? 'Chính Sách Cốt Lõi 2026' : '2026 Core Policy Highlights'}
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-bold text-neutral-900 uppercase text-xs tracking-wider">
+              {lang === 'vi' ? 'TẤT CẢ BIỂU MẪU' : 'ALL E-FORMS'}
             </span>
-            <ul className="space-y-2 text-sm text-neutral-600">
-              <li className="flex items-start gap-1.5">
-                <span className="text-neutral-400 font-bold">•</span>
-                <span><strong>Financial Routing Policy:</strong> Segregate payments strictly into Track 1 (UEH Standard Budgets: Flow 1 &amp; 2) and Track 2 (Internal ISCM Funds: Flow 3 &amp; 4).</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-neutral-400 font-bold">•</span>
-                <span><strong>Lab Asset Management:</strong> Real-time reservation logs required for high-spec laptops, drones, spatial rigs, and VR units in the Book Catalog.</span>
-              </li>
-            </ul>
+            <span className="text-xs text-neutral-400">Category Filter: {filters.formCategory}</span>
           </div>
+          <FormPortalGrid categoryFilter={filters.formCategory} onOpenForm={(k) => setSelected(`form:${k}`)} />
         </div>
       ),
     },
-    'cat-contacts': {
-      title: lang === 'vi' ? 'DANH BẠ THÔNG TIN TOÀN VIỆN' : 'CONTACTS', icon: Users2,
-      body: (
-        <div className="space-y-4 font-sans text-sm text-neutral-800">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[
-              ['contacts-support', lang === 'vi' ? '☎️ Liên hệ Khẩn cấp' : '☎️ Support Contacts', 'IT Helpdesk, admin hotline'],
-              ['contacts-departments', lang === 'vi' ? '🏢 Cơ cấu phòng ban' : '🏢 Departments', 'RU1-RU8 Research Labs structure'],
-              ['contacts-colleagues', lang === 'vi' ? '👥 Danh bạ nhân sự' : '👥 Colleagues', 'Core Network Directory & roster'],
-            ].map(([k, label, desc]) => (
-              <button
-                key={k}
-                onClick={() => setSelected(k)}
-                className="p-3.5 border border-neutral-200 bg-white text-center hover:border-[#990000] transition-all rounded-none"
-              >
-                <span className="block font-bold text-neutral-900 text-sm">{label}</span>
-                <span className="block text-xs text-neutral-400 mt-1 leading-tight">{desc}</span>
-              </button>
-            ))}
-          </div>
+    // RESOURCES — one page per category (Guidelines / Policies & Regulations /
+    // Official Documents / Templates / Lists & Directories / Materials);
+    // sidebar only shows the category, this page shows the subgroup/document
+    // breakdown from resourcesContent.js.
+    ...Object.fromEntries(RESOURCE_CATEGORY_KEYS.map((catKey) => [
+      catKey,
+      {
+        title: RESOURCES_CONTENT[lang]?.[catKey]?.label || catKey,
+        icon: BookOpen,
+        body: <ResourcesCategoryView lang={lang} categoryKey={catKey} onOpen={setSelected} />,
+      },
+    ])),
 
-          <div className="border border-neutral-200 bg-white p-3.5 rounded-none">
-            <span className="block font-bold text-neutral-950 uppercase text-xs tracking-wider mb-1">
-              {lang === 'vi' ? 'Mạng Lưới Đối Tác Chiến Lược' : 'Strategic Partnerships Directory'}
-            </span>
-            <p className="text-xs text-neutral-500 mb-3 font-sans">
-              {lang === 'vi'
-                ? 'Mạng lưới đối tác liên kết của ISCM phân tách theo phân nhóm Academia (Học thuật), Industry (Doanh nghiệp), và Authority (Chính quyền).'
-                : 'Mạng lưới đối tác liên kết của ISCM phân tách theo phân nhóm Academia, Industry, và Authority.'}
-            </p>
-            <button
-              onClick={() => setSelected('contacts-colleagues')}
-              className="btn-primary text-[10px] py-1 px-3"
-            >
-              {lang === 'vi' ? 'Tra cứu Danh bạ Nhân sự' : 'Search Personnel Directory'}
-            </button>
-          </div>
-        </div>
-      ),
+    // Academia > Teaching
+    'my-teaching-schedule': {
+      title: lang === 'vi' ? 'LỊCH DẠY CỦA TÔI' : 'MY TEACHING SCHEDULE',
+      icon: CalendarClock,
+      body: <MyTeachingSchedulePanel lang={lang} />,
     },
+    'institute-teaching-schedule': {
+      title: lang === 'vi' ? 'LỊCH DẠY TOÀN VIỆN' : 'INSTITUTE TEACHING SCHEDULE',
+      icon: CalendarClock,
+      body: <InstituteTeachingSchedulePanel lang={lang} />,
+    },
+    'teaching-assignments': {
+      title: lang === 'vi' ? 'PHÂN CÔNG GIẢNG DẠY' : 'TEACHING ASSIGNMENTS',
+      icon: CalendarClock,
+      body: <TeachingAssignmentsPanel lang={lang} />,
+    },
+    // Academia > RESOURCES — same category-only-sidebar pattern as O&F.
+    ...Object.fromEntries(ACADEMIA_RESOURCE_CATEGORY_KEYS.map((catKey) => [
+      catKey,
+      {
+        title: ACADEMIA_RESOURCES_CONTENT[lang]?.[catKey]?.label || catKey,
+        icon: BookOpen,
+        body: <ResourcesCategoryView lang={lang} categoryKey={catKey} onOpen={setSelected} contentMap={ACADEMIA_RESOURCES_CONTENT} />,
+      },
+    ])),
 
-    // Wiki leaf view backups
-    'wiki-guidelines': { title: lang === 'vi' ? '📘 Cẩm nang Hướng dẫn Thực hiện' : '📘 Guidelines', icon: BookOpen, body: <WikiHubPanel branch="guidelines" /> },
-    'wiki-policies': { title: lang === 'vi' ? '📕 Chính sách Chiến lược' : '📕 Policies', icon: BookOpen, body: <WikiHubPanel branch="policies" /> },
-    'wiki-regulations': { title: lang === 'vi' ? '📙 Quy chế / Nội quy bắt buộc' : '📙 Regulations', icon: BookOpen, body: <WikiHubPanel branch="regulations" /> },
-    
-    // Contacts view backups
-    'contacts-support': { title: lang === 'vi' ? 'Liên hệ khẩn' : 'Support Contacts', icon: Phone, body: <SupportContactsView /> },
-    'contacts-departments': { title: lang === 'vi' ? 'Cơ cấu phòng ban' : 'Departments', icon: Building2, body: <DepartmentsView /> },
-    'contacts-colleagues': { title: lang === 'vi' ? 'Danh bạ nhân sự' : 'Colleagues', icon: Users2, body: <ColleaguesView /> },
+    // Partnership > Partners / Agreements
+    'individual-stakeholders': {
+      title: lang === 'vi' ? 'ĐỐI TÁC CÁ NHÂN' : 'INDIVIDUAL STAKEHOLDERS',
+      icon: UsersRound,
+      body: <IndividualStakeholdersPanel lang={lang} />,
+    },
+    'institutional-partners': {
+      title: lang === 'vi' ? 'ĐỐI TÁC TỔ CHỨC' : 'INSTITUTIONAL PARTNERS',
+      icon: UsersRound,
+      body: <InstitutionalPartnersPanel lang={lang} />,
+    },
+    'active-mous': {
+      title: lang === 'vi' ? 'MOU ĐANG HIỆU LỰC' : 'ACTIVE MOUS',
+      icon: FileText,
+      body: <AgreementsPanel lang={lang} />,
+    },
+    // Partnership > RESOURCES — same category-only-sidebar pattern.
+    ...Object.fromEntries(PARTNERSHIP_RESOURCE_CATEGORY_KEYS.map((catKey) => [
+      catKey,
+      {
+        title: PARTNERSHIP_RESOURCES_CONTENT[lang]?.[catKey]?.label || catKey,
+        icon: BookOpen,
+        body: <ResourcesCategoryView lang={lang} categoryKey={catKey} onOpen={setSelected} contentMap={PARTNERSHIP_RESOURCES_CONTENT} />,
+      },
+    ])),
 
     // Request queues
     'my-tasks': { title: t.TASKS_TITLE, icon: Inbox, body: <MyTasksPanel statusFilter={filters.tasksStatus} /> },
     'my-forms': { title: t.FORMS_TITLE, icon: Send, body: <MyFormsPanel key={filters.formsStatus} statusFilter={filters.formsStatus} /> },
+
+    // Workspace sub-tabs
+    'ws-calendar': {
+      title: lang === 'vi' ? 'LỊCH CỦA TÔI' : 'MY CALENDAR',
+      icon: CalendarRange,
+      body: (
+        <MyCalendarView
+          lang={lang}
+          t={t}
+          weekDays={wsData.weekDays}
+          monday={wsData.monday}
+          fmtDay={wsData.fmtDay}
+          isToday={wsData.isToday}
+          fmtDateKey={wsData.fmtDateKey}
+          getEventsForDay={wsData.getEventsForDay}
+          fmtTime={wsData.fmtTime}
+          upcoming={wsData.upcoming}
+          today={wsData.today}
+          fmtDateLabel={wsData.fmtDateLabel}
+        />
+      ),
+    },
+    'ws-assigned': {
+      title: lang === 'vi' ? 'NHIỆM VỤ ĐƯỢC GIAO' : 'ASSIGNED TASKS',
+      icon: ListTodo,
+      body: <MyAssignedTasksView />,
+    },
+    'ws-tasks': {
+      title: lang === 'vi' ? 'PHÊ DUYỆT YÊU CẦU' : 'PENDING APPROVALS',
+      icon: Inbox,
+      body: (
+        <MyTasksWidgetView
+          tasks={wsData.tasks}
+          openTasks={wsData.openTasks}
+          decideTask={wsData.decideTask}
+          setSelectedItem={wsData.setSelectedItem}
+          lang={lang}
+          t={t}
+          TASK_STATUS_BADGE={wsData.TASK_STATUS_BADGE}
+        />
+      ),
+    },
+    'ws-requests': {
+      title: lang === 'vi' ? 'YÊU CẦU ĐÃ GỬI' : 'MY REQUESTS',
+      icon: Send,
+      body: (
+        <MyRequestsWidgetView
+          myForms={wsData.myForms}
+          openForms={wsData.openForms}
+          setSelectedItem={wsData.setSelectedItem}
+          lang={lang}
+          t={t}
+          TASK_STATUS_BADGE={wsData.TASK_STATUS_BADGE}
+        />
+      ),
+    },
   };
 
   return MAP[key] ?? MAP['profile-bio'];
@@ -810,7 +1076,7 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
                   isActive ? '!bg-[#990000] !text-white !font-bold' : ''
                 }`}
               >
-                <span className="truncate">{node.label}</span>
+                <span className="min-w-0 break-words">{node.label}</span>
                 {node.badge && (
                   <span className={`text-[8px] font-bold px-1 py-0.2 scale-90 rounded-none shrink-0 ${CAT_BADGE_STYLE[node.badge] || 'border border-neutral-300 bg-neutral-50 text-neutral-600'}`}>
                     {node.badge}
@@ -842,7 +1108,7 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
                 onClick={() => onToggle(node.id)}
                 className={`w-full text-left font-sans flex items-center justify-between py-1.5 px-2 border-b border-transparent transition-colors text-[11px] ${branchStyleClass}`}
               >
-                <span className="truncate">{node.label}</span>
+                <span className="min-w-0 break-words">{node.label}</span>
                 <Chevron className="h-3 w-3 shrink-0 text-neutral-400" />
               </button>
             </div>
@@ -869,27 +1135,63 @@ function TreeLevel({ nodes, depth, selected, onSelect, expanded, onToggle, filte
 
 /* ====== MY WORKSPACE — Calendar synced full layout ====== */
 
-const WS_EVENTS = [
-  { id: 'e1', title: 'Họp giao ban điều hành Tuần', start: '2026-07-06T09:00', end: '2026-07-06T11:00', location: 'StudioLab A, T1, ISCM', tag: 'Internal', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e2', title: 'Ký kết MOU với Grab Vietnam', start: '2026-07-07T14:30', end: '2026-07-07T15:30', location: 'Hội thảo CTD', tag: 'Partnership', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e3', title: 'Thẩm định đề xuất HCMC Walkability Atlas', start: '2026-07-09T10:00', end: '2026-07-09T12:00', location: 'Meeting Room C, ISCM Hub', tag: 'Research', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e4', title: 'ISCM-UEH Academic Seminar', start: '2026-07-10T13:30', end: '2026-07-10T16:00', location: 'Hội trường CTD', tag: 'Seminar', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-  { id: 'e5', title: 'Board Meeting — Director Level', start: '2026-07-10T09:00', end: '2026-07-10T10:30', location: 'Văn phòng Giám đốc, T3', tag: 'Admin', tagColor: 'bg-[#990000] text-white border-[#990000]' },
-  { id: 'e6', title: 'All-hands Core Team Sync', start: '2026-07-06T13:00', end: '2026-07-06T14:00', location: 'Online (Google Meet)', tag: 'Internal', tagColor: 'bg-neutral-100 text-neutral-800 border-neutral-200' },
-];
-
 const TASK_STATUS_BADGE = {
   Open:     'bg-neutral-100 text-neutral-800 border border-neutral-300',
   Approved: 'bg-[#990000] text-white border border-[#990000]',
   Rejected: 'bg-neutral-50 text-neutral-400 border border-neutral-200 line-through',
 };
 
-function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
+
+
+
+
+
+
+/* Helper to identify category group of any selected key */
+function getActiveCategory(selected) {
+  if (selected.startsWith('academia-') || ['my-teaching-schedule', 'institute-teaching-schedule', 'teaching-assignments'].includes(selected)) return 'academia';
+  if (selected.startsWith('partnership-') || ['individual-stakeholders', 'institutional-partners', 'active-mous'].includes(selected)) return 'partnership';
+  if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'operation-finance';
+  if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'operation-finance';
+  if (['requests-forms', 'cat-forms'].includes(selected)) return 'operation-finance';
+  if (['admin-access-requests', 'admin-content-permissions', 'admin-attendance', 'admin-events', 'admin-calendar', 'admin-library'].includes(selected)) return 'admin';
+  return 'my-portal';
+}
+
+
+/* ---------------- Main PersonalDashboard Component ---------------- */
+
+export default function PersonalDashboard({ onNavigate }) {
+  const { lang } = useLanguage();
+  const { user: authUser } = useAuth();
+  const [isTopAdmin, setIsTopAdmin] = useState(false);
+  const [dbUser, setDbUser] = useState(null);
+  const [contactForm, setContactForm] = useState({
+    personal_email: '', phone: '', date_of_birth: '', address: '',
+    avatar_url: '', academic_title: '', scholar_url: '',
+  });
+  const [contactStatus, setContactStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+  const [selected, setSelected] = useState('profile-bio');
+  const [activeCategory, setActiveCategory] = useState('my-portal');
+  const [nodeExpanded, setNodeExpanded] = useState({});
+  const [filters, setFilters] = useState({
+    formCategory: 'All', tasksStatus: 'All', formsStatus: 'All', assetType: 'All',
+  });
+
+  // Calendar and task list states
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
-  const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
+  const [tasks, setTasks] = useState(MY_TASKS);
+  const [selectedItem, setSelectedItem] = useState(null);
 
-  const openTasks = MY_TASKS.filter((tk) => tk.status === 'Open');
+  const openTasks = tasks.filter((tk) => tk.status === 'Open');
+  const decideTask = (id, status) => {
+    setTasks((prev) => prev.map((tk) => tk.id === id ? { ...tk, status } : tk));
+    if (selectedItem?.item?.id === id) {
+      setSelectedItem((prev) => ({ ...prev, item: { ...prev.item, status } }));
+    }
+  };
+
   const myForms = useMemo(() => [...loadSubmissions(), ...MY_FORMS_SEED], []);
   const openForms = myForms.filter((f) => f.status === 'Open');
   const dueSoonAssets = [...MY_ASSETS]
@@ -914,6 +1216,7 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
   };
 
   const fmtDateKey = (d) => d.toISOString().slice(0, 10);
+  const isToday = (d) => fmtDateKey(d) === todayStr;
 
   const getEventsForDay = (d) => {
     const key = fmtDateKey(d);
@@ -935,266 +1238,14 @@ function WorkspaceCalendarLayout({ onNavigate, onSelect, lang }) {
     }
   };
 
-  const isToday = (d) => fmtDateKey(d) === todayStr;
-
-  return (
-    <div className="w-full flex flex-col gap-4 font-sans">
-      {/* Page header */}
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-2 flex items-start justify-between rounded-none">
-        <div>
-          <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            {t.WORKSPACE_HEADER}
-          </h1>
-          <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            {t.WORKSPACE_SUBHEADER}
-          </p>
-        </div>
-        <button
-          onClick={() => onNavigate('executive-calendar')}
-          className="btn-secondary text-[11px] py-1 px-3"
-        >
-          <CalendarClock className="h-3.5 w-3.5 mr-1 text-[#990000]" />
-          {t.FULL_CALENDAR}
-        </button>
-      </header>
-
-      {/* Split layout: left = upcoming events, right = weekly calendar */}
-      <div className="grid gap-4 md:grid-cols-10 items-start">
-
-        {/* LEFT — Upcoming Events Highlight */}
-        <aside className="border border-neutral-200 bg-white md:col-span-2 rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-[#990000] text-white flex items-center gap-2">
-            <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{t.UPCOMING_EVENTS}</span>
-          </div>
-          <div className="overflow-y-auto max-h-[560px] divide-y divide-neutral-200">
-            {upcoming.length === 0 && (
-              <p className="px-4 py-8 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-            )}
-            {upcoming.map((ev) => (
-              <div key={ev.id} className="flex items-start gap-2.5 px-4 py-3 hover:bg-neutral-50 transition-colors">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 leading-snug">{ev.title}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
-                    {fmtDateLabel(ev.start)} · {fmtTime(ev.start)}–{fmtTime(ev.end)}
-                  </p>
-                  <p className="text-[10px] text-neutral-400 truncate">{ev.location}</p>
-                  <span className={`inline-block mt-1 px-1 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="px-4 py-2 border-t border-neutral-200 bg-neutral-50">
-            <p className="text-[10px] text-neutral-400 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 bg-emerald-600 inline-block" />
-              {t.SYNC_SUCCESS}
-            </p>
-          </div>
-        </aside>
-
-        {/* RIGHT — Weekly Calendar Table */}
-        <main className="border border-neutral-200 bg-white md:col-span-8 rounded-none overflow-hidden">
-          {/* Calendar header */}
-          <div className="px-5 py-2.5 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarRange className="h-3.5 w-3.5 text-[#990000]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">
-                {t.WEEKLY_SCHEDULE} — {monday.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} – {weekDays[4].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-              </span>
-            </div>
-            <span className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold">Thứ 2 → Thứ 6</span>
-          </div>
-
-          {/* Week grid */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left border-collapse">
-              <thead>
-                <tr>
-                  {weekDays.map((d) => (
-                    <th key={fmtDateKey(d)}
-                      className={`px-3 py-2 text-[11px] font-bold uppercase tracking-wider border-b border-neutral-300 text-center ${
-                        isToday(d) ? 'bg-[#990000] text-white' : 'bg-neutral-50 text-neutral-800'
-                      }`}
-                    >
-                      {fmtDay(d)}
-                      {isToday(d) && <span className="block text-[8px] font-normal opacity-80">{lang === 'vi' ? 'Hôm nay' : 'Today'}</span>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="align-top">
-                  {weekDays.map((d) => {
-                    const dayEvents = getEventsForDay(d);
-                    return (
-                      <td key={fmtDateKey(d)}
-                        className={`px-1.5 py-2 border-r border-neutral-200 last:border-r-0 min-h-[140px] align-top ${
-                          isToday(d) ? 'bg-neutral-50/50' : ''
-                        }`}
-                      >
-                        {dayEvents.length === 0 ? (
-                          <p className="text-center text-[10px] text-neutral-300 mt-4">—</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {dayEvents.map((ev) => (
-                              <div key={ev.id}
-                                className={`border px-1.5 py-1 text-[9px] cursor-default ${ev.tagColor} rounded-none`}
-                              >
-                                <p className="font-bold leading-tight line-clamp-2">{ev.title}</p>
-                                <p className="opacity-70 mt-0.5">{fmtTime(ev.start)}–{fmtTime(ev.end)}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Today's detail schedule */}
-          <div className="border-t border-neutral-200">
-            <div className="px-5 py-2 bg-neutral-50 border-b border-neutral-200">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-800">
-                {t.SCHEDULE_DETAILS}
-              </span>
-            </div>
-            {(() => {
-              const todayEvents = getEventsForDay(today);
-              if (todayEvents.length === 0) return (
-                <p className="px-5 py-6 text-center text-xs text-neutral-400 font-sans">{t.NO_EVENTS}</p>
-              );
-              return (
-                <div className="divide-y divide-neutral-200">
-                  {todayEvents.map((ev) => (
-                    <div key={ev.id} className="flex items-start gap-4 px-5 py-2.5">
-                      <div className="shrink-0 text-center w-12">
-                        <span className="block text-xs font-bold text-neutral-900">{fmtTime(ev.start)}</span>
-                        <span className="block text-[9px] text-neutral-400">{fmtTime(ev.end)}</span>
-                      </div>
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-[#990000]" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-neutral-800">{ev.title}</p>
-                        <p className="text-[10px] text-neutral-400 mt-0.5">{ev.location}</p>
-                      </div>
-                      <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold border ${ev.tagColor}`}>{ev.tag}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        </main>
-      </div>
-
-      {/* Quick-glance: tasks, requests & assets */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* My Tasks (Pending Approvals) */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <Inbox className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_TASKS_WIDGET}
-            </span>
-            {openTasks.length > 0 && (
-              <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openTasks.length} {t.OPEN_TASKS}</span>
-            )}
-          </div>
-          <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {MY_TASKS.slice(0, 4).map((tk) => (
-              <div key={tk.id} className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate">{tk.title}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{tk.requester} · {tk.date}</p>
-                </div>
-                <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[tk.status]}`}>{tk.status}</span>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => onSelect?.('my-tasks')}
-            className="w-full flex items-center justify-center gap-1 px-4 py-2 border-t border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-800 hover:bg-neutral-100 transition-colors"
-          >
-            {t.VIEW_QUEUE} <ArrowRight className="h-3 w-3 text-[#990000]" />
-          </button>
-        </div>
-
-        {/* My Requests (My Forms) */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <Send className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_REQUESTS_WIDGET}
-            </span>
-            {openForms.length > 0 && (
-              <span className="bg-[#990000] border border-[#990000] px-1.5 py-0.2 text-[9px] font-bold text-white">{openForms.length} {t.PENDING_FORMS}</span>
-            )}
-          </div>
-          <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {myForms.slice(0, 4).map((f) => (
-              <div key={f.id} className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate">{f.form}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{f.group} · {f.date}</p>
-                </div>
-                <span className={`shrink-0 px-1.5 py-0.2 text-[8px] font-bold rounded-none ${TASK_STATUS_BADGE[f.status]}`}>{f.status}</span>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => onSelect?.('my-forms')}
-            className="w-full flex items-center justify-center gap-1 px-4 py-2 border-t border-neutral-200 bg-neutral-50 text-[10px] font-bold text-neutral-800 hover:bg-neutral-100 transition-colors"
-          >
-            {t.TRACK_STATUS} <ArrowRight className="h-3 w-3 text-[#990000]" />
-          </button>
-        </div>
-
-        {/* My Assets */}
-        <div className="border border-neutral-200 bg-white rounded-none overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 bg-neutral-900 text-white flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <MonitorSmartphone className="h-3.5 w-3.5 text-[#990000]" /> {t.MY_ASSETS_WIDGET}
-            </span>
-            <span className="border border-white/30 bg-white/10 px-1.5 py-0.2 text-[9px] font-bold text-white">{MY_ASSETS.length} {t.ASSETS_COUNT}</span>
-          </div>
-          <div className="divide-y divide-neutral-100 max-h-[220px] overflow-y-auto">
-            {dueSoonAssets.concat(MY_ASSETS.filter((a) => !a.due)).slice(0, 4).map((a) => (
-              <div key={a.id} className="flex items-start justify-between gap-2.5 px-4 py-2 hover:bg-neutral-50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-neutral-800 truncate">{a.name}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{a.type} · checked out {a.checked_out}</p>
-                </div>
-                <span className="shrink-0 text-[9px] text-[#990000] font-bold">{a.due ? `${t.DUE} ${a.due}` : t.PERMANENT}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Helper to identify category group of any selected key */
-function getActiveCategory(selected) {
-  if (selected.startsWith('wiki-') || selected === 'cat-wiki') return 'wiki-hub-root';
-  if (selected.startsWith('contacts-') || selected === 'cat-contacts') return 'contacts-root';
-  if (selected.startsWith('form:') && selected !== 'form:payment-request') return 'requests-forms';
-  if (['my-tasks', 'my-forms', 'requests-forms', 'cat-forms'].includes(selected)) return 'requests-forms';
-  return 'my-portal';
-}
-
-
-/* ---------------- Main PersonalDashboard Component ---------------- */
-
-export default function PersonalDashboard({ onNavigate }) {
-  const { lang } = useLanguage();
-  const [selected, setSelected] = useState('workspace-calendar');
-  const [activeCategory, setActiveCategory] = useState('my-portal');
-  const [nodeExpanded, setNodeExpanded] = useState({});
-  const [filters, setFilters] = useState({
-    formCategory: 'All', tasksStatus: 'All', formsStatus: 'All', assetType: 'All',
-  });
+  const myProfile = dbUser
+    ? {
+        full_name: dbUser.full_name,
+        email: dbUser.email,
+        system_role: dbUser.global_system_role,
+        base_functional_group: dbUser.base_functional_group,
+      }
+    : MY_PROFILE;
 
   useEffect(() => {
     // Top nav profile redirect selections map to IA views
@@ -1203,7 +1254,6 @@ export default function PersonalDashboard({ onNavigate }) {
         if (e.detail === 'my-portal') setSelected('profile-bio');
         else if (e.detail === 'cat-forms') setSelected('cat-forms');
         else if (e.detail === 'cat-wiki') setSelected('cat-wiki');
-        else if (e.detail === 'cat-contacts') setSelected('contacts-colleagues');
         else setSelected(e.detail);
       }
     };
@@ -1213,13 +1263,80 @@ export default function PersonalDashboard({ onNavigate }) {
 
   // Sync active category group on selected key changes
   useEffect(() => {
-    if (selected !== 'workspace-calendar') {
-      setActiveCategory(getActiveCategory(selected));
-    }
+    setActiveCategory(getActiveCategory(selected));
   }, [selected]);
 
-  const active = usePaneContent(selected, filters, setSelected, lang);
-  const ActiveIcon = active.icon ?? FileText;
+  // Real role check — gates the admin-only "Content Admin Permissions" nav entry
+  useEffect(() => {
+    if (!isLive || !authUser) { setIsTopAdmin(false); return; }
+    supabase.rpc('is_top_admin').then(({ data, error }) => setIsTopAdmin(!error && Boolean(data)));
+  }, [authUser]);
+
+  // Profile & Bio must reflect whichever account is actually signed in, not
+  // a fixed demo persona — mirrors the same lookup NavBar.jsx does.
+  useEffect(() => {
+    if (!isLive || !authUser) { setDbUser(null); return; }
+    supabase.from('users_profiles').select('*').eq('id', authUser.id).single()
+      .then(({ data }) => { if (data) setDbUser(data); });
+  }, [authUser]);
+
+  // Contact info form mirrors whatever's stored, once it loads.
+  useEffect(() => {
+    if (!dbUser) return;
+    setContactForm({
+      personal_email: dbUser.personal_email || '',
+      phone: dbUser.phone || '',
+      date_of_birth: dbUser.date_of_birth || '',
+      address: dbUser.address || '',
+      avatar_url: dbUser.avatar_url || '',
+      academic_title: dbUser.academic_title || '',
+      scholar_url: dbUser.scholar_url || '',
+    });
+  }, [dbUser]);
+
+  const saveContactInfo = async () => {
+    setContactStatus('saving');
+    const { error } = await supabase.rpc('update_my_contact_info', {
+      p_personal_email: contactForm.personal_email,
+      p_phone: contactForm.phone,
+      p_date_of_birth: contactForm.date_of_birth || null,
+      p_address: contactForm.address,
+      p_avatar_url: contactForm.avatar_url,
+      p_academic_title: contactForm.academic_title,
+      p_scholar_url: contactForm.scholar_url,
+    });
+    if (error) { setContactStatus('error'); return; }
+    setDbUser((prev) => (prev ? { ...prev, ...contactForm } : prev));
+    setContactStatus('saved');
+    setTimeout(() => setContactStatus('idle'), 2000);
+  };
+
+  const wsData = {
+    tasks,
+    openTasks,
+    decideTask,
+    setSelectedItem,
+    myForms,
+    openForms,
+    weekDays,
+    monday,
+    fmtDay,
+    isToday,
+    fmtDateKey,
+    getEventsForDay,
+    fmtTime,
+    upcoming,
+    today,
+    fmtDateLabel,
+    TASK_STATUS_BADGE,
+    myProfile,
+    contactForm,
+    setContactForm,
+    contactStatus,
+    saveContactInfo,
+  };
+
+  const active = usePaneContent(selected, filters, setSelected, lang, wsData);
 
   const toggleNode = (id) =>
     setNodeExpanded((p) => ({ ...p, [id]: !(p[id] ?? false) }));
@@ -1228,45 +1345,34 @@ export default function PersonalDashboard({ onNavigate }) {
 
   // Get active localization structure
   const t = NAVIGATION_LOCALIZATION[lang] || NAVIGATION_LOCALIZATION.en;
-
-  if (selected === 'workspace-calendar') {
-    return <WorkspaceCalendarLayout onNavigate={onNavigate ?? (() => {})} onSelect={setSelected} lang={lang} />;
-  }
-
-  const categoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
+  const rawCategoryNode = t.SIDEBAR_TREE.find((n) => n.id === activeCategory);
+  const categoryNode = rawCategoryNode?.children
+    ? { ...rawCategoryNode, children: rawCategoryNode.children.filter((c) => !c.adminOnly || isTopAdmin) }
+    : rawCategoryNode;
 
   return (
     <div className="w-full font-sans">
-      
-      {/* Page Header */}
-      <header className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
-        <div>
-          <h1 className="font-barlow text-3xl font-extrabold uppercase tracking-wider text-iscm-charcoal">
-            {lang === 'vi' ? 'CỔNG TÁC NGHIỆP CÁ NHÂN' : 'PERSONAL PORTAL & OPERATIONS'}
-          </h1>
-          <p className="font-ibm text-xs uppercase tracking-wider text-gray-500 mt-1">
-            2026 Operational Network · ISCM-UEH
-          </p>
-        </div>
-        <button
-          onClick={() => setSelected('workspace-calendar')}
-          className="btn-secondary text-[10px] py-1 px-2.5 mr-2 font-bold hover:border-[#990000] hover:text-[#990000]"
-        >
-          ← {lang === 'vi' ? 'Không gian làm việc' : 'Workspace'}
-        </button>
-      </header>
 
       {/* Master-Detail split screen */}
       <div className="grid items-start gap-4 md:grid-cols-10">
         
         {/* LEFT — Localized Tabbed Tree Navigation View */}
         <aside className="border border-neutral-200 bg-white p-2.5 md:col-span-2 rounded-none">
-
           <div className="max-h-[680px] overflow-y-auto pr-1">
             {categoryNode && (
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000] bg-neutral-50 border-b border-neutral-200 py-1.5 px-2 mb-2 select-none text-left">
-                  {categoryNode.label}
+                <div className="border-b border-neutral-200 bg-neutral-50 px-2 py-1.5 mb-2 select-none text-left">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#990000]">
+                    {categoryNode.label}
+                  </div>
+                  {activeCategory === 'operation-finance' && (
+                    <div className="mt-1 text-[9px] uppercase tracking-wider text-neutral-500 font-ibm">
+                      {lang === 'vi' ? 'Trưởng bộ phận' : 'Head of Department'}:{' '}
+                      <span className="font-semibold text-[#990000] font-barlow normal-case">
+                        {lang === 'vi' ? 'ThS. KTS. Trần Thị Quỳnh Mai' : 'Mai Quynh Thi Tran, M.Arch'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {categoryNode.children && (
                   <TreeLevel
@@ -1287,19 +1393,128 @@ export default function PersonalDashboard({ onNavigate }) {
 
         {/* RIGHT — Dynamic Content Viewport */}
         <main className="border border-neutral-200 bg-white p-5 md:col-span-8 rounded-none min-h-[500px]">
-          <div className="border-l-4 border-[#990000] pl-4 py-1 mb-6 flex items-start justify-between rounded-none">
-            <div>
-              <h2 className="font-barlow text-2xl font-extrabold uppercase tracking-wider text-iscm-charcoal flex items-center gap-2">
-                <ActiveIcon className="h-5 w-5 text-[#990000] shrink-0" /> {active.title}
-              </h2>
-              <p className="font-ibm text-[10px] uppercase tracking-wider text-gray-500 mt-1">
-                {lang === 'vi' ? 'Cổng tác nghiệp cá nhân' : 'Personal Portal Operational View'}
-              </p>
-            </div>
-          </div>
           {active.body}
         </main>
       </div>
+
+      {/* Item Detail Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-neutral-200 max-w-md w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200 rounded-none">
+            <button
+              onClick={() => setSelectedItem(null)}
+              className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header */}
+            <div className="border-b border-neutral-200 pb-3 mb-4">
+              <h3 className="font-barlow text-base font-bold uppercase tracking-wide text-neutral-900 text-left">
+                {selectedItem.type === 'task'
+                  ? (lang === 'vi' ? 'Chi tiết yêu cầu phê duyệt' : 'Approval Request Details')
+                  : (lang === 'vi' ? 'Chi tiết đơn từ đã gửi' : 'Submitted Request Details')
+                }
+              </h3>
+            </div>
+
+            {/* Content fields */}
+            <div className="space-y-3 font-sans text-xs">
+              {selectedItem.type === 'task' ? (
+                <>
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-left">
+                    <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Yêu cầu / Request</span>
+                    <span className="block font-bold text-neutral-800 mt-0.5 text-sm">{selectedItem.item.title}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Người yêu cầu / Requester</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.requester}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Ngày nộp / Date</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.date}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Biểu mẫu / Form</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.form}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Trạng thái / Status</span>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-[9px] font-bold rounded-none ${TASK_STATUS_BADGE[selectedItem.item.status]}`}>
+                        {selectedItem.item.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50/50 p-2.5 border border-amber-200 text-neutral-700 leading-relaxed text-left">
+                    <span className="block font-bold text-amber-800 uppercase text-[9px] tracking-wide mb-0.5">Thông tin bổ sung / Notes</span>
+                    Phê duyệt phân luồng tài chính &amp; thẩm định dữ liệu không gian. Cần rà soát các tài sản dữ liệu đính kèm trước khi đưa ra quyết định.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-left">
+                    <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Biểu mẫu / Form</span>
+                    <span className="block font-bold text-neutral-800 mt-0.5 text-sm">{selectedItem.item.form}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Nhóm chức năng / Group</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.group}</span>
+                    </div>
+                    <div className="bg-neutral-50 p-2 border border-neutral-100">
+                      <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Ngày gửi / Date</span>
+                      <span className="block text-neutral-800 font-semibold mt-0.5">{selectedItem.item.date}</span>
+                    </div>
+                  </div>
+                  <div className="bg-neutral-50 p-2 border border-neutral-100 w-full text-left">
+                    <span className="block font-bold text-neutral-400 uppercase text-[9px] tracking-wide">Trạng thái / Status</span>
+                    <span className={`inline-block mt-1 px-2 py-0.5 text-[9px] font-bold rounded-none ${TASK_STATUS_BADGE[selectedItem.item.status]}`}>
+                      {selectedItem.item.status}
+                    </span>
+                  </div>
+                  <div className="bg-neutral-50 p-2.5 border border-neutral-100 text-neutral-700 leading-relaxed text-left">
+                    <span className="block font-bold text-neutral-500 uppercase text-[9px] tracking-wide mb-0.5">Mô tả tiến trình / Workflow Log</span>
+                    Yêu cầu đã được chuyển tiếp tự động sang bộ phận phê duyệt chức năng. Mọi phản hồi sẽ được gửi qua email UEH SSO.
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="mt-6 pt-4 border-t border-neutral-200 flex justify-end gap-2">
+              {selectedItem.type === 'task' && selectedItem.item.status === 'Open' && (
+                <>
+                  <button
+                    onClick={() => {
+                      decideTask(selectedItem.item.id, 'Approved');
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-barlow font-bold text-xs uppercase tracking-widest py-2 px-3 transition-colors rounded-none"
+                  >
+                    {lang === 'vi' ? 'Duyệt' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      decideTask(selectedItem.item.id, 'Rejected');
+                    }}
+                    className="bg-[#990000] hover:bg-red-800 text-white font-barlow font-bold text-xs uppercase tracking-widest py-2 px-3 transition-colors rounded-none"
+                  >
+                    {lang === 'vi' ? 'Từ chối' : 'Reject'}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setSelectedItem(null)}
+                className="bg-neutral-900 hover:bg-neutral-800 text-white font-barlow font-bold text-xs uppercase tracking-widest py-2 px-4 transition-colors rounded-none"
+              >
+                {lang === 'vi' ? 'Đóng' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

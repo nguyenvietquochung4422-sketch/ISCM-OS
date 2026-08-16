@@ -12,6 +12,14 @@ export default function TaskReceiptPanel() {
     const stored = localStorage.getItem('iscm_mysite_tasks');
     if (stored) {
       try { setTasks(JSON.parse(stored)); } catch { /* ignore corrupt cache */ }
+    } else {
+      const defaultTasks = [
+        { id: 'dt-1', text: 'Nghiệm thu nội bộ dữ liệu đợt 1 (Atlas Q1)', done: true, flagged: false },
+        { id: 'dt-2', text: 'Phê duyệt kế hoạch tài chính Quý III', done: false, flagged: false },
+        { id: 'dt-3', text: 'Chuẩn bị hồ sơ đón đoàn Hochschule Worms', done: false, flagged: false },
+        { id: 'dt-4', text: 'Rà soát quy hoạch chi tiết Phan Đình Phùng', done: false, flagged: true },
+      ];
+      persist(defaultTasks);
     }
   }, []);
 
@@ -32,48 +40,47 @@ export default function TaskReceiptPanel() {
   const remove = (id) => persist(tasks.filter((t) => t.id !== id));
 
   return (
-    <div className="space-y-3">
-      <form onSubmit={addTask} className="flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Nhận việc mới / Receive a new task…"
-          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 font-ibm text-xs focus:border-iscm-crimson focus:outline-none"
-        />
-        <button type="submit" className="btn-primary !px-3 !py-2 text-xs">
-          <Plus className="h-3.5 w-3.5" /> Nhận việc
-        </button>
-      </form>
-
-      <ul className="divide-y divide-gray-100">
+    <div className="flex flex-col h-[220px] justify-between">
+      <div className="overflow-y-auto px-4 py-2 flex-1 divide-y divide-neutral-100 max-h-[170px]">
         {tasks.map((t) => (
-          <li key={t.id} className="flex items-center gap-2.5 py-2.5">
-            <input type="checkbox" checked={t.done} onChange={() => toggleDone(t.id)}
-              className="h-4 w-4 accent-iscm-crimson" />
-            <span className={`min-w-0 flex-1 truncate font-ibm text-xs ${t.done ? 'text-gray-400 line-through' : 'text-iscm-charcoal font-medium'}`}>
+          <div key={t.id} className="flex items-center gap-2.5 py-2">
+            <input
+              type="checkbox"
+              checked={t.done}
+              onChange={() => toggleDone(t.id)}
+              className="h-3.5 w-3.5 accent-[#990000] cursor-pointer"
+            />
+            <span className={`min-w-0 flex-1 truncate font-ibm text-[11px] ${t.done ? 'text-neutral-400 line-through' : 'text-neutral-800 font-semibold'}`}>
               {t.text}
             </span>
             <button
               onClick={() => toggleFlag(t.id)}
               title="Raise a flag — báo cáo vướng mắc"
-              className={`rounded-full p-1.5 transition-colors ${t.flagged ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-300 hover:text-amber-500'}`}
+              className={`rounded-full p-1 transition-colors ${t.flagged ? 'bg-amber-100 text-amber-600' : 'text-neutral-300 hover:text-amber-500'}`}
             >
-              <Flag className="h-3.5 w-3.5" />
+              <Flag className="h-3 w-3" />
             </button>
-            <button onClick={() => remove(t.id)} className="rounded p-1.5 text-gray-300 hover:text-iscm-crimson">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button onClick={() => remove(t.id)} className="text-neutral-300 hover:text-red-700 transition-colors">
+              <Trash2 className="h-3 w-3" />
             </button>
-          </li>
+          </div>
         ))}
         {tasks.length === 0 && (
-          <li className="py-8 text-center font-ibm text-xs text-gray-400">Chưa có tác vụ nào được nhận.</li>
+          <div className="py-8 text-center font-ibm text-xs text-neutral-400">Chưa có tác vụ nào được nhận.</div>
         )}
-      </ul>
-      {tasks.some((t) => t.flagged) && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 font-ibm text-[11px] text-amber-700">
-          {tasks.filter((t) => t.flagged).length} tác vụ đang được gắn cờ chờ Quản lý xử lý vướng mắc.
-        </p>
-      )}
+      </div>
+
+      <form onSubmit={addTask} className="flex border-t border-neutral-200 bg-neutral-50 px-2 py-1.5 gap-1.5 shrink-0">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Nhận việc mới..."
+          className="flex-1 rounded-none border border-neutral-300 bg-white px-2 py-1 font-ibm text-[11px] focus:border-[#990000] focus:outline-none"
+        />
+        <button type="submit" className="rounded-none bg-neutral-900 hover:bg-[#990000] text-white px-3 py-1 font-barlow font-bold text-[10px] uppercase tracking-wider transition-colors">
+          Thêm
+        </button>
+      </form>
     </div>
   );
 }

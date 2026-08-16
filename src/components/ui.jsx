@@ -38,8 +38,8 @@ export function RoleBadge({ role }) {
   return <span className={`badge ${ROLE_STYLES[role] ?? ROLE_STYLES.Member}`}>{role}</span>;
 }
 
-/** Circular initials avatar (deterministic tone per name) */
-export function Avatar({ name, size = 'md' }) {
+/** Circular avatar — a real photo when `src` is given, otherwise deterministic initials. */
+export function Avatar({ name, size = 'md', src }) {
   const initials = (name ?? '?')
     .split(' ')
     .map((w) => w[0])
@@ -47,6 +47,16 @@ export function Avatar({ name, size = 'md' }) {
     .join('')
     .toUpperCase();
   const sizes = { sm: 'h-6 w-6 text-[10px]', md: 'h-8 w-8 text-xs', lg: 'h-10 w-10 text-sm' };
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        title={name}
+        className={`inline-block shrink-0 rounded-full object-cover ${sizes[size]}`}
+      />
+    );
+  }
   return (
     <span
       title={name}

@@ -652,3 +652,15 @@
   border-radius: 0;
   font-family: "Helvetica Neue", Arial, sans-serif !important;
 }
+
+/* Slow-drifting squares behind the sign-in card (echoes the ISCM logo's
+   bar-chart motif). Duration/delay are set per-element inline for variety. */
+@keyframes auth-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(0, -26px, 0) rotate(8deg); }
+}
+.auth-drift {
+  animation-name: auth-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}

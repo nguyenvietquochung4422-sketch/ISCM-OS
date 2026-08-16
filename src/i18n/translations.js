@@ -1,4 +1,4 @@
-/** ISCM HUB — Translation dictionary (vi / en)
+/** ISCM OS — Translation dictionary (vi / en)
  *  Keys are logical identifiers used via t('key') throughout the app.
  *  Add new keys here; missing keys fall back to English, then to the raw key string.
  */
@@ -40,8 +40,7 @@ export const translations = {
     // --- Personal Dashboard categories ---
     'cat.myPortal':          'MY PORTAL',
     'cat.requests':          'YÊU CẦU & BIỂU MẪU',
-    'cat.wiki':              'KHO TRI THỨC',
-    'cat.contacts':          'DANH BẠ',
+    'cat.wiki':              'TÀI NGUYÊN',
     'cat.supports':          'HỖ TRỢ',
 
     // --- Workspace hub ---
@@ -113,8 +112,7 @@ export const translations = {
     // --- Personal Dashboard categories ---
     'cat.myPortal':          'MY PORTAL',
     'cat.requests':          'REQUESTS & E-FORMS',
-    'cat.wiki':              'WIKI HUB',
-    'cat.contacts':          'CONTACTS',
+    'cat.wiki':              'RESOURCES',
     'cat.supports':          'SUPPORTS',
 
     // --- Workspace hub ---

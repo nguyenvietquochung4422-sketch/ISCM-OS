@@ -31,7 +31,7 @@ export const DYNAMIC_ROLES = ['Project Lead', 'Data Collector', 'Editor', 'Viewe
 /* ---------------- Phân tầng: Lab → Chương trình → Dự án ---------------- */
 export const OS_HIERARCHY = [
   {
-    lab: 'Public Space Lab', lab_code: 'PUBLIC_SPACE',
+    lab: 'Public Space Living Lab', lab_code: 'PUBLIC_SPACE',
     programs: [
       {
         program: 'Public Space Atlas',
